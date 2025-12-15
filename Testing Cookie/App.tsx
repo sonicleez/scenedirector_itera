@@ -700,10 +700,14 @@ const CharacterGeneratorModal: React.FC<CharacterGeneratorModalProps> = ({ isOpe
                                 Thử lại
                             </button>
                             <button
-                                onClick={() => { onSave(generatedImage); onClose(); }}
+                                onClick={() => {
+                                    onSave(generatedImage);
+                                    onClose();
+                                    setGeneratedImage(null); // Reset for next time
+                                }}
                                 className={`flex-[2] py-3 font-bold text-white rounded-lg bg-gradient-to-r ${PRIMARY_GRADIENT} hover:${PRIMARY_GRADIENT_HOVER} transition-all shadow-lg transform hover:scale-105`}
                             >
-                                Dùng ảnh này & Phân tích
+                                ✅ Lưu ảnh này
                             </button>
                         </>
                     )}
@@ -1073,9 +1077,22 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ character, index, updateC
                     onEdit={character.masterImage ? () => onEditImage(character.id, character.masterImage!, 'master') : undefined}
                     onGenerate={() => onOpenCharGen(character.id)}
                     aspect="square"
-                    subLabel="Upload hoặc Tạo AI để tách Face/Body"
+                    subLabel="Upload hoặc Tạo AI"
                     isProcessing={character.isAnalyzing}
                 />
+
+                {/* Analyze Button - Show when master exists but no face/body */}
+                {character.masterImage && (!character.faceImage || !character.bodyImage) && !character.isAnalyzing && !character.workflowStatus && (
+                    <button
+                        onClick={() => onMasterUpload(character.id, character.masterImage!)}
+                        className="w-full mt-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-lg transition-all flex items-center justify-center space-x-2"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>🔍 Phân tích → Tạo Face ID + Body</span>
+                    </button>
+                )}
             </div>
 
             <div className="grid grid-cols-2 gap-4 mb-4">
@@ -1922,8 +1939,9 @@ const App: React.FC = () => {
 
     const handleCharGenSave = (image: string) => {
         if (charGenState.charId) {
-            // Use existing master upload logic to trigger analysis
-            handleMasterImageUpload(charGenState.charId, image);
+            // Just save the master image, no auto-analysis
+            updateCharacter(charGenState.charId, { masterImage: image });
+            console.log('✅ Master image saved. User can manually trigger analysis.');
         }
     };
 
@@ -3042,8 +3060,8 @@ const App: React.FC = () => {
                                             onClick={() => setScriptModalOpen(true)}
                                             disabled={isScriptGenerating}
                                             className={`w-full px-6 py-4 font-semibold text-white rounded-lg transition-all duration-300 transform hover:scale-105 flex flex-col items-center justify-center ${isScriptGenerating
-                                                    ? 'bg-blue-600/50 cursor-wait'
-                                                    : 'bg-gradient-to-r from-blue-500 to-blue-300 hover:from-blue-400 hover:to-blue-200'
+                                                ? 'bg-blue-600/50 cursor-wait'
+                                                : 'bg-gradient-to-r from-blue-500 to-blue-300 hover:from-blue-400 hover:to-blue-200'
                                                 }`}
                                         >
                                             {isScriptGenerating ? (
