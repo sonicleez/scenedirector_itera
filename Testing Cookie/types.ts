@@ -40,14 +40,19 @@ export interface Scene {
   // Structured Script Output Fields (New)
   voiceover?: string; // Narration/voiceover text
   dialogues?: SceneDialogue[]; // Array of character dialogues
-  cameraAngle?: string; // Camera position and movement
+  cameraAngle?: string; // Camera position and movement (AI-generated)
   visualDescription?: string; // Visual/environment description
+
+  // Cinematography Overrides (User can customize per-scene)
+  cameraAngleOverride?: string; // User override for camera angle
+  lensOverride?: string; // User override for lens selection
+  transitionType?: string; // Transition to next scene
 
   // Generation metadata
   promptName: string;
   contextDescription: string;
   characterIds: string[];
-  productIds: string[]; // NEW: Referenced Products/Props in this scene
+  productIds: string[]; // Referenced Products/Props in this scene
   generatedImage: string | null;
 
   // Video generation
@@ -127,8 +132,13 @@ export interface ProjectState {
   activeScriptPreset: string; // ID of currently selected preset
   customScriptPresets: ScriptPreset[]; // User-created presets
 
+  // Cinematography Settings (NEW)
+  cameraModel?: string; // Global camera body selection
+  defaultLens?: string; // Default lens for all scenes
+  customMetaTokens?: string; // Custom creative tokens (if empty, AI generates)
+
   characters: Character[];
-  products: Product[]; // New: List of Products/Props
+  products: Product[]; // List of Products/Props
   scenes: Scene[];
 }
 

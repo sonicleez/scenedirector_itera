@@ -77,6 +77,54 @@ const GLOBAL_STYLES = [
     }
 ];
 
+// ========== CINEMATOGRAPHY OPTIONS ==========
+const CAMERA_MODELS = [
+    { value: '', label: 'Auto (AI chọn)', prompt: '' },
+    { value: 'arri-alexa-35', label: 'ARRI Alexa 35', prompt: 'Shot on ARRI Alexa 35, rich cinematic colors, natural skin tones, wide dynamic range' },
+    { value: 'red-v-raptor', label: 'RED V-Raptor', prompt: 'Shot on RED V-Raptor 8K, high contrast, razor sharp details, vivid colors' },
+    { value: 'sony-venice-2', label: 'Sony Venice 2', prompt: 'Shot on Sony Venice 2, natural color science, beautiful skin tones, filmic look' },
+    { value: 'blackmagic-ursa', label: 'Blackmagic URSA', prompt: 'Shot on Blackmagic URSA, organic film-like texture, Blackmagic color science' },
+    { value: 'canon-c70', label: 'Canon C70', prompt: 'Shot on Canon C70, documentary style, natural colors, versatile look' },
+    { value: 'panasonic-s1h', label: 'Panasonic S1H', prompt: 'Shot on Panasonic S1H, natural tones, subtle film grain, professional video look' },
+];
+
+const LENS_OPTIONS = [
+    { value: '', label: 'Auto (AI chọn)', prompt: '', useCase: 'AI decides based on scene' },
+    { value: '16mm', label: '16mm Ultra Wide', prompt: '16mm ultra wide angle lens, expansive field of view, dramatic perspective', useCase: 'Epic landscapes, architecture' },
+    { value: '24mm', label: '24mm Wide', prompt: '24mm wide angle lens, environmental context, slight distortion', useCase: 'Establishing shots, interiors' },
+    { value: '35mm', label: '35mm Standard Wide', prompt: '35mm lens, natural perspective, slight wide angle', useCase: 'Walking shots, dialogue scenes' },
+    { value: '50mm', label: '50mm Standard', prompt: '50mm lens, natural human perspective, minimal distortion', useCase: 'Dialogue, interviews, portraits' },
+    { value: '85mm', label: '85mm Portrait', prompt: '85mm portrait lens, shallow depth of field, beautiful bokeh, flattering compression', useCase: 'Close-ups, beauty shots' },
+    { value: '135mm', label: '135mm Telephoto', prompt: '135mm telephoto lens, compressed background, intimate feel, creamy bokeh', useCase: 'Emotional moments, isolation' },
+    { value: '200mm', label: '200mm Long Tele', prompt: '200mm telephoto lens, extreme background compression, voyeuristic feel', useCase: 'Surveillance, nature' },
+    { value: 'anamorphic', label: 'Anamorphic 2.39:1', prompt: 'anamorphic lens, horizontal lens flares, oval bokeh, cinematic widescreen 2.39:1 aspect ratio', useCase: 'Cinematic epic look' },
+    { value: 'macro', label: 'Macro Lens', prompt: 'macro lens, extreme close-up, sharp details, shallow depth of field', useCase: 'Product details, textures' },
+];
+
+const CAMERA_ANGLES = [
+    { value: '', label: 'Auto (AI chọn)' },
+    { value: 'wide-shot', label: 'Wide Shot (WS)' },
+    { value: 'medium-shot', label: 'Medium Shot (MS)' },
+    { value: 'close-up', label: 'Close-Up (CU)' },
+    { value: 'extreme-cu', label: 'Extreme Close-Up (ECU)' },
+    { value: 'ots', label: 'Over-the-Shoulder (OTS)' },
+    { value: 'low-angle', label: 'Low Angle (Hero Shot)' },
+    { value: 'high-angle', label: 'High Angle (Vulnerable)' },
+    { value: 'dutch-angle', label: 'Dutch Angle (Tension)' },
+    { value: 'pov', label: 'POV (First Person)' },
+    { value: 'establishing', label: 'Establishing Shot' },
+    { value: 'two-shot', label: 'Two Shot' },
+    { value: 'insert', label: 'Insert / Detail Shot' },
+];
+
+const DEFAULT_META_TOKENS: Record<string, string> = {
+    'film': 'cinematic lighting, depth of field, film grain, anamorphic lens flare, color graded, atmospheric haze',
+    'documentary': 'natural light, handheld camera feel, raw authentic look, observational style, candid moments',
+    'commercial': 'product hero lighting, clean studio aesthetics, vibrant colors, high production value, aspirational mood',
+    'music-video': 'dramatic lighting, high contrast, stylized color palette, dynamic angles, music video aesthetic',
+    'custom': 'professional photography, detailed textures, balanced composition, thoughtful lighting'
+};
+
 const IMAGE_MODELS = [
     { value: 'gemini-2.5-flash-image', label: 'Google Nano Banana (Fast)' },
     { value: 'gemini-3-pro-image-preview', label: 'Google Nano Banana Pro (High Quality)' },
@@ -1297,7 +1345,7 @@ const SceneRow: React.FC<SceneRowProps> = ({ scene, index, characters, products,
                 />
             </div>
 
-            {/* Context */}
+            {/* Context + Cinematography */}
             <div className="md:col-span-2 space-y-2">
                 <input
                     type="text"
@@ -1310,9 +1358,32 @@ const SceneRow: React.FC<SceneRowProps> = ({ scene, index, characters, products,
                     value={scene.contextDescription}
                     onChange={(e) => updateScene(scene.id, { contextDescription: e.target.value })}
                     placeholder="Mô tả bối cảnh để AI vẽ..."
-                    rows={4}
+                    rows={3}
                     className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs text-white focus:border-green-500 resize-none"
                 />
+                {/* Per-Scene Cinematography Overrides */}
+                <div className="grid grid-cols-2 gap-1">
+                    <select
+                        value={scene.cameraAngleOverride || ''}
+                        onChange={(e) => updateScene(scene.id, { cameraAngleOverride: e.target.value })}
+                        className="bg-gray-900 text-[10px] text-gray-400 border border-gray-700 rounded px-1 py-0.5 focus:border-brand-orange truncate"
+                        title="Camera Angle"
+                    >
+                        {CAMERA_ANGLES.map(angle => (
+                            <option key={angle.value} value={angle.value}>{angle.label}</option>
+                        ))}
+                    </select>
+                    <select
+                        value={scene.lensOverride || ''}
+                        onChange={(e) => updateScene(scene.id, { lensOverride: e.target.value })}
+                        className="bg-gray-900 text-[10px] text-gray-400 border border-gray-700 rounded px-1 py-0.5 focus:border-brand-orange truncate"
+                        title="Lens Override"
+                    >
+                        {LENS_OPTIONS.map(lens => (
+                            <option key={lens.value} value={lens.value}>{lens.label}</option>
+                        ))}
+                    </select>
+                </div>
             </div>
 
             {/* Veo Prompt */}
@@ -2512,8 +2583,37 @@ const App: React.FC = () => {
         const selectedStyle = GLOBAL_STYLES.find(s => s.value === currentState.stylePrompt);
         const styleInstruction = selectedStyle ? selectedStyle.prompt : '';
 
-        // Construct basic prompt
-        let finalPrompt = `${styleInstruction}. ${sceneToUpdate.contextDescription}`.trim();
+        // --- 2. GET CINEMATOGRAPHY SETTINGS ---
+        const cameraModelInfo = CAMERA_MODELS.find(c => c.value === currentState.cameraModel);
+        const cameraPrompt = cameraModelInfo?.prompt || '';
+
+        // Lens: use scene override if exists, otherwise global default
+        const effectiveLens = sceneToUpdate.lensOverride || currentState.defaultLens || '';
+        const lensInfo = LENS_OPTIONS.find(l => l.value === effectiveLens);
+        const lensPrompt = lensInfo?.prompt || '';
+
+        // Camera Angle: use scene override if exists
+        const effectiveAngle = sceneToUpdate.cameraAngleOverride || '';
+        const angleInfo = CAMERA_ANGLES.find(a => a.value === effectiveAngle);
+        const anglePrompt = angleInfo ? angleInfo.label : '';
+
+        // Meta Tokens: custom or auto-generated
+        const activePreset = getPresetById(currentState.activeScriptPreset, currentState.customScriptPresets);
+        const presetCategory = activePreset?.category || 'custom';
+        const metaTokens = currentState.customMetaTokens || DEFAULT_META_TOKENS[presetCategory] || DEFAULT_META_TOKENS['custom'];
+
+        // Construct enhanced prompt with cinematography
+        let cinematographyParts: string[] = [];
+        if (cameraPrompt) cinematographyParts.push(cameraPrompt);
+        if (lensPrompt) cinematographyParts.push(lensPrompt);
+        if (anglePrompt) cinematographyParts.push(anglePrompt);
+
+        const cinematographyPrompt = cinematographyParts.length > 0
+            ? cinematographyParts.join(', ') + '.'
+            : '';
+
+        // Construct basic prompt with cinematography and meta tokens
+        let finalPrompt = `${styleInstruction}. ${cinematographyPrompt} ${metaTokens}. ${sceneToUpdate.contextDescription}`.trim();
 
         // APPEND BASIC CHARACTER & PROP INFO (Fallback for No-API-Key Users)
         const currentStateSnapshot = stateRef.current;
@@ -2534,6 +2634,8 @@ const App: React.FC = () => {
             finalPrompt += `\n\nFeatured Products: ${prodDesc}`;
             console.log("Updated Base Prompt with Products:", finalPrompt);
         }
+
+        console.log("🎬 Cinematography applied:", { cameraPrompt, lensPrompt, anglePrompt, metaTokens });
 
         if (!finalPrompt && !refinementPrompt) {
             alert("Vui lòng nhập mô tả bối cảnh.");
@@ -3504,6 +3606,52 @@ const App: React.FC = () => {
                                                 <option value="vietnamese">Tiếng Việt (Cột 3)</option>
                                                 <option value="language1">Ngôn ngữ 1 (Cột 2)</option>
                                             </select>
+                                        </div>
+                                    </div>
+
+                                    {/* === CINEMATOGRAPHY SETTINGS (NEW) === */}
+                                    <div className="mt-4 pt-4 border-t border-gray-600">
+                                        <div className="flex items-center space-x-2 mb-3">
+                                            <span className="text-sm font-semibold text-brand-orange">📹 Cinematography</span>
+                                            <span className="text-[10px] text-gray-500 bg-gray-700 px-2 py-0.5 rounded-full">Pro Settings</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-400 mb-1.5">Camera Body</label>
+                                                <select
+                                                    value={state.cameraModel || ''}
+                                                    onChange={(e) => updateStateAndRecord(s => ({ ...s, cameraModel: e.target.value }))}
+                                                    className="w-full bg-gray-900 text-white px-2 py-1.5 rounded text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange border border-gray-600"
+                                                >
+                                                    {CAMERA_MODELS.map(cam => (
+                                                        <option key={cam.value} value={cam.value}>{cam.label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-400 mb-1.5">Default Lens</label>
+                                                <select
+                                                    value={state.defaultLens || ''}
+                                                    onChange={(e) => updateStateAndRecord(s => ({ ...s, defaultLens: e.target.value }))}
+                                                    className="w-full bg-gray-900 text-white px-2 py-1.5 rounded text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange border border-gray-600"
+                                                >
+                                                    {LENS_OPTIONS.map(lens => (
+                                                        <option key={lens.value} value={lens.value}>{lens.label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="mt-3">
+                                            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                                                Meta Tokens <span className="text-gray-500">(để trống = AI tự thêm creative tokens)</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={state.customMetaTokens || ''}
+                                                onChange={(e) => updateStateAndRecord(s => ({ ...s, customMetaTokens: e.target.value }))}
+                                                placeholder="VD: cinematic lighting, film grain, shallow depth of field..."
+                                                className="w-full bg-gray-900 text-white px-2 py-1.5 rounded text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange border border-gray-600 placeholder-gray-600"
+                                            />
                                         </div>
                                     </div>
                                 </div>
