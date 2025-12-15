@@ -135,13 +135,14 @@ interface HeaderProps {
     onApiKeyClick: () => void;
     onSave: () => void;
     onOpen: () => void;
+    onNewProject: () => void;
     onDownloadAll: () => void;
     canDownload: boolean;
     isContinuityMode: boolean;
     toggleContinuityMode: () => void;
     onGenyuClick: () => void;
 }
-const Header: React.FC<HeaderProps> = ({ isSticky, onApiKeyClick, onSave, onOpen, onDownloadAll, canDownload, isContinuityMode, toggleContinuityMode, onGenyuClick }) => (
+const Header: React.FC<HeaderProps> = ({ isSticky, onApiKeyClick, onSave, onOpen, onNewProject, onDownloadAll, canDownload, isContinuityMode, toggleContinuityMode, onGenyuClick }) => (
     <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isSticky ? 'bg-black/50 backdrop-blur-sm shadow-lg' : 'bg-transparent'}`}>
         <div className="container mx-auto px-6 py-3 flex justify-between items-center">
             <h1 className="text-2xl font-bold text-white">{APP_NAME}</h1>
@@ -159,6 +160,7 @@ const Header: React.FC<HeaderProps> = ({ isSticky, onApiKeyClick, onSave, onOpen
                 </div>
 
                 <div className="flex items-center space-x-2 md:space-x-4">
+                    <button onClick={onNewProject} className="px-3 py-2 text-xs md:text-sm font-semibold text-white bg-blue-600/50 rounded-lg hover:bg-blue-600/70 transition-colors">📄 New</button>
                     <button onClick={onSave} className="px-3 py-2 text-xs md:text-sm font-semibold text-white bg-white/10 rounded-lg hover:bg-white/20 transition-colors">Lưu (Ctrl+S)</button>
                     <button onClick={onOpen} className="px-3 py-2 text-xs md:text-sm font-semibold text-white bg-white/10 rounded-lg hover:bg-white/20 transition-colors">Mở (Ctrl+O)</button>
                     {canDownload && <button onClick={onDownloadAll} className={`px-3 py-2 text-xs md:text-sm font-semibold text-white rounded-lg bg-gradient-to-r ${PRIMARY_GRADIENT} hover:${PRIMARY_GRADIENT_HOVER} transition-all`}>Tải Full ZIP</button>}
@@ -1483,6 +1485,32 @@ const App: React.FC = () => {
         openProject((loadedState: ProjectState) => {
             updateStateAndRecord(() => loadedState);
         });
+    };
+
+    const handleNewProject = () => {
+        const hasContent = state.scenes.some(s => s.generatedImage) ||
+            state.characters.some(c => c.masterImage || c.faceImage || c.bodyImage) ||
+            state.projectName.trim();
+
+        if (hasContent) {
+            const confirmed = window.confirm(
+                '⚠️ Bạn có chắc muốn tạo project mới?\n\n' +
+                'Mọi thay đổi chưa lưu sẽ bị mất!\n' +
+                '(Hãy ấn "Lưu" trước nếu cần)'
+            );
+            if (!confirmed) return;
+        }
+
+        // Reset to initial state
+        updateStateAndRecord(() => ({
+            ...INITIAL_STATE,
+            // Keep API settings
+            apiKey: state.apiKey,
+            genyuToken: state.genyuToken,
+            imageModel: state.imageModel,
+        }));
+
+        console.log('✨ New project created!');
     };
 
     useHotkeys([
@@ -2867,6 +2895,7 @@ const App: React.FC = () => {
                 onApiKeyClick={() => setApiKeyModalOpen(true)}
                 onSave={handleSave}
                 onOpen={handleOpen}
+                onNewProject={handleNewProject}
                 onDownloadAll={handleDownloadAll}
                 canDownload={state.scenes.some(s => s.generatedImage)}
                 isContinuityMode={isContinuityMode}
