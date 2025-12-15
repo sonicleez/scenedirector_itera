@@ -7,6 +7,7 @@ import { GoogleGenAI, Modality, Type } from "@google/genai";
 import { PresetSelector } from './components/PresetSelector';
 import { getPresetById } from './utils/scriptPresets';
 import { buildScriptPrompt } from './utils/promptBuilder';
+import { AdvancedImageEditor } from './components/AdvancedImageEditor';
 
 // @ts-ignore
 const JSZip = window.JSZip;
@@ -3271,13 +3272,12 @@ const App: React.FC = () => {
                 charId={charGenState.charId}
                 updateCharacter={updateCharacter}
             />
-            <ImageEditorModal
+            <AdvancedImageEditor
                 isOpen={isEditorOpen}
                 onClose={() => setIsEditorOpen(false)}
-                image={editingImage?.image || null}
+                sourceImage={editingImage?.image || ''}
                 onSave={handleEditorSave}
                 apiKey={userApiKey || process.env.API_KEY || ''}
-                model={state.imageModel || 'gemini-2.5-flash-image'}
             />
             <ImageViewerModal
                 isOpen={isImageViewerOpen}

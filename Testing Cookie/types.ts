@@ -94,6 +94,24 @@ export interface ScriptPreset {
   createdAt: string;
 }
 
+// Advanced Image Editor
+export interface DetectedObject {
+  id: string;
+  name: string;
+  description: string;
+  position: string; // "left", "center", "right", "top", "bottom", etc.
+  selected?: boolean;
+}
+
+export interface EditHistory {
+  id: string;
+  image: string; // base64
+  timestamp: number;
+  operation: string; // "Original", "Removed person", "Style transfer", etc.
+}
+
+export type EditingMode = 'remove' | 'add' | 'style' | 'inpaint' | 'text-edit';
+
 export interface ProjectState {
   projectName: string;
   stylePrompt: string;
