@@ -573,15 +573,22 @@ const CharacterGeneratorModal: React.FC<CharacterGeneratorModalProps> = ({ isOpe
                 if (imagePart?.inlineData) {
                     const base64ImageBytes = imagePart.inlineData.data;
                     const imageUrl = `data:${imagePart.inlineData.mimeType};base64,${base64ImageBytes}`;
-                    setGeneratedImage(imageUrl);
+
+                    // Auto-save to character master image
+                    onSave(imageUrl);
+                    alert('✅ Character generated successfully!');
+                    console.log('✅ Character auto-saved to master image');
                 } else {
                     setError("AI không trả về ảnh. Thử lại.");
+                    alert('❌ AI không trả về ảnh. Vui lòng thử lại.');
                 }
             }
 
         } catch (err: any) {
             console.error(err);
-            setError(err.message || "Lỗi tạo ảnh.");
+            const errorMsg = err.message || "Lỗi tạo ảnh.";
+            setError(errorMsg);
+            alert(`❌ ${errorMsg}`);
         } finally {
             setIsGenerating(false);
         }
@@ -685,11 +692,24 @@ const CharacterGeneratorModal: React.FC<CharacterGeneratorModalProps> = ({ isOpe
                 <div className="flex space-x-3 pt-2">
                     {!generatedImage ? (
                         <button
-                            onClick={handleGenerate}
+                            onClick={() => {
+                                if (!prompt.trim()) return;
+                                if (!apiKey && !genyuToken) {
+                                    setError("Vui lòng nhập API Key (Gemini) hoặc Token (Genyu).");
+                                    return;
+                                }
+
+                                // Close modal immediately
+                                onClose();
+                                setPrompt(''); // Clear input
+
+                                // Trigger generation in background
+                                handleGenerate();
+                            }}
                             disabled={isGenerating || !prompt}
                             className={`w-full py-3 font-bold text-white rounded-lg bg-blue-600 hover:bg-blue-500 transition-all disabled:opacity-50 shadow-lg`}
                         >
-                            {isGenerating ? 'Đang tạo...' : 'Tạo Nhân Vật'}
+                            Tạo Nhân Vật
                         </button>
                     ) : (
                         <>
