@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 350px;
+            padding: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+        }
+
+        h1 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            color: #00ff88;
+        }
+
+        .status-card {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid #2a2a4a;
+        }
+
+        .status-row:last-child {
+            border: none;
+        }
+
+        .label {
+            color: #888;
+            font-size: 12px;
+        }
+
+        .value {
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .value.ok {
+            color: #00ff88;
+        }
+
+        .value.error {
+            color: #ff4444;
+        }
+
+        .value.pending {
+            color: #ffaa00;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 8px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #0066ff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0055dd;
+        }
+
+        .btn-secondary {
+            background: #333;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #444;
+        }
+
+        .btn-success {
+            background: #00aa55;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #008844;
+        }
+
+        #log {
+            background: #0a0a15;
+            border-radius: 6px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 11px;
+            max-height: 150px;
+            overflow-y: auto;
+            margin-top: 12px;
+            color: #aaa;
+        }
+
+        .log-entry {
+            margin-bottom: 4px;
+        }
+
+        .log-entry.success {
+            color: #00ff88;
+        }
+
+        .log-entry.error {
+            color: #ff4444;
+        }
+
+        .log-entry.info {
+            color: #66aaff;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔧 Genyu Token Helper</h1>
+
+    <div class="status-card">
+        <div class="status-row">
+            <span class="label">Server Connection</span>
+            <span id="serverStatus" class="value pending">Checking...</span>
+        </div>
+        <div class="status-row">
+            <span class="label">Extension Token</span>
+            <span id="tokenStatus" class="value pending">-</span>
+        </div>
+        <div class="status-row">
+            <span class="label">Token Length</span>
+            <span id="tokenLength" class="value">-</span>
+        </div>
+        <div class="status-row">
+            <span class="label">Last Capture</span>
+            <span id="lastCapture" class="value">Never</span>
+        </div>
+    </div>
+
+    <button id="pingServer" class="btn-primary">🔌 Ping Server</button>
+    <button id="checkToken" class="btn-secondary">🔍 Check Stored Token</button>
+    <button id="clearStorage" class="btn-secondary">🗑️ Clear Storage</button>
+    <button id="testCapture" class="btn-success">📥 Test Manual Capture</button>
+
+    <div id="log">
+        <div class="log-entry info">Ready. Open labs.google.com and generate an image to capture token.</div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+
+</html>
