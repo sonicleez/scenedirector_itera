@@ -66,6 +66,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             if (session?.user?.id) {
                 const payload = {
                     user_id: session.user.id,
+                    user_email: session.user.email || null,
                     provider: 'gemini',
                     encrypted_key: trimmedKey,
                     is_active: true
