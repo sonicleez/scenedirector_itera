@@ -199,28 +199,34 @@ export function useCharacterLogic(
             }
 
             // Step 1: Analyze the character AND detect art style with HIGH PRECISION
-            const analyzePrompt = `Analyze this character image carefully. Pay special attention to the ART STYLE.
+            const analyzePrompt = `Analyze this character image carefully and provide accurate details.
 
-IMPORTANT: Distinguish between these categories:
-- PHOTOREALISTIC: Looks like a real photograph or ultra-realistic 3D render
-- DIGITAL PAINTING/ILLUSTRATION: Painted/drawn look, visible brush strokes, stylized features
-- ANIME/MANGA: Japanese animation style, large eyes, cel-shaded
-- CARTOON: Western animation style, simplified features
-- OTHER: Watercolor, oil painting, pixel art, etc.
+**NAME RULES:**
+- Suggest a SHORT, MEMORABLE English name (1-2 words max)
+- Examples: "Leo", "Storm", "Captain Kai", "Luna", "The Hunter"
+- If the character looks Asian, you can use short Asian-Western fusion names like "Rei", "Jin", "Yuki"
 
-The reference image is clearly NOT photorealistic if it has:
-- Painted/brushstroke textures
-- Stylized lighting or colors
-- Non-realistic skin textures
-- Illustration-like backgrounds
+**DESCRIPTION RULES:**
+- Write in Vietnamese
+- Be SPECIFIC about physical traits: face shape, skin tone, hair color/style, eye shape
+- Describe clothing/costume in detail: materials, colors, patterns
+- Maximum 2-3 sentences, focus on VISUAL DISTINGUISHING features only
+
+**ART STYLE DETECTION:**
+- PHOTOREALISTIC: Real photo or ultra-realistic 3D render
+- DIGITAL PAINTING: Painted look, brushstrokes, stylized
+- ANIME: Japanese style, large eyes, cel-shaded
+- CARTOON: Western animation, simplified features
+- The image is NOT photorealistic if it has painted textures, stylized lighting, or non-realistic skin
 
 Return JSON:
 {
-    "name": "Suggest a concise character name",
-    "description": "Short Vietnamese description (2-3 sentences) of key physical traits, clothing, and overall vibe.",
-    "art_style": "MUST accurately describe the visual style. Examples: 'Digital painting illustration with warm tones', 'Semi-realistic digital art', 'Anime cel-shaded', 'Painted portrait style'. DO NOT say 'photorealistic' unless it truly looks like a real photo.",
+    "name": "Short English name (1-2 words)",
+    "description": "Vietnamese description của đặc điểm nhận dạng: khuôn mặt, màu da, kiểu tóc màu tóc, trang phục chi tiết.",
+    "art_style": "Accurate style description in English. Examples: 'Digital painting with warm tones', 'Anime cel-shaded', 'Semi-realistic illustration'",
     "is_illustration": true/false
 }`;
+
 
             const analysisRes = await ai.models.generateContent({
                 model: 'gemini-3-flash-preview',
