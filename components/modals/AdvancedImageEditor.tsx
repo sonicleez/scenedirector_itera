@@ -42,7 +42,7 @@ export const AdvancedImageEditor: React.FC<AdvancedImageEditorProps> = ({
     const [promptHistory, setPromptHistory] = useState<string[]>(['']);
     const [promptIndex, setPromptIndex] = useState(0);
     const isHistoryChange = useRef(false);
-    const [isDrawMode, setIsDrawMode] = useState(true);
+    const [isDrawMode, setIsDrawMode] = useState(false); // Default OFF - user must enable
 
     // Try On State
     const [tryOnImage, setTryOnImage] = useState<string | null>(null);
@@ -368,20 +368,30 @@ export const AdvancedImageEditor: React.FC<AdvancedImageEditorProps> = ({
                 return;
             }
 
-            // Default: Edit with Mask
-            const maskBase64 = await canvasRef.current?.getMaskDataURL();
-            if (!maskBase64) throw new Error("Failed to generate mask");
-
-            setLoadingMessage('Editing with Mask...');
+            // Check if user has drawn a mask
+            const hasMask = canvasRef.current?.hasDrawing() || false;
             const [header, data] = currentImage.split(',');
             const mimeType = header.match(/:(.*?);/)?.[1] || 'image/png';
-            const result = await editImageWithMask(apiKey, data, mimeType, maskBase64, prompt, imageAspectRatio, currentResolution);
+
+            let result: GeneratedImage;
+
+            if (hasMask) {
+                // Edit with Mask
+                setLoadingMessage('Editing with Mask...');
+                const maskBase64 = await canvasRef.current?.getMaskDataURL();
+                if (!maskBase64) throw new Error("Failed to generate mask");
+                result = await editImageWithMask(apiKey, data, mimeType, maskBase64, prompt, imageAspectRatio, currentResolution);
+                canvasRef.current?.clear();
+            } else {
+                // No mask - use text-to-image regeneration
+                setLoadingMessage('Regenerating with prompt...');
+                result = await generateImageFromImage(apiKey, data, mimeType, prompt, imageAspectRatio, currentResolution);
+            }
 
             if (result.base64) {
                 const newImage = `data:${result.mimeType};base64,${result.base64}`;
                 setCurrentImage(newImage);
                 addToHistory(newImage, prompt);
-                canvasRef.current?.clear();
             }
 
         } catch (err: any) {
