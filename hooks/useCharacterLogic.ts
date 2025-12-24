@@ -198,12 +198,28 @@ export function useCharacterLogic(
                 throw new Error("Invalid image format");
             }
 
-            // Step 1: Analyze the character AND detect art style
-            const analyzePrompt = `Analyze this character image. Return JSON:
+            // Step 1: Analyze the character AND detect art style with HIGH PRECISION
+            const analyzePrompt = `Analyze this character image carefully. Pay special attention to the ART STYLE.
+
+IMPORTANT: Distinguish between these categories:
+- PHOTOREALISTIC: Looks like a real photograph or ultra-realistic 3D render
+- DIGITAL PAINTING/ILLUSTRATION: Painted/drawn look, visible brush strokes, stylized features
+- ANIME/MANGA: Japanese animation style, large eyes, cel-shaded
+- CARTOON: Western animation style, simplified features
+- OTHER: Watercolor, oil painting, pixel art, etc.
+
+The reference image is clearly NOT photorealistic if it has:
+- Painted/brushstroke textures
+- Stylized lighting or colors
+- Non-realistic skin textures
+- Illustration-like backgrounds
+
+Return JSON:
 {
     "name": "Suggest a concise character name",
     "description": "Short Vietnamese description (2-3 sentences) of key physical traits, clothing, and overall vibe.",
-    "art_style": "Describe the artistic style of this image in English (e.g., 'Anime cel-shaded with vibrant colors', 'Photorealistic 3D render', 'Watercolor illustration', 'Pixel art', 'Comic book style with bold outlines'). Be specific about the visual style."
+    "art_style": "MUST accurately describe the visual style. Examples: 'Digital painting illustration with warm tones', 'Semi-realistic digital art', 'Anime cel-shaded', 'Painted portrait style'. DO NOT say 'photorealistic' unless it truly looks like a real photo.",
+    "is_illustration": true/false
 }`;
 
             const analysisRes = await ai.models.generateContent({
@@ -211,11 +227,11 @@ export function useCharacterLogic(
                 contents: { parts: [{ inlineData: { data, mimeType } }, { text: analyzePrompt }] },
                 config: {
                     responseMimeType: "application/json",
-                    thinkingConfig: { thinkingLevel: 'low' as any }
+                    thinkingConfig: { thinkingLevel: 'medium' as any }
                 }
             });
 
-            let json = { name: "", description: "", art_style: "" };
+            let json = { name: "", description: "", art_style: "", is_illustration: false };
             try {
                 const text = (analysisRes as any).text();
                 json = JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim());
@@ -225,7 +241,15 @@ export function useCharacterLogic(
 
             const charName = json.name || "Unnamed Character";
             const charDescription = json.description || "Character";
-            const detectedStyle = json.art_style || "High quality, detailed";
+            let detectedStyle = json.art_style || "Digital illustration style";
+
+            // If detected as illustration, reinforce it
+            if (json.is_illustration) {
+                detectedStyle = `ILLUSTRATION/PAINTED STYLE: ${detectedStyle}. This is NOT photorealistic.`;
+            }
+
+            console.log('[Character Analysis] Detected style:', detectedStyle);
+
 
             // Update character with analysis results first
             updateCharacter(id, {
