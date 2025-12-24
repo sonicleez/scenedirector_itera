@@ -58,22 +58,36 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 throw new Error(`Bị chặn: ${response.promptFeedback.blockReason}`);
             }
 
+            // Save to Supabase
+            console.log('[API Key] 📤 Attempting to save to Supabase...');
+            console.log('[API Key] Session:', session ? 'EXISTS' : 'NULL');
+            console.log('[API Key] User ID:', session?.user?.id || 'MISSING');
+
             if (session?.user?.id) {
-                const { error: supabaseError } = await supabase
+                const payload = {
+                    user_id: session.user.id,
+                    provider: 'gemini',
+                    encrypted_key: trimmedKey,
+                    is_active: true
+                };
+                console.log('[API Key] Payload:', JSON.stringify(payload, null, 2));
+
+                const { data, error: supabaseError } = await supabase
                     .from('user_api_keys')
-                    .upsert({
-                        user_id: session.user.id,
-                        provider: 'gemini',
-                        encrypted_key: trimmedKey,
-                        is_active: true
-                    }, { onConflict: 'user_id,provider' });
+                    .upsert(payload, { onConflict: 'user_id,provider' })
+                    .select();
+
+                console.log('[API Key] Supabase response - Data:', data);
+                console.log('[API Key] Supabase response - Error:', supabaseError);
 
                 if (supabaseError) {
-                    console.error('Supabase save error:', supabaseError);
+                    console.error('[API Key] ❌ Supabase save error:', supabaseError);
                     throw new Error(`Không thể lưu key: ${supabaseError.message}`);
                 } else {
                     console.log('[API Key] ✅ Saved to Supabase successfully');
                 }
+            } else {
+                console.warn('[API Key] ⚠️ No session found, saving to localStorage only');
             }
 
 
