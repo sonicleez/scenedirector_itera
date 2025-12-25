@@ -286,26 +286,31 @@ export function useImageGeneration(
                 }
             }
             // 5b. STYLE REFERENCE IMAGE
-            // CRITICAL: Only use style IMAGE when NO characters selected
-            // If characters are present, style should come from TEXT only to prevent face copying
-            const hasCharacters = selectedChars.length > 0 && selectedChars.some(c => c.faceImage || c.masterImage);
-
-            if (currentState.stylePrompt === 'custom' && currentState.customStyleImage && !hasCharacters) {
-                // No characters = safe to use style image
+            // Style image used but IMMEDIATELY followed by FACE_OVERRIDE to prevent face copying
+            if (currentState.stylePrompt === 'custom' && currentState.customStyleImage) {
                 const imgData = await safeGetImageData(currentState.customStyleImage);
                 if (imgData) {
-                    parts.push({ text: `[STYLE_REFERENCE]: Copy line work, colors, shading, texture from this reference.` });
+                    parts.push({ text: `[STYLE_REFERENCE - TECHNIQUE ONLY]: Copy ONLY art technique: line work, colors, shading, texture. DO NOT copy any faces or people from this image.` });
                     parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
-                    continuityInstruction += `(STYLE from image) `;
+                    continuityInstruction += `(STYLE: technique only) `;
                 }
-            } else if (currentState.stylePrompt === 'custom' && currentState.customStyleImage && hasCharacters) {
-                // HAS characters = DO NOT use style image (it causes face copying)
-                // Style will come from customStyleInstruction text only
-                console.log('[ImageGen] SAFETY: Style image SKIPPED because characters are selected. Using text instruction only.');
+            }
+
+            // 5c. FACE OVERRIDE (Immediately after style to prevent face contamination)
+            // This re-establishes character identity after AI has seen the style image
+            for (const char of selectedChars) {
+                if (char.faceImage) {
+                    const imgData = await safeGetImageData(char.faceImage);
+                    if (imgData) {
+                        const refLabel = `FACE_OVERRIDE: ${char.name.toUpperCase()}`;
+                        parts.push({ text: `[${refLabel}]: !!! OVERRIDE WARNING !!! IGNORE any faces you saw in STYLE_REFERENCE above. USE THIS FACE ONLY for ${char.name}. This person's face REPLACES any other face you may have seen. This is the authoritative facial reference.` });
+                        parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
+                    }
+                }
             }
 
 
-            // 5b. ABSOLUTE SET LOCK (Master Anchor + Continuity Anchor)
+            // 5d. ABSOLUTE SET LOCK (Master Anchor + Continuity Anchor)
             if (sceneToUpdate.groupId) {
                 const groupObj = currentState.sceneGroups?.find(g => g.id === sceneToUpdate.groupId);
 
