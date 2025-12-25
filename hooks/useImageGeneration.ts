@@ -261,6 +261,17 @@ export function useImageGeneration(
             let continuityInstruction = '';
             const isPro = currentState.imageModel === 'gemini-3-pro-image-preview';
 
+            // 5-ZERO. STYLE REFERENCE IMAGE (ABSOLUTE HIGHEST PRIORITY)
+            // This ensures exact visual style matching when using custom style with uploaded image
+            if (currentState.stylePrompt === 'custom' && currentState.customStyleImage) {
+                const imgData = await safeGetImageData(currentState.customStyleImage);
+                if (imgData) {
+                    parts.push({ text: `[STYLE_REFERENCE - ABSOLUTE LOCK]: !!! CRITICAL STYLE CONSTRAINT !!! Match the EXACT visual style of this reference image. Copy the art style, line work, color palette, shading technique, and texture PRECISELY. FORBIDDEN: NO mixing styles, NO 3D elements in 2D style, NO realistic backgrounds in stylized art, NO illustration in anime, NO anime in photorealistic. The style must be PURE and UNMIXED. If the reference is anime, output MUST be 100% anime. If illustration, 100% illustration.` });
+                    parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
+                    continuityInstruction += `(STYLE LOCKED: Match reference exactly) `;
+                }
+            }
+
             // 5a. CHARACTER FACE ID ANCHOR (HIGHEST PRIORITY - Added FIRST)
             // This ensures character identity is the absolute anchor before any scene references
             for (const char of selectedChars) {

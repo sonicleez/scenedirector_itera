@@ -314,7 +314,8 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                 updateStateAndRecord(s => ({
                     ...s,
                     stylePrompt: 'custom',
-                    customStyleInstruction: styleDescription.trim()
+                    customStyleInstruction: styleDescription.trim(),
+                    customStyleImage: imageData // Save the image itself for visual reference
                 }));
             } else {
                 throw new Error('Không nhận được kết quả từ AI');

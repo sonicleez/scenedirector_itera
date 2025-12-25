@@ -175,6 +175,7 @@ export interface ProjectState {
   customDefaultLens?: string; // Custom lens input
   customMetaTokens?: string; // Custom creative tokens (if empty, AI generates)
   customStyleInstruction?: string; // Custom full style prompt when Global Style is 'custom'
+  customStyleImage?: string; // Custom style reference IMAGE for exact visual style matching
 
   characters: Character[];
   products: Product[]; // List of Products/Props
