@@ -301,72 +301,37 @@ export function useImageGeneration(
             if (sceneToUpdate.groupId) {
                 const groupObj = currentState.sceneGroups?.find(g => g.id === sceneToUpdate.groupId);
 
-                // 1. MASTER ANCHOR: The very first image in the group (The "Set")
-                // 1. MASTER LOCK: The first generated image in this group
+                // BACKGROUND LOCK: Use first scene in group for environment only
                 const firstSceneInGroup = currentState.scenes
                     .filter(s => s.groupId === sceneToUpdate.groupId && s.generatedImage)
                     .sort((a, b) => parseInt(a.scene_number) - parseInt(b.scene_number))[0];
 
-                // 2. SHOT CONTINUITY: The 2 immediately preceding generated images (Absolute Sequence)
-                // We pick the last 2 shots before this scene, even if they are in a different group,
-                // to ensure seamless action and outfit continuity.
-                const absolutePrecedingScenes = currentState.scenes
-                    .slice(0, currentSceneIndex)
-                    .filter(s => s.generatedImage)
-                    .reverse();
-
-                // Group-Specific Reference
-                const sameGroupPreceding = absolutePrecedingScenes
-                    .filter(s => s.groupId === sceneToUpdate.groupId)
-                    .slice(0, 2);
-
-                // Action Continuity: Pick ONLY 1 shot to minimize noise and prevent identity drift
-                const actionContinuityScenes = absolutePrecedingScenes
-                    .filter(s => {
-                        // Include if in same group OR shares at least one character
-                        const hasSharedChar = s.characterIds.some(id => sceneToUpdate.characterIds.includes(id));
-                        return s.groupId === sceneToUpdate.groupId || hasSharedChar;
-                    })
-                    .slice(0, 1); // REDUCED from 2 to 1 to prevent identity drift
-
                 if (firstSceneInGroup?.generatedImage) {
                     const imgData = await safeGetImageData(firstSceneInGroup.generatedImage);
                     if (imgData) {
-                        const refLabel = `SCENE_MASTER_LOCK (Set Anchor)`;
-                        parts.push({ text: `[${refLabel}]: AUTHORITATIVE STRICT BACKGROUND for the physical environment. Match the architecture, props, weather, and lighting EXACTLY. This is a TIGHT SET LOCK. IGNORE the action in this reference, only follow its GEOMETRY and LIGHTING.` });
+                        const refLabel = `BACKGROUND_LOCK (Environment Only)`;
+                        // CLEAN REFERENCE: Only use for background, explicitly ignore characters/props
+                        parts.push({ text: `[${refLabel}]: Extract ONLY the BACKGROUND ENVIRONMENT from this image. Match: architecture, scenery, weather, lighting, time of day, sky. ABSOLUTELY IGNORE: any people, characters, props, objects, or items shown. DO NOT copy character poses, clothing, or accessories. This is for ENVIRONMENTAL CONSISTENCY ONLY.` });
                         parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
-                        continuityInstruction += `(STRICT SET LOCK: Follow ${refLabel}) `;
+                        continuityInstruction += `(BACKGROUND ONLY from first scene) `;
                     }
                 }
 
-                for (let i = 0; i < actionContinuityScenes.length; i++) {
-                    const prevScene = actionContinuityScenes[i];
-                    if (prevScene.id === firstSceneInGroup?.id) continue;
+                // SHOT_CONTINUITY REMOVED - Clean Reference approach
+                // Previous scene references caused props/character leaking
+                // Now relying solely on character Face ID + Body Sheet for consistency
 
-                    const imgData = await safeGetImageData(prevScene.generatedImage!);
-                    if (imgData) {
-                        const isSameGroup = prevScene.groupId === sceneToUpdate.groupId;
-                        const refLabel = isSameGroup
-                            ? `SHOT_CONTINUITY_${i + 1} (Same Group)`
-                            : `ACTION_SEQUENCE_${i + 1} (Previous Timeline)`;
-
-                        parts.push({ text: `[${refLabel}]: Match character clothing, hair state, accessories (giỏ xách, vũ khí), and immediate action/pose from this shot. ${!isSameGroup ? 'Note: The background location has changed, but the character action is a SEAMLESS CONTINUATION.' : ''}` });
-                        parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
-                        continuityInstruction += `(ACTION CONTINUITY: Follow ${refLabel}) `;
-                    }
-                }
-
-                if (actionContinuityScenes.length === 0 && !firstSceneInGroup && groupObj?.conceptImage) {
+                if (!firstSceneInGroup && groupObj?.conceptImage) {
                     const imgData = await safeGetImageData(groupObj.conceptImage);
                     if (imgData) {
-                        parts.push({ text: `[MOODBOARD REFERENCE]: Match lighting, color palette, and architectural style.` });
+                        parts.push({ text: `[MOODBOARD REFERENCE]: Match lighting, color palette, and architectural style. IGNORE any characters or props.` });
                         parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
                         continuityInstruction += `(CONCEPT LOCK) `;
                     }
                 }
 
                 if (continuityInstruction) {
-                    continuityInstruction = `CAMERA PERSPECTIVE SHIFT: Only change the camera angle. Everything else is LOCKED. ${continuityInstruction}`;
+                    continuityInstruction = `ENVIRONMENT REFERENCE: Background elements only. Character appearance from IDENTITY references. ${continuityInstruction}`;
                 }
             }
 
