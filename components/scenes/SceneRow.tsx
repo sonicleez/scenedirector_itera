@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { GripVertical, Copy } from 'lucide-react';
+import { GripVertical, Copy, Download } from 'lucide-react';
 import { Scene, Character, Product } from '../../types';
 import { ExpandableTextarea } from '../common/ExpandableTextarea';
 import { CAMERA_ANGLES, LENS_OPTIONS, TRANSITION_TYPES, VEO_MODES, VEO_PRESETS } from '../../constants/presets';
@@ -42,6 +42,22 @@ export const SceneRow: React.FC<SceneRowProps> = ({
             reader.readAsDataURL(file);
         }
     };
+
+    // Download image with sequential numbering (001, 002, 003...)
+    const handleDownloadImage = () => {
+        if (!scene.generatedImage) return;
+
+        const paddedNumber = String(index + 1).padStart(3, '0');
+        const fileName = `${paddedNumber}.png`;
+
+        const link = document.createElement('a');
+        link.href = scene.generatedImage;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
 
     return (
         <div
@@ -310,14 +326,24 @@ export const SceneRow: React.FC<SceneRowProps> = ({
                         onClick={() => scene.generatedImage && openImageViewer()}
                     >
                         {scene.generatedImage && (
-                            <div className={`absolute top-1 left-1 z-20 px-1.5 py-0.5 rounded text-[8px] font-bold ${scene.imageRole === 'start-frame' ? 'bg-green-600 text-white' :
-                                scene.imageRole === 'end-frame' ? 'bg-red-600 text-white' :
-                                    'bg-gray-700 text-gray-300'
-                                }`}>
-                                {scene.imageRole === 'start-frame' ? '🟢 START' :
-                                    scene.imageRole === 'end-frame' ? '🔴 END' : '📷'}
+                            <div className="absolute top-1 left-1 z-20 flex items-center gap-1">
+                                <div className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${scene.imageRole === 'start-frame' ? 'bg-green-600 text-white' :
+                                    scene.imageRole === 'end-frame' ? 'bg-red-600 text-white' :
+                                        'bg-gray-700 text-gray-300'
+                                    }`}>
+                                    {scene.imageRole === 'start-frame' ? '🟢 START' :
+                                        scene.imageRole === 'end-frame' ? '🔴 END' : '📷'}
+                                </div>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleDownloadImage(); }}
+                                    className="bg-blue-600 hover:bg-blue-500 text-white px-1.5 py-0.5 rounded text-[8px] font-bold flex items-center gap-0.5 transition-colors"
+                                    title={`Download as ${String(index + 1).padStart(3, '0')}.png`}
+                                >
+                                    <Download size={10} /> {String(index + 1).padStart(3, '0')}
+                                </button>
                             </div>
                         )}
+
 
                         {scene.isGenerating && !scene.videoStatus ? (
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/80 z-10">
