@@ -261,6 +261,28 @@ const App: React.FC = () => {
         }
     }, [state.scenes, updateStateAndRecord, performImageGeneration]);
 
+    const handleGenerateGroupImages = useCallback(async (groupId: string) => {
+        const scenesInGroup = state.scenes.filter(s => s.groupId === groupId && !s.generatedImage && s.contextDescription);
+        if (scenesInGroup.length === 0) return;
+
+        for (const scene of scenesInGroup) {
+            await performImageGeneration(scene.id);
+            await new Promise(r => setTimeout(r, 500));
+        }
+    }, [state.scenes, performImageGeneration]);
+
+    const handleClearGroupImages = useCallback((groupId: string) => {
+        updateStateAndRecord(s => ({
+            ...s,
+            scenes: s.scenes.map(sc => sc.groupId === groupId ? {
+                ...sc,
+                generatedImage: null,
+                endFrameImage: null,
+                mediaId: null
+            } : sc)
+        }));
+    }, [updateStateAndRecord]);
+
 
     // Sticky Header Scroll Listener
     useEffect(() => {
@@ -690,6 +712,8 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                                         }));
                                     }}
                                     onInsertAngles={handleInsertAngles}
+                                    onGenerateGroupImages={handleGenerateGroupImages}
+                                    onClearGroupImages={handleClearGroupImages}
                                 />
                                 <div className="flex justify-end mt-8 gap-4">
                                     <button
