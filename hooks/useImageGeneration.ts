@@ -262,16 +262,17 @@ export function useImageGeneration(
             const isPro = currentState.imageModel === 'gemini-3-pro-image-preview';
 
             // 5a. CHARACTER FACE ID ANCHOR (ABSOLUTE FIRST - Before Style!)
-            // Character identity MUST be established before AI sees any style reference
+            // Using Google's recommended pattern: "Use supplied image as reference for how [name] should look"
             for (const char of selectedChars) {
                 // PRIMARY ANCHOR: Face ID (most important)
                 if (char.faceImage) {
                     const imgData = await safeGetImageData(char.faceImage);
                     if (imgData) {
-                        const refLabel = `PRIMARY_IDENTITY: ${char.name.toUpperCase()}`;
-                        parts.push({ text: `[${refLabel}]: !!! ABSOLUTE CHARACTER LOCK !!! This is the ONLY person allowed in the image. Use THIS EXACT face - no substitutions. Facial features, bone structure, skin tone, face shape are NON-NEGOTIABLE. If you see a different person in any other reference, REPLACE them with THIS person. Character: ${char.description}` });
+                        const refLabel = `IDENTITY_${char.name.toUpperCase()}`;
+                        // Google pattern: explicit name + "use as reference for how X should look"
+                        parts.push({ text: `[${refLabel}]: Use this supplied image as the AUTHORITATIVE reference for how ${char.name} should look. This person's face is the ONLY face allowed for ${char.name}. Keep the same person in every image. ${char.description}` });
                         parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
-                        continuityInstruction += `(CHARACTER: ${char.name}) `;
+                        continuityInstruction += `(KEEP SAME PERSON: ${char.name}) `;
                     }
                 }
 
@@ -279,20 +280,22 @@ export function useImageGeneration(
                 if (char.masterImage && char.masterImage !== char.faceImage) {
                     const imgData = await safeGetImageData(char.masterImage);
                     if (imgData) {
-                        const refLabel = `FULL_REFERENCE: ${char.name.toUpperCase()}`;
-                        parts.push({ text: `[${refLabel}]: Body and posture reference for ${char.name}. FACE from PRIMARY_IDENTITY takes precedence.` });
+                        const refLabel = `FULLBODY_${char.name.toUpperCase()}`;
+                        parts.push({ text: `[${refLabel}]: Full body reference for ${char.name}. Use for proportions and posture. Face from IDENTITY_${char.name.toUpperCase()} takes precedence.` });
                         parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
                     }
                 }
             }
             // 5b. STYLE REFERENCE IMAGE
-            // Style image used but IMMEDIATELY followed by FACE_OVERRIDE to prevent face copying
+            // Google pattern: "Apply style of [ref2] to subject in [ref1] while maintaining facial features"
             if (currentState.stylePrompt === 'custom' && currentState.customStyleImage) {
                 const imgData = await safeGetImageData(currentState.customStyleImage);
+                const charNames = selectedChars.map(c => c.name).join(', ');
                 if (imgData) {
-                    parts.push({ text: `[STYLE_REFERENCE - TECHNIQUE ONLY]: Copy ONLY art technique: line work, colors, shading, texture. DO NOT copy any faces or people from this image.` });
+                    parts.push({ text: `[STYLE_REFERENCE]: Apply the art style of this image (line work, colors, shading, texture) while MAINTAINING the facial features from the IDENTITY references above${charNames ? ` (${charNames})` : ''}. Do NOT use faces from this style image.` });
                     parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
-                    continuityInstruction += `(STYLE: technique only) `;
+                    continuityInstruction += `(APPLY STYLE, KEEP IDENTITY) `;
+
                 }
             }
 
