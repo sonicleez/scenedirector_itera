@@ -176,14 +176,20 @@ export function useImageGeneration(
             // --- 3. CHARACTERS & PRODUCTS ---
             const selectedChars = currentState.characters.filter(c => sceneToUpdate.characterIds.includes(c.id));
             let charPrompt = '';
+            const isDocumentary = activePreset?.category === 'documentary';
+
             if (selectedChars.length > 0) {
                 const charDesc = selectedChars.map(c => `[${c.name}: ${c.description}]`).join(' ');
                 const outfitConstraint = isOutfitLockMode ? ' (STRICT OUTFIT LOCK: Use EXACT clothes/colors from reference images.)' : '';
                 charPrompt = `Appearing Characters: ${charDesc}${outfitConstraint}`;
+            } else if (isDocumentary) {
+                // DOCUMENTARY MODE: Allow anonymous people (crowds, subjects, etc.)
+                charPrompt = `DOCUMENTARY STYLE: Use realistic anonymous people fitting the scene context. No specific character identity required - focus on authentic human moments and environmental storytelling. Generate contextually appropriate people (workers, crowds, passersby, subjects) without fixed character references.`;
             } else {
-                // EXPLICIT NO CHARACTER for macro/landscape shots
+                // EXPLICIT NO CHARACTER for macro/landscape shots (non-documentary)
                 charPrompt = `STRICT NEGATIVE: NO PEOPLE, NO CHARACTERS, NO HUMANS, NO FACES, NO BODY PARTS. EXPLICITLY REMOVE ALL HUMAN ELEMENTS. FOCUS ONLY ON ${cleanedContext.toUpperCase() || 'ENVIRONMENT'}.`;
             }
+
 
             // --- 3.5 EXTRACT CORE ACTION ---
             // Try to find the action part after "->" or at least pick key verbs
