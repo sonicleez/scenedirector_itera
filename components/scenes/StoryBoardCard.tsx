@@ -90,10 +90,10 @@ export const StoryBoardCard: React.FC<StoryBoardCardProps> = ({
                         </button>
                     )}
 
-                    {/* Edit Button */}
-                    {scene.generatedImage && onEditImage && (
+                    {/* Edit Button - Always show if image exists */}
+                    {scene.generatedImage && (
                         <button
-                            onClick={(e) => { e.stopPropagation(); onEditImage(scene); }}
+                            onClick={(e) => { e.stopPropagation(); if (onEditImage) onEditImage(scene); }}
                             className="p-2 bg-blue-600 text-white rounded-full hover:scale-110 transition-transform shadow-lg"
                             title="Chỉnh sửa ảnh"
                         >
@@ -101,8 +101,8 @@ export const StoryBoardCard: React.FC<StoryBoardCardProps> = ({
                         </button>
                     )}
 
-                    {/* Insert Angles Button */}
-                    {scene.generatedImage && onInsertAngles && (
+                    {/* Insert Angles Button - Always show if image exists */}
+                    {scene.generatedImage && (
                         <div className="relative">
                             <button
                                 onClick={(e) => { e.stopPropagation(); setShowAnglesMenu(!showAnglesMenu); }}
