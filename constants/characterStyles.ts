@@ -6,41 +6,10 @@
  * Users can create custom styles that extend built-in ones.
  */
 
-export type CharacterStyleCategory = 'faceless' | 'stylized' | 'realistic' | 'custom';
+import { CharacterStyleDefinition, CharacterStyleCategory } from '../types';
 
-/**
- * Prompt injection rules for a character style
- */
-export interface StylePromptInjection {
-    global: string;      // Applied to ALL prompts
-    character: string;   // Applied per character mention
-    negative: string;    // What to AVOID (added to negative prompts)
-}
-
-/**
- * Character Style Definition
- * Defines how characters should appear visually in generated images
- */
-export interface CharacterStyleDefinition {
-    id: string;
-    name: string;
-    category: CharacterStyleCategory;
-
-    // Core prompt components
-    promptInjection: StylePromptInjection;
-
-    // Visual reference (optional)
-    referenceImages?: string[];
-
-    // Style inheritance - can extend another style
-    extendsStyleId?: string;
-
-    // Metadata
-    isBuiltIn: boolean;
-    tags: string[];
-    description: string;
-    icon?: string; // Emoji or icon name for UI
-}
+// Re-export for convenience
+export type { CharacterStyleDefinition, CharacterStyleCategory } from '../types';
 
 /**
  * Built-in Character Styles

@@ -1,5 +1,24 @@
-// Re-export Character Style types for convenience
-export type { CharacterStyleDefinition, CharacterStyleCategory } from './constants/characterStyles';
+// Character Style System Types (defined here to avoid circular imports)
+export type CharacterStyleCategory = 'faceless' | 'stylized' | 'realistic' | 'custom';
+
+export interface StylePromptInjection {
+  global: string;
+  character: string;
+  negative: string;
+}
+
+export interface CharacterStyleDefinition {
+  id: string;
+  name: string;
+  category: CharacterStyleCategory;
+  promptInjection: StylePromptInjection;
+  referenceImages?: string[];
+  extendsStyleId?: string;
+  isBuiltIn: boolean;
+  tags: string[];
+  description: string;
+  icon?: string;
+}
 
 export interface CharacterProp {
   id: string;
