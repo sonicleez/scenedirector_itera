@@ -5,6 +5,7 @@ import {
     GLOBAL_STYLES, CAMERA_MODELS, LENS_OPTIONS, CAMERA_ANGLES,
     DEFAULT_META_TOKENS, TRANSITION_TYPES
 } from '../constants/presets';
+import { DIRECTOR_PRESETS, DirectorCategory } from '../constants/directors';
 import { getPresetById } from '../utils/scriptPresets';
 import { uploadImageToSupabase } from '../utils/storageUtils';
 
@@ -268,8 +269,21 @@ export function useImageGeneration(
                 }
             }
 
+            // --- DIRECTOR DNA INJECTION ---
+            let directorDNAPrompt = '';
+            if (currentState.activeDirectorId) {
+                // Search across all categories for the director
+                const allDirectors = Object.values(DIRECTOR_PRESETS).flat();
+                const customDirectors = currentState.customDirectors || [];
+                const activeDirector = [...allDirectors, ...customDirectors].find(d => d.id === currentState.activeDirectorId);
 
-            let finalImagePrompt = `${authoritativeStyle} ${scaleCmd} ${scaleLockInstruction} ${noDriftGuard} ${coreActionPrompt} ${groupEnvAnchor} ${timeWeatherLock} ${charPrompt} FULL SCENE VISUALS: ${cleanedContext}. STYLE DETAILS: ${metaTokens}. TECHNICAL: (STRICT CAMERA: ${cinematographyPrompt ? cinematographyPrompt : 'High Quality'}).`.trim();
+                if (activeDirector) {
+                    directorDNAPrompt = `[DIRECTORIAL VISION - ${activeDirector.name.toUpperCase()}]: MANDATORY CINEMATIC STYLE. Apply the following visual DNA: ${activeDirector.dna}. ${activeDirector.description}. ALL visual elements must reflect this director's signature style.`;
+                    console.log('[ImageGen] 🎬 Director DNA injected:', activeDirector.name, activeDirector.dna);
+                }
+            }
+
+            let finalImagePrompt = `${directorDNAPrompt} ${authoritativeStyle} ${scaleCmd} ${scaleLockInstruction} ${noDriftGuard} ${coreActionPrompt} ${groupEnvAnchor} ${timeWeatherLock} ${charPrompt} FULL SCENE VISUALS: ${cleanedContext}. STYLE DETAILS: ${metaTokens}. TECHNICAL: (STRICT CAMERA: ${cinematographyPrompt ? cinematographyPrompt : 'High Quality'}).`.trim();
 
             // PROP ANCHOR TEXT INJECTION (High Priority)
             if (sceneToUpdate.referenceImage && sceneToUpdate.referenceImageDescription) {
