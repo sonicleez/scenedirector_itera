@@ -81,173 +81,229 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-zinc-900 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-                {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-zinc-800">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center">
-                            <FileText className="w-5 h-5 text-violet-400" />
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-800 rounded-3xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl shadow-violet-500/10 border border-zinc-700/50">
+                {/* Header - Glassmorphism */}
+                <div className="flex items-center justify-between px-8 py-5 border-b border-zinc-700/50 bg-zinc-800/30 backdrop-blur-sm">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
+                            <FileText className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-semibold text-white">Import Voice-Over Script</h2>
-                            <p className="text-sm text-zinc-400">Paste your script and AI will create the scene map</p>
+                            <h2 className="text-2xl font-bold text-white tracking-tight">Import Voice-Over Script</h2>
+                            <p className="text-sm text-zinc-400 mt-0.5">AI-powered scene breakdown from your script</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-zinc-800 rounded-lg transition-colors">
+                    <button onClick={onClose} className="p-2.5 hover:bg-zinc-700/50 rounded-xl transition-all hover:scale-105">
                         <X className="w-5 h-5 text-zinc-400" />
                     </button>
                 </div>
 
-                {/* Content - Only scroll when showing analysis result, otherwise allow dropdown overflow */}
-                <div className={`flex-1 p-6 space-y-6 ${analysisResult ? 'overflow-y-auto' : 'overflow-visible'}`}>
+                {/* Content */}
+                <div className={`flex-1 px-8 py-6 ${analysisResult ? 'overflow-y-auto' : 'overflow-visible'}`}>
                     {!analysisResult ? (
-                        // Step 1: Input Script
-                        <>
-                            {/* Script Textarea */}
-                            <div>
-                                <label className="block text-sm font-medium text-zinc-300 mb-2">
-                                    Voice-Over Script
-                                </label>
-                                <textarea
-                                    value={scriptText}
-                                    onChange={(e) => setScriptText(e.target.value)}
-                                    placeholder="Paste your voice-over script here..."
-                                    className="w-full h-64 bg-zinc-800/50 border border-zinc-700 rounded-xl p-4 text-white placeholder-zinc-500 resize-none focus:outline-none focus:ring-2 focus:ring-violet-500/50"
-                                />
-                                <div className="flex justify-between mt-2 text-sm text-zinc-500">
-                                    <span>{scriptText.split(/\s+/).filter(Boolean).length} words</span>
-                                    <span>~{Math.ceil(scriptText.split(/\s+/).filter(Boolean).length / 150)} min read</span>
+                        // Step 1: Input Script - Premium 2-Column Layout
+                        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full">
+                            {/* Left Column - Script Input (3/5) */}
+                            <div className="lg:col-span-3 flex flex-col">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
+                                    <label className="text-sm font-semibold text-white uppercase tracking-wider">
+                                        Voice-Over Script
+                                    </label>
                                 </div>
+                                <div className="relative flex-1">
+                                    <textarea
+                                        value={scriptText}
+                                        onChange={(e) => setScriptText(e.target.value)}
+                                        placeholder="Paste your voice-over script here...
+
+Example:
+Monte Carlo, March 2019. The casino is buzzing with high rollers...
+John enters the room, wearing a tailored Armani suit..."
+                                        className="w-full h-80 bg-zinc-800/50 border-2 border-zinc-700/50 rounded-2xl p-5 text-white placeholder-zinc-600 resize-none focus:outline-none focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/10 transition-all duration-300 text-[15px] leading-relaxed"
+                                    />
+                                    <div className="absolute bottom-4 left-5 right-5 flex justify-between items-center">
+                                        <div className="flex items-center gap-4">
+                                            <span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-1 rounded-md">
+                                                📝 {scriptText.split(/\s+/).filter(Boolean).length} words
+                                            </span>
+                                            <span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-1 rounded-md">
+                                                ⏱️ ~{Math.ceil(scriptText.split(/\s+/).filter(Boolean).length / 150)} min
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Error */}
+                                {analysisError && (
+                                    <div className="flex items-center gap-3 p-4 mt-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400">
+                                        <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                                        <span className="text-sm">{analysisError}</span>
+                                    </div>
+                                )}
                             </div>
 
-                            {/* Settings Row - NO OVERFLOW to prevent dropdown clipping */}
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 relative z-20">
-                                {/* AI Model */}
-                                <div>
-                                    <label className="block text-sm font-medium text-zinc-300 mb-2">
-                                        🤖 AI Model
-                                    </label>
-                                    <select
-                                        value={selectedModel}
-                                        onChange={(e) => setSelectedModel(e.target.value)}
-                                        className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-white"
-                                    >
-                                        {SCRIPT_MODELS.map(m => (
-                                            <option key={m.value} value={m.value}>{m.label}</option>
-                                        ))}
-                                    </select>
+                            {/* Right Column - Settings (2/5) */}
+                            <div className="lg:col-span-2 space-y-4">
+                                {/* AI Settings Card */}
+                                <div className="bg-zinc-800/30 rounded-2xl p-5 border border-zinc-700/30 backdrop-blur-sm">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <span className="text-lg">🤖</span>
+                                        <span className="text-sm font-bold text-white uppercase tracking-wider">AI Settings</span>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        {/* Model Selector */}
+                                        <div>
+                                            <label className="block text-xs font-medium text-zinc-400 mb-1.5">Model</label>
+                                            <select
+                                                value={selectedModel}
+                                                onChange={(e) => setSelectedModel(e.target.value)}
+                                                className="w-full bg-zinc-900/80 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
+                                            >
+                                                {SCRIPT_MODELS.map(m => (
+                                                    <option key={m.value} value={m.value}>{m.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* Reading Speed */}
+                                        <div>
+                                            <label className="block text-xs font-medium text-zinc-400 mb-1.5">Reading Speed</label>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {[
+                                                    { value: 'slow', label: 'Slow', desc: '120 WPM', icon: '🐢' },
+                                                    { value: 'medium', label: 'Medium', desc: '150 WPM', icon: '⚡' },
+                                                    { value: 'fast', label: 'Fast', desc: '180 WPM', icon: '🚀' }
+                                                ].map(speed => (
+                                                    <button
+                                                        key={speed.value}
+                                                        onClick={() => setReadingSpeed(speed.value as any)}
+                                                        className={`p-2.5 rounded-xl text-center transition-all ${readingSpeed === speed.value
+                                                            ? 'bg-violet-500/20 border-2 border-violet-500 text-white'
+                                                            : 'bg-zinc-900/50 border border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                                                            }`}
+                                                    >
+                                                        <div className="text-lg mb-0.5">{speed.icon}</div>
+                                                        <div className="text-[10px] font-bold">{speed.label}</div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                {/* Reading Speed */}
-                                <div>
-                                    <label className="block text-sm font-medium text-zinc-300 mb-2">
-                                        <Clock className="w-4 h-4 inline mr-1" /> Speed
-                                    </label>
-                                    <select
-                                        value={readingSpeed}
-                                        onChange={(e) => setReadingSpeed(e.target.value as any)}
-                                        className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-white"
-                                    >
-                                        <option value="slow">Slow (120 WPM)</option>
-                                        <option value="medium">Medium (150 WPM)</option>
-                                        <option value="fast">Fast (180 WPM)</option>
-                                    </select>
-                                </div>
+                                {/* Character Style Card */}
+                                <div className="bg-zinc-800/30 rounded-2xl p-5 border border-zinc-700/30 backdrop-blur-sm">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <Palette className="w-4 h-4 text-fuchsia-400" />
+                                        <span className="text-sm font-bold text-white uppercase tracking-wider">Character Style</span>
+                                    </div>
 
-                                {/* Character Style */}
-                                <div className="relative">
-                                    <label className="block text-sm font-medium text-zinc-300 mb-2">
-                                        <Palette className="w-4 h-4 inline mr-1" /> Character Style
-                                    </label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {Object.entries(stylesByCategory).flatMap(([_, styles]) =>
+                                            styles.slice(0, 4).map(style => (
+                                                <button
+                                                    key={style.id}
+                                                    onClick={() => setSelectedStyleId(style.id)}
+                                                    className={`p-3 rounded-xl text-left transition-all ${selectedStyleId === style.id
+                                                        ? 'bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 border-2 border-violet-500/50 shadow-lg shadow-violet-500/10'
+                                                        : 'bg-zinc-900/50 border border-zinc-700 hover:border-zinc-600'
+                                                        }`}
+                                                >
+                                                    <div className="text-xl mb-1">{style.icon}</div>
+                                                    <div className="text-xs font-semibold text-white">{style.name}</div>
+                                                    <div className="text-[9px] text-zinc-500 mt-0.5 line-clamp-1">{style.description}</div>
+                                                </button>
+                                            ))
+                                        )}
+                                    </div>
+
+                                    {/* Show More Button */}
                                     <button
                                         onClick={() => setShowStylePicker(!showStylePicker)}
-                                        className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-left flex items-center justify-between hover:bg-zinc-700/50 transition-colors"
+                                        className="w-full mt-3 py-2 text-xs text-violet-400 hover:text-violet-300 transition-colors"
                                     >
-                                        <span className="flex items-center gap-2">
-                                            <span>{selectedStyle?.icon || '🎨'}</span>
-                                            <span className="text-white">{selectedStyle?.name || 'Select Style'}</span>
-                                        </span>
-                                        {showStylePicker ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
+                                        {showStylePicker ? 'Show Less' : 'View All Styles →'}
                                     </button>
-                                    {showStylePicker && (
-                                        <div className="absolute bottom-full left-0 mb-1 w-72 max-h-64 overflow-y-scroll bg-zinc-800 border border-zinc-700 rounded-xl shadow-2xl z-50 p-3 space-y-3" style={{ scrollbarWidth: 'thin', scrollbarColor: '#52525b #27272a' }}>
-                                            {Object.entries(stylesByCategory).map(([category, styles]) => (
-                                                styles.length > 0 && (
+                                </div>
+
+                                {/* Director Card */}
+                                <div className="bg-zinc-800/30 rounded-2xl p-5 border border-zinc-700/30 backdrop-blur-sm">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <Film className="w-4 h-4 text-amber-400" />
+                                        <span className="text-sm font-bold text-white uppercase tracking-wider">Director Vision</span>
+                                    </div>
+
+                                    {/* Selected Director Preview */}
+                                    {selectedDirector && (
+                                        <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-xl p-4 mb-3">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-sm font-bold text-amber-200">{selectedDirector.name}</span>
+                                                <span className="text-[9px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-medium uppercase">
+                                                    {selectedDirector.origin}
+                                                </span>
+                                            </div>
+                                            <p className="text-[11px] text-zinc-400 mb-2 line-clamp-2">{selectedDirector.description}</p>
+                                            <div className="text-[10px] text-amber-400/80">🎬 {selectedDirector.signatureCameraStyle}</div>
+                                        </div>
+                                    )}
+
+                                    <button
+                                        onClick={() => setShowDirectorPicker(!showDirectorPicker)}
+                                        className="w-full bg-zinc-900/50 border border-zinc-700 hover:border-zinc-600 rounded-xl px-4 py-3 text-left flex items-center justify-between transition-all group"
+                                    >
+                                        <span className="text-sm text-zinc-300 group-hover:text-white transition-colors">
+                                            {selectedDirector ? 'Change Director' : 'Select a Director'}
+                                        </span>
+                                        <ChevronDown className={`w-4 h-4 text-zinc-500 transition-transform ${showDirectorPicker ? 'rotate-180' : ''}`} />
+                                    </button>
+
+                                    {/* Director Picker Overlay */}
+                                    {showDirectorPicker && (
+                                        <div className="absolute inset-0 bg-zinc-900/95 backdrop-blur-lg rounded-2xl z-50 overflow-hidden flex flex-col animate-fade-in">
+                                            <div className="flex items-center justify-between p-4 border-b border-zinc-700/50">
+                                                <span className="text-sm font-bold text-white">Select Director</span>
+                                                <button
+                                                    onClick={() => setShowDirectorPicker(false)}
+                                                    className="text-zinc-400 hover:text-white transition-colors"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                            <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{ scrollbarWidth: 'thin', scrollbarColor: '#52525b #27272a' }}>
+                                                {(['documentary', 'cinema', 'tvc', 'music_video'] as DirectorCategory[]).map(category => (
                                                     <div key={category}>
-                                                        <div className="text-xs text-zinc-500 uppercase mb-2">{category}</div>
-                                                        <div className="space-y-1">
-                                                            {styles.map(style => (
+                                                        <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2 sticky top-0 bg-zinc-900 py-1">
+                                                            {category.replace('_', ' ')}
+                                                        </div>
+                                                        <div className="space-y-1.5">
+                                                            {DIRECTOR_PRESETS[category].map(dir => (
                                                                 <button
-                                                                    key={style.id}
-                                                                    onClick={() => { setSelectedStyleId(style.id); setShowStylePicker(false); }}
-                                                                    className={`w-full p-2 rounded-lg text-left flex items-center gap-2 ${selectedStyleId === style.id ? 'bg-violet-500/20 border border-violet-500/50' : 'hover:bg-zinc-700'
+                                                                    key={dir.id}
+                                                                    onClick={() => { setSelectedDirectorId(dir.id); setShowDirectorPicker(false); }}
+                                                                    className={`w-full p-3 rounded-xl text-left transition-all ${selectedDirectorId === dir.id
+                                                                            ? 'bg-amber-500/20 border border-amber-500/50'
+                                                                            : 'hover:bg-zinc-800 border border-transparent'
                                                                         }`}
                                                                 >
-                                                                    <span>{style.icon}</span>
-                                                                    <div>
-                                                                        <div className="text-sm text-white">{style.name}</div>
-                                                                        <div className="text-xs text-zinc-400">{style.description}</div>
+                                                                    <div className="flex items-center justify-between">
+                                                                        <span className="text-sm font-medium text-white">{dir.name}</span>
+                                                                        <span className="text-[9px] text-amber-400/70">{dir.origin}</span>
                                                                     </div>
+                                                                    <p className="text-[10px] text-zinc-500 mt-0.5 line-clamp-1">{dir.description}</p>
                                                                 </button>
                                                             ))}
                                                         </div>
                                                     </div>
-                                                )
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Director */}
-                                <div className="relative">
-                                    <label className="block text-sm font-medium text-zinc-300 mb-2">
-                                        <Film className="w-4 h-4 inline mr-1" /> Director Style
-                                    </label>
-                                    <button
-                                        onClick={() => setShowDirectorPicker(!showDirectorPicker)}
-                                        className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-left flex items-center justify-between hover:bg-zinc-700/50 transition-colors"
-                                    >
-                                        <span className="text-white">{selectedDirector?.name || 'Select Director'}</span>
-                                        {showDirectorPicker ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
-                                    </button>
-                                    {showDirectorPicker && (
-                                        <div className="absolute bottom-full left-0 mb-1 w-96 max-h-80 overflow-y-scroll bg-zinc-800 border border-zinc-700 rounded-xl shadow-2xl z-50 p-3" style={{ scrollbarWidth: 'thin', scrollbarColor: '#52525b #27272a' }}>
-                                            {(['documentary', 'cinema', 'tvc', 'music_video'] as DirectorCategory[]).map(category => (
-                                                <div key={category} className="mb-4">
-                                                    <div className="text-xs text-zinc-500 uppercase mb-2 sticky top-0 bg-zinc-800 py-1">{category.replace('_', ' ')}</div>
-                                                    <div className="space-y-2">
-                                                        {DIRECTOR_PRESETS[category].map(dir => (
-                                                            <button
-                                                                key={dir.id}
-                                                                onClick={() => { setSelectedDirectorId(dir.id); setShowDirectorPicker(false); }}
-                                                                className={`w-full p-3 rounded-lg text-left ${selectedDirectorId === dir.id ? 'bg-violet-500/20 border border-violet-500/50' : 'hover:bg-zinc-700 border border-transparent'
-                                                                    }`}
-                                                            >
-                                                                <div className="flex items-center justify-between">
-                                                                    <div className="text-sm font-medium text-white">{dir.name}</div>
-                                                                    <div className="text-[10px] text-zinc-500 bg-zinc-700 px-1.5 py-0.5 rounded">{category}</div>
-                                                                </div>
-                                                                <div className="text-xs text-zinc-400 mt-1">{dir.description}</div>
-                                                                <div className="text-[10px] text-violet-400 mt-1">🎬 {dir.signatureCameraStyle}</div>
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            ))}
+                                                ))}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
                             </div>
-
-                            {/* Error */}
-                            {analysisError && (
-                                <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400">
-                                    <AlertTriangle className="w-5 h-5" />
-                                    <span>{analysisError}</span>
-                                </div>
-                            )}
-                        </>
+                        </div>
                     ) : (
                         // Step 2: Review Analysis
                         <>
@@ -376,7 +432,7 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 
