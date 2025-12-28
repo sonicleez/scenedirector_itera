@@ -1125,18 +1125,29 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                                 };
                             });
 
-                            // Update state: mark parent as expanded and add sub-scenes
-                            updateStateAndRecord(s => ({
-                                ...s,
-                                scenes: [
-                                    ...s.scenes.map(scene =>
-                                        scene.id === parentSceneId
-                                            ? { ...scene, isExpandedSequence: true, subSceneIds }
-                                            : scene
-                                    ),
-                                    ...newSubScenes
-                                ]
-                            }));
+                            // Update state: mark parent as expanded and INSERT sub-scenes right after parent
+                            updateStateAndRecord(s => {
+                                const parentIndex = s.scenes.findIndex(scene => scene.id === parentSceneId);
+                                if (parentIndex === -1) return s;
+
+                                // Create new scenes array with sub-scenes inserted after parent
+                                const updatedScenes = [...s.scenes];
+
+                                // Update parent scene first
+                                updatedScenes[parentIndex] = {
+                                    ...updatedScenes[parentIndex],
+                                    isExpandedSequence: true,
+                                    subSceneIds
+                                };
+
+                                // Insert sub-scenes right after parent
+                                updatedScenes.splice(parentIndex + 1, 0, ...newSubScenes);
+
+                                return {
+                                    ...s,
+                                    scenes: updatedScenes
+                                };
+                            });
 
                             console.log('[SequenceExpansion] ✅ Created', newSubScenes.length, 'sub-scenes for scene', parentScene.sceneNumber);
                         }}
