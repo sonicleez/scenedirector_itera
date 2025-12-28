@@ -102,6 +102,24 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
     const [showDOP, setShowDOP] = React.useState(false);
     const [showDetailedScript, setShowDetailedScript] = React.useState(false);
 
+    // Keyboard shortcuts: T = Table, B = Board
+    React.useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Ignore if user is typing in input/textarea
+            const target = e.target as HTMLElement;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+
+            if (e.key.toLowerCase() === 't') {
+                setViewMode('table');
+            } else if (e.key.toLowerCase() === 'b') {
+                setViewMode('storyboard');
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [setViewMode]);
+
     const toggleGroupCollapse = (groupId: string | undefined) => {
         const id = groupId || 'none';
         setCollapsedGroups(prev => ({ ...prev, [id]: !prev[id] }));
@@ -117,6 +135,7 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
         newCollapsed['none'] = collapse;
         setCollapsedGroups(newCollapsed);
     };
+
 
     return (
         <div className="my-16">
