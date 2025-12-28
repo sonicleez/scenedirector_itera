@@ -48,8 +48,6 @@ interface ScenesMapSectionProps {
     setDragOverIndex: (idx: number | null) => void;
     onClearAllImages: () => void;
     onInsertAngles?: (sceneId: string, selections: { value: string; customPrompt?: string }[], sourceImage: string) => void;
-    onExpandSequence?: (scene: Scene) => void; // Phase 4: Trigger sequence expansion modal
-    onExpandAllVO?: () => void; // Phase 4: Expand all eligible VO scenes at once
 }
 
 export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
@@ -93,32 +91,12 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
     onClearAllImages,
     onInsertAngles,
     analyzeRaccord,
-    suggestNextShot,
-    onExpandSequence,
-    onExpandAllVO
+    suggestNextShot
 }) => {
     const [collapsedGroups, setCollapsedGroups] = React.useState<Record<string, boolean>>({});
     const [activeGroupMenu, setActiveGroupMenu] = React.useState<string | null>(null);
     const [showDOP, setShowDOP] = React.useState(false);
     const [showDetailedScript, setShowDetailedScript] = React.useState(false);
-
-    // Keyboard shortcuts: T = Table, B = Board
-    React.useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            // Ignore if user is typing in input/textarea
-            const target = e.target as HTMLElement;
-            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
-
-            if (e.key.toLowerCase() === 't') {
-                setViewMode('table');
-            } else if (e.key.toLowerCase() === 'b') {
-                setViewMode('storyboard');
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [setViewMode]);
 
     const toggleGroupCollapse = (groupId: string | undefined) => {
         const id = groupId || 'none';
@@ -136,10 +114,9 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
         setCollapsedGroups(newCollapsed);
     };
 
-
     return (
         <div className="my-16">
-            <div className="flex justify-between items-center mb-6 bg-gray-950/40 p-3 rounded-2xl border border-gray-800/50 backdrop-blur-md relative z-[60]">
+            <div className="flex justify-between items-center mb-6 bg-gray-950/40 p-3 rounded-2xl border border-gray-800/50 backdrop-blur-md">
                 <div className="flex items-center space-x-6 pl-2">
                     <h2 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-brand-orange to-brand-red tracking-tighter">SCENES MAP</h2>
                     <div className="flex items-center gap-2">
@@ -200,24 +177,6 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
 
                     <div className="h-6 w-px bg-gray-800 mx-1"></div>
 
-                    {/* Expand All VO - Phase 4 */}
-                    {onExpandAllVO && (() => {
-                        const eligibleCount = scenes.filter(s =>
-                            (s.voSecondsEstimate || 0) > 4 &&
-                            !s.isExpandedSequence &&
-                            !s.parentSceneId
-                        ).length;
-                        return eligibleCount > 0 ? (
-                            <button
-                                onClick={onExpandAllVO}
-                                className="h-9 px-3 font-bold text-[9px] text-amber-400 rounded-lg bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 transition-all uppercase tracking-wider flex items-center gap-1.5"
-                                title={`Expand ${eligibleCount} VO scenes into sub-sequences`}
-                            >
-                                🎬 Expand All VO ({eligibleCount})
-                            </button>
-                        ) : null;
-                    })()}
-
                     <button
                         onClick={addScene}
                         className={`h-9 px-4 font-black text-[9px] text-brand-cream rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-all uppercase tracking-widest flex items-center gap-2`}
@@ -251,40 +210,17 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
                         </button>
                     )}
 
-                    {/* Destructive Actions Dropdown */}
-                    <div className="relative group">
-                        <button
-                            className="h-9 w-9 flex items-center justify-center text-red-500 hover:text-white hover:bg-red-600/20 bg-gray-900 border border-red-900/30 rounded-lg transition-all"
-                            title="Thao tác xóa"
-                        >
-                            <Trash2 size={14} />
-                        </button>
-                        <div className="absolute right-0 top-full mt-1 w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-50 overflow-hidden py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                            <button
-                                onClick={() => {
-                                    if (confirm('⚠️ Xóa TẤT CẢ ảnh đã tạo?')) {
-                                        onClearAllImages();
-                                    }
-                                }}
-                                className="w-full text-left px-4 py-2.5 text-[10px] text-gray-300 hover:bg-red-500/10 hover:text-red-400 font-bold uppercase tracking-wider flex items-center gap-2"
-                            >
-                                <ImageIcon size={12} />
-                                Xóa tất cả ảnh
-                            </button>
-                            <div className="border-t border-gray-800"></div>
-                            <button
-                                onClick={() => {
-                                    if (confirm('🚨 XÓA TOÀN BỘ DỰ ÁN? Hành động này không thể hoàn tác!')) {
-                                        onCleanAll();
-                                    }
-                                }}
-                                className="w-full text-left px-4 py-2.5 text-[10px] text-red-400 hover:bg-red-600/20 hover:text-red-300 font-bold uppercase tracking-wider flex items-center gap-2"
-                            >
-                                <Trash2 size={12} />
-                                Xóa sạch dự án (Clean All)
-                            </button>
-                        </div>
-                    </div>
+                    <button
+                        onClick={() => {
+                            if (confirm('⚠️ Xóa TẤT CẢ ảnh?')) {
+                                onClearAllImages();
+                            }
+                        }}
+                        className="h-9 w-9 flex items-center justify-center text-red-500 hover:text-white hover:bg-red-600/20 bg-gray-900 border border-red-900/30 rounded-lg transition-all"
+                        title="Xóa tất cả ảnh"
+                    >
+                        <Trash2 size={14} />
+                    </button>
                 </div>
             </div>
 
@@ -447,6 +383,16 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
                             placeholder="Nội dung cốt truyện chi tiết sẽ được hiển thị ở đây giúp bạn nắm bắt mạch chuyện..."
                             className="w-full h-48 bg-black/40 text-gray-300 px-4 py-3 rounded-xl border border-gray-800/50 focus:outline-none focus:ring-1 focus:ring-brand-orange text-xs leading-relaxed scrollbar-thin scrollbar-thumb-gray-600 font-mono mb-3"
                         />
+                        <div className="flex justify-end">
+                            <button
+                                onClick={onCleanAll}
+                                className="flex items-center space-x-2 px-3 py-1.5 text-[9px] font-black text-red-500 hover:text-white hover:bg-red-600/20 rounded-lg border border-red-900/30 transition-all uppercase tracking-widest"
+                                title="Xóa toàn bộ kịch bản và scene để làm lại từ đầu"
+                            >
+                                <Trash2 size={12} />
+                                <span>Xóa sạch dự án (Clean All)</span>
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
@@ -652,9 +598,6 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
                         // Skip rendering scenes if group is collapsed
                         if (isGroupCollapsed(currentGroupId)) return null;
 
-                        // In Board (storyboard) view, skip sub-scenes - they're shown as indicator on main scene
-                        if (viewMode === 'storyboard' && scene.parentSceneId) return null;
-
                         // Render the Scene (Row or Card)
                         renderedScenes.push(
                             <React.Fragment key={scene.id}>
@@ -713,7 +656,6 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
                                                 setDragOverIndex(null);
                                             }}
                                             onInsertAngles={onInsertAngles}
-                                            onExpandSequence={onExpandSequence}
                                         />
 
                                         {/* Last Insert Button */}
@@ -759,7 +701,6 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
                                             setDragOverIndex(null);
                                         }}
                                         onInsertAngles={onInsertAngles}
-                                        onExpandSequence={onExpandSequence}
                                         generateVeoPrompt={generateVeoPrompt}
                                         scenes={scenes}
                                     />

@@ -19,7 +19,6 @@ import { AuthModal } from './components/modals/AuthModal';
 import { ProjectBrowserModal } from './components/modals/ProjectBrowserModal';
 import { UserProfileModal } from './components/modals/UserProfileModal';
 import { ManualScriptModal } from './components/modals/ManualScriptModal';
-import { SequenceExpansionModal } from './components/modals/SequenceExpansionModal';
 import { ActivationScreen } from './components/ActivationScreen';
 import { AssetLibrary } from './components/sections/AssetLibrary';
 import { APP_NAME, PRIMARY_GRADIENT, PRIMARY_GRADIENT_HOVER } from './constants/presets';
@@ -104,8 +103,6 @@ const App: React.FC = () => {
     const [isProjectBrowserOpen, setProjectBrowserOpen] = useState(false);
     const [isLibraryOpen, setLibraryOpen] = useState(false);
     const [isManualScriptModalOpen, setManualScriptModalOpen] = useState(false);
-    const [isSequenceExpansionOpen, setSequenceExpansionOpen] = useState(false);
-    const [selectedSceneForExpansion, setSelectedSceneForExpansion] = useState<Scene | null>(null);
     const [cloudProjects, setCloudProjects] = useState<any[]>([]);
 
     const mainContentRef = useRef<HTMLDivElement>(null);
@@ -797,36 +794,6 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                                         }));
                                     }}
                                     onInsertAngles={handleInsertAngles}
-                                    onExpandSequence={(scene) => {
-                                        setSelectedSceneForExpansion(scene);
-                                        setSequenceExpansionOpen(true);
-                                    }}
-                                    onExpandAllVO={() => {
-                                        // Find all eligible VO scenes for expansion
-                                        const eligibleScenes = state.scenes.filter(s =>
-                                            (s.voSecondsEstimate || 0) > 4 &&
-                                            !s.isExpandedSequence &&
-                                            !s.parentSceneId
-                                        );
-
-                                        if (eligibleScenes.length === 0) {
-                                            alert('Không có scenes nào cần expand (VO phải > 4 giây)');
-                                            return;
-                                        }
-
-                                        // Confirm before batch expansion
-                                        const confirmed = confirm(
-                                            `🎬 Expand ${eligibleScenes.length} VO Scenes?\n\n` +
-                                            `Bạn sẽ xử lý lần lượt từng scene qua modal.\n` +
-                                            `Các scenes sẽ được expand tuần tự.`
-                                        );
-
-                                        if (confirmed && eligibleScenes.length > 0) {
-                                            // Start with first eligible scene
-                                            setSelectedSceneForExpansion(eligibleScenes[0]);
-                                            setSequenceExpansionOpen(true);
-                                        }
-                                    }}
                                 />
                                 <div className="flex justify-end mt-8 gap-4">
                                     <button
@@ -1061,96 +1028,10 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                                 characters: [...s.characters, ...createdCharacters],
                                 researchNotes: researchNotes || s.researchNotes  // NEW: Save research notes
                             }));
-
-                            // 6. Show success notification to user
-                            setTimeout(() => {
-                                const message = [
-                                    `✅ Import thành công!`,
-                                    ``,
-                                    `📺 ${updatedScenes.length} scenes đã tạo`,
-                                    createdCharacters.length > 0 ? `👤 ${createdCharacters.length} nhân vật mới` : null,
-                                    updatedGroups.length > 0 ? `📁 ${updatedGroups.length} groups/chapters` : null,
-                                    researchNotes?.director || researchNotes?.dop ? `📚 Research Notes đã lưu` : null
-                                ].filter(Boolean).join('\n');
-
-                                alert(message);
-                            }, 100);
                         }}
                         existingCharacters={state.characters}
                         userApiKey={userApiKey}
                         userId={session?.user?.id || null}
-                    />
-
-                    {/* Sequence Expansion Modal (Phase 4) */}
-                    <SequenceExpansionModal
-                        isOpen={isSequenceExpansionOpen}
-                        onClose={() => {
-                            setSequenceExpansionOpen(false);
-                            setSelectedSceneForExpansion(null);
-                        }}
-                        scene={selectedSceneForExpansion}
-                        userApiKey={userApiKey}
-                        researchNotes={state.researchNotes}
-                        onExpand={(parentSceneId, subSceneProposals) => {
-                            // Generate sub-scenes from AI proposals
-                            const parentScene = state.scenes.find(s => s.id === parentSceneId);
-                            if (!parentScene) return;
-
-                            const subSceneIds: string[] = [];
-                            const newSubScenes = subSceneProposals.map((proposal, idx) => {
-                                const subId = generateId();
-                                subSceneIds.push(subId);
-                                return {
-                                    id: subId,
-                                    sceneNumber: `${parentScene.sceneNumber}.${idx + 1}`,
-                                    groupId: parentScene.groupId,
-                                    language1: proposal.contextDescription,
-                                    vietnamese: '',
-                                    promptName: `Sub ${idx + 1}: ${proposal.emotionalBeat}`,
-                                    contextDescription: proposal.contextDescription,
-                                    characterIds: parentScene.characterIds || [],
-                                    productIds: parentScene.productIds || [],
-                                    generatedImage: null,
-                                    veoPrompt: '',
-                                    isGenerating: false,
-                                    error: null,
-                                    // Sequence expansion fields
-                                    parentSceneId: parentSceneId,
-                                    sequenceIndex: idx,
-                                    emotionalBeat: proposal.emotionalBeat,
-                                    cameraProgression: proposal.cameraProgression,
-                                    cameraAngleOverride: proposal.suggestedAngle,
-                                    lensOverride: proposal.suggestedLens,
-                                    voSecondsEstimate: proposal.duration
-                                };
-                            });
-
-                            // Update state: mark parent as expanded and INSERT sub-scenes right after parent
-                            updateStateAndRecord(s => {
-                                const parentIndex = s.scenes.findIndex(scene => scene.id === parentSceneId);
-                                if (parentIndex === -1) return s;
-
-                                // Create new scenes array with sub-scenes inserted after parent
-                                const updatedScenes = [...s.scenes];
-
-                                // Update parent scene first
-                                updatedScenes[parentIndex] = {
-                                    ...updatedScenes[parentIndex],
-                                    isExpandedSequence: true,
-                                    subSceneIds
-                                };
-
-                                // Insert sub-scenes right after parent
-                                updatedScenes.splice(parentIndex + 1, 0, ...newSubScenes);
-
-                                return {
-                                    ...s,
-                                    scenes: updatedScenes
-                                };
-                            });
-
-                            console.log('[SequenceExpansion] ✅ Created', newSubScenes.length, 'sub-scenes for scene', parentScene.sceneNumber);
-                        }}
                     />
 
                     <input

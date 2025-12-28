@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { GripVertical, Copy, Download, Layers, Play, Plus, RefreshCw, Trash, User, Box, Sparkles, Wand2, Image as ImageIcon, Clapperboard } from 'lucide-react';
+import { GripVertical, Copy, Download, Layers, Play, Plus, RefreshCw, Trash, User, Box, Sparkles, Wand2, Image as ImageIcon } from 'lucide-react';
 import { Scene, Character, Product } from '../../types';
 import { ExpandableTextarea } from '../common/ExpandableTextarea';
 import { CAMERA_ANGLES, LENS_OPTIONS, TRANSITION_TYPES, VEO_MODES, VEO_PRESETS } from '../../constants/presets';
@@ -36,7 +36,6 @@ export interface SceneRowProps {
     generateVeoPrompt: (sceneId: string) => void;
     onCopyPreviousStyle?: () => void;
     onInsertAngles?: (sceneId: string, selections: { value: string; customPrompt?: string }[], sourceImage: string) => void;
-    onExpandSequence?: (scene: Scene) => void; // Phase 4: Trigger sequence expansion modal
 }
 
 export const SceneRow: React.FC<SceneRowProps> = ({
@@ -45,8 +44,7 @@ export const SceneRow: React.FC<SceneRowProps> = ({
     onDragStart, onDragOver, onDrop,
     generateVeoPrompt,
     onCopyPreviousStyle,
-    onInsertAngles,
-    onExpandSequence
+    onInsertAngles
 }) => {
     const endFrameInputRef = useRef<HTMLInputElement>(null);
     const [showAnglesDropdown, setShowAnglesDropdown] = useState(false);
@@ -88,31 +86,9 @@ export const SceneRow: React.FC<SceneRowProps> = ({
             onDragStart={() => onDragStart(index)}
             onDragOver={(e) => { e.preventDefault(); onDragOver(index); }}
             onDrop={() => onDrop(index)}
-            className={`grid md:grid-cols-12 gap-4 items-start p-4 rounded-lg border transition-all group/row relative overflow-visible ${
-                // Sub-scene styling (has parentSceneId)
-                scene.parentSceneId
-                    ? 'bg-amber-900/10 border-amber-500/30 ml-6'
-                    // Main expanded scene styling
-                    : scene.isExpandedSequence
-                        ? 'bg-emerald-900/10 border-emerald-500/40'
-                        // Normal scene styling
-                        : 'bg-gray-800/30 border-gray-700 hover:border-gray-500'
-                } ${index === (window as any).dragOverIndex ? 'border-brand-orange bg-brand-orange/10 scale-[1.01] shadow-2xl z-10' : ''}`}
+            className={`grid md:grid-cols-12 gap-4 items-start bg-gray-800/30 p-4 rounded-lg border transition-all group/row relative overflow-visible ${index === (window as any).dragOverIndex ? 'border-brand-orange bg-brand-orange/10 scale-[1.01] shadow-2xl z-10' : 'border-gray-700 hover:border-gray-500'
+                }`}
         >
-            {/* Main/Sub Scene Label Badge */}
-            {scene.isExpandedSequence && !scene.parentSceneId && (
-                <div className="absolute -top-2 left-4 px-2 py-0.5 bg-emerald-500 text-white text-[8px] font-bold uppercase tracking-wider rounded-full">
-                    📺 MAIN
-                </div>
-            )}
-            {scene.parentSceneId && (
-                <div className="absolute -top-2 left-4 px-2 py-0.5 bg-amber-500 text-black text-[8px] font-bold uppercase tracking-wider rounded-full flex items-center gap-1">
-                    🎬 SUB {(scene.sequenceIndex ?? 0) + 1}
-                    {scene.emotionalBeat && (
-                        <span className="text-amber-900">• {scene.emotionalBeat}</span>
-                    )}
-                </div>
-            )}
             {/* Drag Handle */}
             <div className="absolute -left-8 top-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing text-gray-600 hover:text-brand-orange opacity-0 group-hover/row:opacity-100 transition-all p-2">
                 <GripVertical size={20} />
@@ -147,41 +123,14 @@ export const SceneRow: React.FC<SceneRowProps> = ({
             {/* Script */}
             <div className="md:col-span-2 space-y-2">
                 {(scene.voiceOverText || scene.isVOScene) && (
-                    <div className="space-y-1">
-                        <ExpandableTextarea
-                            value={scene.voiceOverText || ''}
-                            onChange={(val) => updateScene(scene.id, { voiceOverText: val })}
-                            placeholder="Voice Over (Lời bình)..."
-                            rows={2}
-                            className="w-full bg-violet-900/20 border border-violet-500/30 rounded p-2 text-xs text-violet-100 placeholder-violet-500/50 focus:border-violet-500 resize-none font-medium"
-                            title="Voice Over Script (AI/Manual)"
-                        />
-                        {/* Expand Sequence button - placed below VO textarea to avoid overlap */}
-                        <div className="flex items-center gap-2">
-                            {scene.voSecondsEstimate && scene.voSecondsEstimate > 4 && !scene.isExpandedSequence && !scene.parentSceneId && onExpandSequence && (
-                                <button
-                                    onClick={() => onExpandSequence(scene)}
-                                    className="px-2 py-1 bg-amber-500/20 border border-amber-500/40 rounded-lg text-amber-400 text-[10px] font-medium hover:bg-amber-500/30 transition-all flex items-center gap-1"
-                                    title={`Expand into ${Math.ceil(scene.voSecondsEstimate / 4)} sub-scenes`}
-                                >
-                                    <Clapperboard className="w-3 h-3" />
-                                    🎬 Expand {scene.voSecondsEstimate}s
-                                </button>
-                            )}
-                            {/* Badge for already expanded scenes */}
-                            {scene.isExpandedSequence && scene.subSceneIds && (
-                                <span className="px-2 py-1 bg-green-500/20 border border-green-500/40 rounded-lg text-green-400 text-[10px] font-medium">
-                                    ✓ Expanded: {scene.subSceneIds.length} sub-scenes
-                                </span>
-                            )}
-                            {/* Duration badge */}
-                            {scene.voSecondsEstimate && (
-                                <span className="px-2 py-0.5 bg-violet-500/20 text-violet-300 text-[10px] rounded">
-                                    ⏱️ {scene.voSecondsEstimate}s
-                                </span>
-                            )}
-                        </div>
-                    </div>
+                    <ExpandableTextarea
+                        value={scene.voiceOverText || ''}
+                        onChange={(val) => updateScene(scene.id, { voiceOverText: val })}
+                        placeholder="Voice Over (Lời bình)..."
+                        rows={2}
+                        className="w-full bg-violet-900/20 border border-violet-500/30 rounded p-2 text-xs text-violet-100 placeholder-violet-500/50 focus:border-violet-500 resize-none font-medium"
+                        title="Voice Over Script (AI/Manual)"
+                    />
                 )}
                 <ExpandableTextarea
                     value={scene.language1}

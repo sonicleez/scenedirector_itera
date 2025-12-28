@@ -37,7 +37,6 @@ export interface SceneAnalysis {
     voiceOverText: string;
     visualPrompt: string;
     chapterId: string;
-    locationId: string; // Location/setting within chapter (e.g., "casino_interior", "lobby")
     characterNames: string[];
     estimatedDuration: number;
     needsExpansion: boolean; // If VO is long and needs multiple visual scenes
@@ -47,21 +46,10 @@ export interface SceneAnalysis {
     }[];
 }
 
-export interface LocationAnalysis {
-    id: string;
-    chapterId: string;
-    name: string;
-    description: string;
-    suggestedTimeOfDay?: string;
-    suggestedWeather?: string;
-    lightingMood?: string;
-}
-
 export interface ScriptAnalysisResult {
     totalWords: number;
     estimatedDuration: number; // total seconds
     chapters: ChapterAnalysis[];
-    locations: LocationAnalysis[]; // Locations/settings within chapters
     characters: CharacterAnalysis[];
     suggestedSceneCount: number;
     scenes: SceneAnalysis[];
@@ -135,7 +123,7 @@ export function useScriptAnalysis(userApiKey: string | null) {
                 contextInstructions += `\n[USER DOP NOTES - MANDATORY CAMERA/LIGHTING CONTEXT]:\n${researchNotes.dop}\n- Apply these cinematography guidelines to visual prompts.\n`;
             }
 
-            const prompt = `You are a Cinematic Script Analyst and Production Consultant. Analyze this voice-over script. Return JSON only.
+            const prompt = `Analyze this voice-over script for a documentary video. Return JSON only.
 
 SCRIPT:
 """
@@ -143,97 +131,38 @@ ${scriptText}
 """
 
 TASK:
-1. Identify CHAPTER HEADERS (time periods, locations)
-2. Extract KEY CHARACTERS
-3. SCENE BREAKDOWN STRATEGY:
-   - ACTION SEQUENCE: If the text describes multiple distinct actions (e.g. "He stands. He places a chip. Sample spins."), you MUST split them into separate scenes.
-   - STATIC DESCRIPTION: If the text describes a single moment/environment (e.g. "The room was dark. Shadows were long."), keep it as ONE scene.
-   - PREFERENCE: Better to have more scenes for Action Sequences than to miss a beat.
-4. Create VISUAL PROMPTS that match the VO context:
-   - IF VO says "stands at edge", Prompt MUST be WIDE/MEDIUM SHOT. Do NOT use Extreme Close-up.
-   - IF VO mentions specific details (chips, ball), include them, but DO NOT hallucinate unrelated micro-details (e.g. "brass frets") unless relevant.
-   - LOGIC: The Visual Prompt must be the LITERAL translation of the VO action.
+1. Identify CHAPTER HEADERS
+2. Extract CHARACTER NAMES (Merge aliases: e.g. "The Man" = "Étienne"). List UNIQUE physical characters only.
+3. Break into SCENES (3-5s each)
+4. Create VISUAL PROMPTS
 
-===== CHARACTER DETECTION RULES =====
-
-**Who to INCLUDE:**
-- Characters that appear in 2 OR MORE scenes
-- Characters directly related to the protagonist (family, partners, friends, enemies)
-- Characters that drive the plot forward (even if only 1 appearance)
-- Historical/Ghost characters mentioned as important (e.g., deceased family members)
-
-**Who to SKIP:**
-- Functional one-time roles: croupier, waiter, random guard, taxi driver
-- Unnamed crowds or bystanders
-- Characters mentioned only in passing with no visual presence
-
-**CHARACTER OUTPUT RULES:**
-- MERGE aliases: "The man" = "Étienne" → use "Étienne Marchand" only
-- For ghost/deceased characters, mark in name: "David Marchand (Ghost)"
-- Set isMain: true for protagonist and antagonist
-- Set "mentions" to actual appearance count in script
-- MANDATORY STYLE: ALL characters' suggestedDescription MUST start with "Faceless white mannequin head. WEARING: ..." followed by detailed costume
-${contextInstructions}
-
-SCENE RULES:
-- Scenes should follow natural narrative beats (5-10s). Avoid splitting single sentences.
+RULES:
+- Each scene should have voice-over text (~3-4s)${contextInstructions}
 - If a VO segment needs multiple visuals, mark needsExpansion: true
 - Expansion scenes are B-roll
-- CONSISTENCY CHECK: Same character must not be listed twice under different names.
-
-LOCATION DETECTION RULES:
-- Identify DISTINCT physical locations/settings within each chapter
-- Create a "locations" array with unique location IDs (e.g., "casino_interior", "lobby", "outside_taxi")
-- Assign "locationId" to each scene based on where the action takes place
-- Different rooms, buildings, or outdoor areas = different locations
-- Time jumps to flashbacks = different location (e.g., "quebec_library_1977")
+- Identify Key Characters and supporting roles.
+- CONSTISTENCY CHECK: Ensure the same character is not listed twice under different names. Only list characters that appear visually.
 
 RESPOND WITH JSON ONLY:
 {
   "chapters": [
     {
       "id": "chapter_1",
-      "title": "Monte Carlo, March 2019",
+      "title": "Chapter Title",
       "suggestedTimeOfDay": "night",
       "suggestedWeather": "clear"
-    }
-  ],
-  "locations": [
-    {
-      "id": "casino_interior",
-      "chapterId": "chapter_1",
-      "name": "Casino de Monte-Carlo Interior",
-      "description": "Opulent casino floor with roulette tables, chandeliers, and high ceilings",
-      "suggestedTimeOfDay": "night",
-      "suggestedWeather": "clear",
-      "lightingMood": "warm golden casino lights"
-    },
-    {
-      "id": "lobby_coat_check",
-      "chapterId": "chapter_1",
-      "name": "Casino Lobby",
-      "description": "Elegant lobby area with coat check counter and marble floors",
-      "suggestedTimeOfDay": "night",
-      "lightingMood": "soft ambient lighting"
     }
   ],
   "characters": [
     {
       "name": "Étienne Marchand",
-      "mentions": 15,
-      "suggestedDescription": "Faceless white mannequin head. WEARING: A tailored charcoal grey suit with wide lapels, crisp white shirt, silk tie. (Micro-texture: Fabric has visible weave).",
+      "mentions": 5,
+      "suggestedDescription": "Faceless white mannequin head. WEARING: A tailored charcoal grey 1940s wool suit with wide lapels, crisp white shirt, silk tie, and a gold pocket watch chain. (Micro-texture: Fabric has visible weave texture).",
       "outfitByChapter": {
-        "chapter_1": "charcoal grey casino suit",
-        "chapter_2": "1970s casual wear"
+        "chapter_1": "charcoal grey 1940s wool suit",
+        "chapter_2": "casual linen shirt and trousers"
       },
       "isMain": true
-    },
-    {
-      "name": "David Marchand (Ghost)",
-      "mentions": 3,
-      "suggestedDescription": "Faceless white mannequin head. WEARING: 1990s hockey jersey with team logo. (Only appears in flashbacks/photos)",
-      "outfitByChapter": {},
-      "isMain": false
     }
   ],
   "scenes": [
@@ -241,17 +170,19 @@ RESPOND WITH JSON ONLY:
       "voiceOverText": "Exact text from script...",
       "visualPrompt": "WIDE SHOT. Casino interior, roulette table, elegant chandelier...",
       "chapterId": "chapter_1",
-      "locationId": "casino_interior",
-      "characterNames": ["Étienne Marchand"],
+      "characterNames": ["Character Name"],
       "needsExpansion": false
     },
     {
-      "voiceOverText": "Two plainclothes officers intercept him...",
-      "visualPrompt": "MEDIUM SHOT. Casino lobby, coat check area...",
+      "voiceOverText": "Longer text that needs multiple visuals...",
+      "visualPrompt": "First visual - establishing shot",
       "chapterId": "chapter_1",
-      "locationId": "lobby_coat_check",
-      "characterNames": ["Étienne Marchand"],
-      "needsExpansion": false
+      "characterNames": [],
+      "needsExpansion": true,
+      "expansionScenes": [
+        { "visualPrompt": "B-roll: Close-up of chips", "isBRoll": true },
+        { "visualPrompt": "B-roll: Wheel spinning", "isBRoll": true }
+      ]
     }
   ]
 }`;
@@ -284,7 +215,6 @@ RESPOND WITH JSON ONLY:
                     endIndex: 0,
                     estimatedDuration: Math.ceil(estimatedTotalDuration / parsed.chapters.length)
                 })),
-                locations: parsed.locations || [], // Locations within chapters
                 characters: parsed.characters || [],
                 suggestedSceneCount: parsed.scenes.length +
                     parsed.scenes.reduce((sum: number, s: any) => sum + (s.expansionScenes?.length || 0), 0),
@@ -317,41 +247,26 @@ RESPOND WITH JSON ONLY:
         existingCharacters: Character[] = []
     ): { scenes: Scene[]; groups: SceneGroup[]; newCharacters: { name: string; description: string }[]; sceneCharacterMap: Record<number, string[]> } => {
 
-        // Create groups from LOCATIONS (not chapters) for proper environment lock
-        // Each location within a chapter gets its own group for consistent backgrounds
-        const groups: SceneGroup[] = (analysis.locations || []).map(loc => {
+        const groups: SceneGroup[] = analysis.chapters.map(ch => {
             const outfitOverrides: Record<string, string> = {};
-            // Map character name -> outfit for this location's chapter
+            // Map character name -> outfit for this chapter
             analysis.characters.forEach(c => {
-                if (c.outfitByChapter?.[loc.chapterId]) {
-                    outfitOverrides[c.name] = c.outfitByChapter[loc.chapterId];
+                // Ensure case-insensitive or exact name match? 
+                // We will use the exact name here and rely on App.tsx to resolve IDs
+                if (c.outfitByChapter?.[ch.id]) {
+                    outfitOverrides[c.name] = c.outfitByChapter[ch.id];
                 }
             });
 
             return {
-                id: loc.id, // Location ID as group ID
-                name: loc.name,
-                description: loc.description,
-                timeOfDay: (loc.suggestedTimeOfDay as any) || 'day',
-                weather: (loc.suggestedWeather as any) || 'clear',
-                lightingMood: loc.lightingMood,
+                id: ch.id,
+                name: ch.title,
+                description: ch.title,
+                timeOfDay: (ch.suggestedTimeOfDay as any) || 'day',
+                weather: (ch.suggestedWeather as any) || 'clear',
                 outfitOverrides
             };
         });
-
-        // Fallback: if no locations detected, use chapters as groups (backward compatibility)
-        if (groups.length === 0) {
-            analysis.chapters.forEach(ch => {
-                groups.push({
-                    id: ch.id,
-                    name: ch.title,
-                    description: ch.title,
-                    timeOfDay: (ch.suggestedTimeOfDay as any) || 'day',
-                    weather: (ch.suggestedWeather as any) || 'clear',
-                    outfitOverrides: {}
-                });
-            });
-        }
 
         const scenes: Scene[] = [];
         let sceneNumber = 1;
@@ -368,8 +283,7 @@ RESPOND WITH JSON ONLY:
             const mainScene: Scene = {
                 id: `scene_${sceneNumber}`,
                 sceneNumber: String(sceneNumber),
-                chapterId: sceneAnalysis.chapterId, // Chapter = story segment
-                groupId: sceneAnalysis.locationId || sceneAnalysis.chapterId, // Group = location (fallback to chapter)
+                groupId: sceneAnalysis.chapterId,
                 language1: '',
                 vietnamese: '',
                 promptName: `Scene ${sceneNumber}`,
@@ -406,8 +320,7 @@ RESPOND WITH JSON ONLY:
                     const bRollScene: Scene = {
                         id: `scene_${sceneNumber}`,
                         sceneNumber: String(sceneNumber),
-                        chapterId: sceneAnalysis.chapterId, // Same chapter as main scene
-                        groupId: sceneAnalysis.locationId || sceneAnalysis.chapterId, // Same location as main scene
+                        groupId: sceneAnalysis.chapterId,
                         language1: '',
                         vietnamese: '',
                         promptName: `B-Roll ${sceneNumber}`,

@@ -87,8 +87,7 @@ export interface SceneGroup {
 export interface Scene {
   id: string;
   sceneNumber: string;
-  chapterId?: string; // ID of the Chapter this scene belongs to (story segment)
-  groupId?: string; // ID of the SceneGroup (location/setting within chapter)
+  groupId?: string; // ID of the SceneGroup this scene belongs to
 
   // Legacy fields (backward compatibility)
   language1: string;
@@ -137,14 +136,6 @@ export interface Scene {
   isVOScene?: boolean; // True if this scene has voice-over attached
   voSecondsEstimate?: number; // Estimated VO duration in seconds
   referenceSceneId?: string; // For B-roll: ID of the VO scene this expands
-
-  // Sequence Expansion (Phase 4)
-  isExpandedSequence?: boolean;    // True if this scene has been expanded into sub-scenes
-  subSceneIds?: string[];          // IDs of child sub-scenes (for parent scene)
-  parentSceneId?: string;          // ID of parent scene (for sub-scenes only)
-  sequenceIndex?: number;          // Position in sequence (0, 1, 2... for sub-scenes)
-  emotionalBeat?: string;          // Director's emotional note for this sub-scene
-  cameraProgression?: string;      // DOP's camera note (e.g., "Wide establishing shot")
 
   // UI state
   isGenerating: boolean;
@@ -224,8 +215,6 @@ export type EditingMode = 'remove' | 'add' | 'style' | 'inpaint' | 'text-edit';
 
 export interface ProjectState {
   projectName: string;
-  apiKey?: string;      // User's Gemini API key (optional if using OAuth)
-  genyuToken?: string;  // Genyu OAuth token for direct API access
   detailedScript?: string;
   customScriptInstruction?: string; // Custom meta tokens for script generation
   stylePrompt: string;
