@@ -139,7 +139,7 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
 
     return (
         <div className="my-16">
-            <div className="flex justify-between items-center mb-6 bg-gray-950/40 p-3 rounded-2xl border border-gray-800/50 backdrop-blur-md">
+            <div className="flex justify-between items-center mb-6 bg-gray-950/40 p-3 rounded-2xl border border-gray-800/50 backdrop-blur-md relative z-[60]">
                 <div className="flex items-center space-x-6 pl-2">
                     <h2 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-brand-orange to-brand-red tracking-tighter">SCENES MAP</h2>
                     <div className="flex items-center gap-2">
