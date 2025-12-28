@@ -687,6 +687,10 @@ export function useImageGeneration(
 
                 await performImageGeneration(scene.id);
 
+                // SAFETY DELAY: Wait for React state to update and propagate to stateRef
+                // This ensures Sub-scenes can see the Parent Scene's newly generated image
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
                 // Get the newly generated image
                 const updatedState = stateRef.current;
                 const updatedScene = updatedState.scenes.find(s => s.id === scene.id);
