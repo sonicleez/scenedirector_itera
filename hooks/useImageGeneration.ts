@@ -398,12 +398,28 @@ export function useImageGeneration(
             if (sceneToUpdate.groupId) {
                 const groupObj = currentState.sceneGroups?.find(g => g.id === sceneToUpdate.groupId);
 
-                // BACKGROUND LOCK: Use first scene in group for environment only
+                // PARENT SCENE ANCHOR: For sub-scenes, use parent scene's image as PRIMARY anchor
+                if (sceneToUpdate.parentSceneId) {
+                    const parentScene = currentState.scenes.find(s => s.id === sceneToUpdate.parentSceneId);
+                    if (parentScene?.generatedImage) {
+                        const imgData = await safeGetImageData(parentScene.generatedImage);
+                        if (imgData) {
+                            const refLabel = `PARENT_SCENE_ANCHOR`;
+                            // CRITICAL: Use parent scene as the RIGID template for this sub-scene
+                            parts.push({ text: `[${refLabel}]: !!! MANDATORY SEQUENCE CONTINUITY !!! This sub-scene is part of a CONTINUOUS SEQUENCE. Use this image as the AUTHORITATIVE visual reference. Match: exact environment, lighting, character positions, camera setup, and all visual elements. The sub-scene is a DIFFERENT ANGLE of the SAME MOMENT - NOT a different scene. Characters must be the SAME PERSON in the SAME OUTFIT.` });
+                            parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
+                            continuityInstruction += `(PARENT SCENE LOCK - MANDATORY MATCH) `;
+                            console.log('[ImageGen] 🔗 Parent Scene Anchor injected for sub-scene', sceneToUpdate.sceneNumber);
+                        }
+                    }
+                }
+
+                // BACKGROUND LOCK: Use first scene in group for environment only (for main scenes)
                 const firstSceneInGroup = currentState.scenes
-                    .filter(s => s.groupId === sceneToUpdate.groupId && s.generatedImage)
+                    .filter(s => s.groupId === sceneToUpdate.groupId && s.generatedImage && !s.parentSceneId) // Exclude sub-scenes
                     .sort((a, b) => parseInt(a.scene_number) - parseInt(b.scene_number))[0];
 
-                if (firstSceneInGroup?.generatedImage) {
+                if (firstSceneInGroup?.generatedImage && !sceneToUpdate.parentSceneId) {
                     const imgData = await safeGetImageData(firstSceneInGroup.generatedImage);
                     if (imgData) {
                         const refLabel = `ENVIRONMENT_ONLY_LOCK`;
