@@ -251,6 +251,12 @@ export interface ProjectState {
   scenes: Scene[];
   sceneGroups?: SceneGroup[]; // Optional: List of SceneGroups (Scenes Group feature)
   assetGallery?: GalleryAsset[]; // Session gallery
+
+  // Research Notes (Session memory for Director/DOP guidance)
+  researchNotes?: {
+    director?: string;  // Director's storytelling/emotional notes
+    dop?: string;       // DOP's cinematography/lighting notes
+  };
 }
 
 export interface Product {

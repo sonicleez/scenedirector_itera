@@ -73,7 +73,8 @@ export function useScriptAnalysis(userApiKey: string | null) {
         readingSpeed: 'slow' | 'medium' | 'fast' = 'medium',
         modelSelector: string = 'gemini-2.0-flash|none', // format: model|thinkingLevel
         characterStyle?: CharacterStyleDefinition | null,
-        director?: DirectorPreset | null
+        director?: DirectorPreset | null,
+        researchNotes?: { director?: string; dop?: string } | null  // NEW: Research notes injection
     ): Promise<ScriptAnalysisResult | null> => {
         if (!userApiKey) {
             setAnalysisError('API key required');
@@ -112,6 +113,14 @@ export function useScriptAnalysis(userApiKey: string | null) {
 
             if (director) {
                 contextInstructions += `\nDIRECTOR VISION: ${director.name} (${director.description}).\n- Frame scenes according to this director's style.\n`;
+            }
+
+            // Inject Research Notes (User's custom research for this script)
+            if (researchNotes?.director) {
+                contextInstructions += `\n[USER DIRECTOR NOTES - MANDATORY CONTEXT]:\n${researchNotes.director}\n- Apply these storytelling guidelines to scene breakdown and character actions.\n`;
+            }
+            if (researchNotes?.dop) {
+                contextInstructions += `\n[USER DOP NOTES - MANDATORY CAMERA/LIGHTING CONTEXT]:\n${researchNotes.dop}\n- Apply these cinematography guidelines to visual prompts.\n`;
             }
 
             const prompt = `Analyze this voice-over script for a documentary video. Return JSON only.

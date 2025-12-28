@@ -969,7 +969,7 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                     <ManualScriptModal
                         isOpen={isManualScriptModalOpen}
                         onClose={() => setManualScriptModalOpen(false)}
-                        onImport={(scenes, groups, newChars, styleId, directorId, sceneCharacterMap) => {
+                        onImport={(scenes, groups, newChars, styleId, directorId, sceneCharacterMap, researchNotes) => {
                             // 1. Initialize mapping for name check (lowercase) -> Character ID
                             const charNameMap = new Map<string, string>();
 
@@ -998,44 +998,35 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                                 };
                             });
 
-                            // 3. Update scenes with correct character IDs
+                            // 3. Resolve scene character IDs
                             const updatedScenes = scenes.map((scene, index) => {
-                                // Get names associated with this scene's original index
-                                const names = sceneCharacterMap[index] || [];
-
-                                // Resolve names to IDs
-                                const charIds = names
+                                const charNamesFromMap = sceneCharacterMap[index] || [];
+                                const resolvedIds = charNamesFromMap
                                     .map(name => charNameMap.get(name.toLowerCase()))
-                                    .filter(id => id !== undefined) as string[];
-
-                                return {
-                                    ...scene,
-                                    characterIds: [...new Set(charIds)] // De-duplicate
-                                };
+                                    .filter(Boolean) as string[];
+                                return { ...scene, characterIds: resolvedIds };
                             });
 
-                            // 4. Update Groups with Outfit Overrides (Name -> ID)
-                            const updatedGroups = groups.map(g => {
-                                if (!g.outfitOverrides) return g;
+                            // 4. Update groups to have IDs
+                            const updatedGroups = groups.map(g => ({ ...g, id: generateId() }));
 
-                                const newOverrides: Record<string, string> = {};
-                                Object.entries(g.outfitOverrides).forEach(([name, outfit]) => {
-                                    const id = charNameMap.get(name.toLowerCase());
-                                    if (id) {
-                                        newOverrides[id] = outfit as string;
-                                    }
-                                });
-                                return { ...g, outfitOverrides: newOverrides };
+                            // Link scenes to groups
+                            updatedScenes.forEach((scene, idx) => {
+                                const matchingGroup = updatedGroups.find(g => g.name === groups[Math.floor(idx / (scenes.length / groups.length))]?.name);
+                                if (matchingGroup) {
+                                    (scene as any).groupId = matchingGroup.id;
+                                }
                             });
 
-                            // 5. Update State in one go
+                            // 5. Update State in one go (including researchNotes)
                             updateStateAndRecord(s => ({
                                 ...s,
                                 sceneGroups: [...(s.sceneGroups || []), ...updatedGroups],
                                 scenes: [...s.scenes, ...updatedScenes],
                                 globalCharacterStyleId: styleId || s.globalCharacterStyleId,
                                 activeDirectorId: directorId || s.activeDirectorId,
-                                characters: [...s.characters, ...createdCharacters]
+                                characters: [...s.characters, ...createdCharacters],
+                                researchNotes: researchNotes || s.researchNotes  // NEW: Save research notes
                             }));
                         }}
                         existingCharacters={state.characters}

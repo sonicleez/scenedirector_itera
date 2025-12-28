@@ -23,7 +23,8 @@ interface ManualScriptModalProps {
         newCharacters: { name: string; description: string }[],
         styleId: string | undefined,
         directorId: string | undefined,
-        sceneCharacterMap: Record<number, string[]>
+        sceneCharacterMap: Record<number, string[]>,
+        researchNotes?: { director?: string; dop?: string }  // NEW: Pass research notes for storage
     ) => void;
     existingCharacters: Character[];
     userApiKey: string | null;
@@ -81,9 +82,11 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
             readingSpeed,
             selectedModel,
             selectedStyle || null,
-            selectedDirector || null
+            selectedDirector || null,
+            // Pass Research Notes for AI context injection
+            (directorNotes || dopNotes) ? { director: directorNotes || undefined, dop: dopNotes || undefined } : null
         );
-    }, [scriptText, readingSpeed, selectedModel, analyzeScript, selectedStyle, selectedDirector]);
+    }, [scriptText, readingSpeed, selectedModel, analyzeScript, selectedStyle, selectedDirector, directorNotes, dopNotes]);
 
     // Handle import
     const handleImport = useCallback(() => {
@@ -96,9 +99,11 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
             existingCharacters
         );
 
-        onImport(scenes, groups, newCharacters, selectedStyleId, selectedDirectorId, sceneCharacterMap);
+        // Pass research notes for storage in ProjectState
+        const notes = (directorNotes || dopNotes) ? { director: directorNotes || undefined, dop: dopNotes || undefined } : undefined;
+        onImport(scenes, groups, newCharacters, selectedStyleId, selectedDirectorId, sceneCharacterMap, notes);
         onClose();
-    }, [analysisResult, selectedDirector, selectedStyle, existingCharacters, onImport, onClose, generateSceneMap, selectedStyleId, selectedDirectorId]);
+    }, [analysisResult, selectedDirector, selectedStyle, existingCharacters, onImport, onClose, generateSceneMap, selectedStyleId, selectedDirectorId, directorNotes, dopNotes]);
 
     if (!isOpen) return null;
 
