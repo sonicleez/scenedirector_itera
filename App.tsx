@@ -801,6 +801,32 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                                         setSelectedSceneForExpansion(scene);
                                         setSequenceExpansionOpen(true);
                                     }}
+                                    onExpandAllVO={() => {
+                                        // Find all eligible VO scenes for expansion
+                                        const eligibleScenes = state.scenes.filter(s =>
+                                            (s.voSecondsEstimate || 0) > 4 &&
+                                            !s.isExpandedSequence &&
+                                            !s.parentSceneId
+                                        );
+
+                                        if (eligibleScenes.length === 0) {
+                                            alert('Không có scenes nào cần expand (VO phải > 4 giây)');
+                                            return;
+                                        }
+
+                                        // Confirm before batch expansion
+                                        const confirmed = confirm(
+                                            `🎬 Expand ${eligibleScenes.length} VO Scenes?\n\n` +
+                                            `Bạn sẽ xử lý lần lượt từng scene qua modal.\n` +
+                                            `Các scenes sẽ được expand tuần tự.`
+                                        );
+
+                                        if (confirmed && eligibleScenes.length > 0) {
+                                            // Start with first eligible scene
+                                            setSelectedSceneForExpansion(eligibleScenes[0]);
+                                            setSequenceExpansionOpen(true);
+                                        }
+                                    }}
                                 />
                                 <div className="flex justify-end mt-8 gap-4">
                                     <button

@@ -49,6 +49,7 @@ interface ScenesMapSectionProps {
     onClearAllImages: () => void;
     onInsertAngles?: (sceneId: string, selections: { value: string; customPrompt?: string }[], sourceImage: string) => void;
     onExpandSequence?: (scene: Scene) => void; // Phase 4: Trigger sequence expansion modal
+    onExpandAllVO?: () => void; // Phase 4: Expand all eligible VO scenes at once
 }
 
 export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
@@ -93,7 +94,8 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
     onInsertAngles,
     analyzeRaccord,
     suggestNextShot,
-    onExpandSequence
+    onExpandSequence,
+    onExpandAllVO
 }) => {
     const [collapsedGroups, setCollapsedGroups] = React.useState<Record<string, boolean>>({});
     const [activeGroupMenu, setActiveGroupMenu] = React.useState<string | null>(null);
@@ -178,6 +180,24 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
                     </div>
 
                     <div className="h-6 w-px bg-gray-800 mx-1"></div>
+
+                    {/* Expand All VO - Phase 4 */}
+                    {onExpandAllVO && (() => {
+                        const eligibleCount = scenes.filter(s =>
+                            (s.voSecondsEstimate || 0) > 4 &&
+                            !s.isExpandedSequence &&
+                            !s.parentSceneId
+                        ).length;
+                        return eligibleCount > 0 ? (
+                            <button
+                                onClick={onExpandAllVO}
+                                className="h-9 px-3 font-bold text-[9px] text-amber-400 rounded-lg bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 transition-all uppercase tracking-wider flex items-center gap-1.5"
+                                title={`Expand ${eligibleCount} VO scenes into sub-sequences`}
+                            >
+                                🎬 Expand All VO ({eligibleCount})
+                            </button>
+                        ) : null;
+                    })()}
 
                     <button
                         onClick={addScene}
