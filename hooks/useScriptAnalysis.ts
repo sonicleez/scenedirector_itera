@@ -123,7 +123,7 @@ export function useScriptAnalysis(userApiKey: string | null) {
                 contextInstructions += `\n[USER DOP NOTES - MANDATORY CAMERA/LIGHTING CONTEXT]:\n${researchNotes.dop}\n- Apply these cinematography guidelines to visual prompts.\n`;
             }
 
-            const prompt = `Analyze this voice-over script for a documentary video. Return JSON only.
+            const prompt = `You are a Cinematic Script Analyst and Production Consultant. Analyze this voice-over script using the Agency-over-Presence methodology. Return JSON only.
 
 SCRIPT:
 """
@@ -132,23 +132,35 @@ ${scriptText}
 
 TASK:
 1. Identify CHAPTER HEADERS
-2. Extract CHARACTER NAMES - Only characters that need VISUAL CONSISTENCY:
-   - Main protagonists (appear multiple times)
-   - Key supporting characters (appear 2+ times OR related to protagonist)
-   - Historical figures central to the story
+2. Extract KEY CHARACTERS using Agency-over-Presence methodology (see below)
 3. Break into SCENES (3-5s each)
 4. Create VISUAL PROMPTS
 
-CHARACTER RULES (CRITICAL - FOR VISUAL CONSISTENCY):
-- ONLY list characters that appear in 2 OR MORE scenes
-- INCLUDE characters related to main protagonist even if fewer appearances (e.g., family members, partners)
-- SKIP minor one-time roles: croupier, random dealer, guard, waiter, etc. (no consistency needed)
-- MERGE ALIASES: If "The man" and "Étienne" refer to same person, use full name "Étienne Marchand"
-- Set isMain: true for protagonist(s), false for supporting characters
-- Set "mentions" to actual appearance count in script
+===== CHARACTER DETECTION: AGENCY-OVER-PRESENCE METHODOLOGY =====
+
+Evaluate characters using 3 indices (internal analysis only, for filtering):
+- **Agency Score (1-10):** Ability to make decisions that change the story direction
+- **Conflict Weight (1-10):** Direct participation in or creation of core conflicts
+- **Thematic Relevance:** Does the character represent the main theme?
+
+**Filtering Process (Internal):**
+1. Extract all named entities from script
+2. For each entity, ask: "If this character is removed, does the story collapse?"
+3. Apply Dramatica archetypes: Protagonist, Antagonist, Guardian, Sidekick, Ghost
+4. Identify "Ghosts" - dead/absent characters who influence living ones (e.g., deceased twin brother)
+5. SKIP functional characters (waiters, guards, crowd) unless they change a story beat
+
+**CHARACTER OUTPUT RULES:**
+- ONLY include characters with Agency Score ≥ 6 OR Conflict Weight ≥ 6 OR high Thematic Relevance
+- Include "Ghost" characters (deceased but influence story) marked in name: "David Marchand (Ghost)"
+- If character uses alias/mask identity, report TRUE IDENTITY with note: "Étienne Marchand (as David)"
+- MERGE aliases: "The man" = "Étienne" → use "Étienne Marchand" only
+- Set isMain: true for Protagonist and Antagonist archetypes
+- STRICT: Never list functional characters (croupier, random guard, waiter) unless they cause plot pivot
+${contextInstructions}
 
 SCENE RULES:
-- Each scene should have voice-over text (~3-4s)${contextInstructions}
+- Each scene should have voice-over text (~3-4s)
 - If a VO segment needs multiple visuals, mark needsExpansion: true
 - Expansion scenes are B-roll
 - CONSISTENCY CHECK: Same character must not be listed twice under different names.
@@ -166,13 +178,24 @@ RESPOND WITH JSON ONLY:
   "characters": [
     {
       "name": "Étienne Marchand",
-      "mentions": 5,
-      "suggestedDescription": "Faceless white mannequin head. WEARING: A tailored charcoal grey 1940s wool suit with wide lapels, crisp white shirt, silk tie, and a gold pocket watch chain. (Micro-texture: Fabric has visible weave texture).",
+      "archetype": "Protagonist",
+      "agencyScore": 9,
+      "mentions": 15,
+      "suggestedDescription": "Faceless white mannequin head. WEARING: A tailored charcoal grey suit with wide lapels, crisp white shirt, silk tie. (Micro-texture: Fabric has visible weave).",
       "outfitByChapter": {
-        "chapter_1": "charcoal grey 1940s wool suit",
-        "chapter_2": "casual linen shirt and trousers"
+        "chapter_1": "charcoal grey casino suit",
+        "chapter_2": "1970s casual wear"
       },
       "isMain": true
+    },
+    {
+      "name": "David Marchand (Ghost)",
+      "archetype": "Ghost",
+      "agencyScore": 0,
+      "mentions": 3,
+      "suggestedDescription": "Faceless white mannequin head. WEARING: 1990s hockey jersey with team logo. (Only appears in flashbacks/photos)",
+      "outfitByChapter": {},
+      "isMain": false
     }
   ],
   "scenes": [
