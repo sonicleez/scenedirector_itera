@@ -1040,6 +1040,7 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                         }}
                         existingCharacters={state.characters}
                         userApiKey={userApiKey}
+                        userId={session?.user?.id || null}
                     />
 
                     <input

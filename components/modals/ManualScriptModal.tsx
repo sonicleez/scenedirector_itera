@@ -6,12 +6,13 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { X, FileText, Upload, Users, Layers, Clock, Play, Film, Palette, AlertTriangle, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, FileText, Upload, Users, Layers, Clock, Play, Film, Palette, AlertTriangle, Check, ChevronDown, ChevronUp, Save, FolderOpen, Trash2 } from 'lucide-react';
 import { Character, SceneGroup, Scene, ProjectState, CharacterStyleDefinition } from '../../types';
 import { DirectorPreset, DIRECTOR_PRESETS, DirectorCategory } from '../../constants/directors';
 import { BUILT_IN_CHARACTER_STYLES, getStylesByCategory } from '../../constants/characterStyles';
 import { SCRIPT_MODELS } from '../../constants/presets';
 import { useScriptAnalysis, ScriptAnalysisResult } from '../../hooks/useScriptAnalysis';
+import { useResearchPresets, ResearchPreset } from '../../hooks/useResearchPresets';
 
 interface ManualScriptModalProps {
     isOpen: boolean;
@@ -26,6 +27,7 @@ interface ManualScriptModalProps {
     ) => void;
     existingCharacters: Character[];
     userApiKey: string | null;
+    userId: string | null;
 }
 
 export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
@@ -33,7 +35,8 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
     onClose,
     onImport,
     existingCharacters,
-    userApiKey
+    userApiKey,
+    userId
 }) => {
     // Script input
     const [scriptText, setScriptText] = useState('');
@@ -48,6 +51,17 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
     const [showStylePicker, setShowStylePicker] = useState(false);
     const [showDirectorPicker, setShowDirectorPicker] = useState(false);
     const [sceneCountAdjustment, setSceneCountAdjustment] = useState(0);
+
+    // Research Notes state
+    const [showResearchNotes, setShowResearchNotes] = useState(false);
+    const [directorNotes, setDirectorNotes] = useState('');
+    const [dopNotes, setDopNotes] = useState('');
+    const [showPresetPicker, setShowPresetPicker] = useState(false);
+    const [presetName, setPresetName] = useState('');
+    const [isSavingPreset, setIsSavingPreset] = useState(false);
+
+    // Research Presets hook (cloud sync)
+    const { presets, isLoading: presetsLoading, savePreset, deletePreset } = useResearchPresets(userId);
 
     // Analysis hook
     // Analysis hook
@@ -156,6 +170,154 @@ John enters the room, wearing a tailored Armani suit..."
                                             </span>
                                         </div>
                                     </div>
+                                </div>
+
+                                {/* Research Notes - Collapsible */}
+                                <div className="mt-4 border border-zinc-700/50 rounded-2xl overflow-hidden">
+                                    <button
+                                        onClick={() => setShowResearchNotes(!showResearchNotes)}
+                                        className="w-full flex items-center justify-between px-4 py-3 bg-zinc-800/50 hover:bg-zinc-800/70 transition-colors"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-lg">📚</span>
+                                            <span className="text-sm font-semibold text-white">Research Notes</span>
+                                            <span className="text-xs text-zinc-500">(Director + DOP)</span>
+                                        </div>
+                                        {showResearchNotes ? (
+                                            <ChevronUp className="w-4 h-4 text-zinc-400" />
+                                        ) : (
+                                            <ChevronDown className="w-4 h-4 text-zinc-400" />
+                                        )}
+                                    </button>
+
+                                    {showResearchNotes && (
+                                        <div className="p-4 space-y-4 bg-zinc-900/30">
+                                            {/* Director Notes */}
+                                            <div>
+                                                <label className="flex items-center gap-2 text-xs font-medium text-amber-400 mb-2">
+                                                    <Film className="w-3.5 h-3.5" />
+                                                    Director Notes (Câu chuyện, cảm xúc, nhịp điệu)
+                                                </label>
+                                                <textarea
+                                                    value={directorNotes}
+                                                    onChange={(e) => setDirectorNotes(e.target.value)}
+                                                    placeholder="VD: Thể loại Intellectual Crime - Không dùng action, tập trung căng thẳng ngầm. Nhân vật chính luôn bình tĩnh..."
+                                                    className="w-full h-24 bg-zinc-800/50 border border-amber-500/30 rounded-xl p-3 text-sm text-white placeholder-zinc-600 resize-none focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/10"
+                                                />
+                                            </div>
+
+                                            {/* DOP Notes */}
+                                            <div>
+                                                <label className="flex items-center gap-2 text-xs font-medium text-cyan-400 mb-2">
+                                                    <Layers className="w-3.5 h-3.5" />
+                                                    DOP Notes (Góc máy, ánh sáng, chuyển cảnh)
+                                                </label>
+                                                <textarea
+                                                    value={dopNotes}
+                                                    onChange={(e) => setDopNotes(e.target.value)}
+                                                    placeholder="VD: Dùng Low-key lighting, contrast cao. Góc quay thấp làm nhân vật tỏ ra quyền lực. Match-cut cho chuyển cảnh mượt..."
+                                                    className="w-full h-24 bg-zinc-800/50 border border-cyan-500/30 rounded-xl p-3 text-sm text-white placeholder-zinc-600 resize-none focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/10"
+                                                />
+                                            </div>
+
+                                            {/* Preset buttons - Connected to Supabase */}
+                                            <div className="pt-3 border-t border-zinc-700/30 space-y-3">
+                                                {/* Save Preset Row */}
+                                                {isSavingPreset ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={presetName}
+                                                            onChange={(e) => setPresetName(e.target.value)}
+                                                            placeholder="Tên preset..."
+                                                            className="flex-1 bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500"
+                                                            autoFocus
+                                                        />
+                                                        <button
+                                                            onClick={async () => {
+                                                                if (!presetName.trim()) return alert('Vui lòng nhập tên preset');
+                                                                const result = await savePreset(presetName, directorNotes, dopNotes);
+                                                                if (result) {
+                                                                    setIsSavingPreset(false);
+                                                                    setPresetName('');
+                                                                    alert('✅ Đã lưu preset!');
+                                                                }
+                                                            }}
+                                                            disabled={presetsLoading}
+                                                            className="px-3 py-1.5 text-xs font-medium text-white bg-violet-600 rounded-lg hover:bg-violet-500 transition-colors disabled:opacity-50"
+                                                        >
+                                                            {presetsLoading ? '...' : 'Lưu'}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { setIsSavingPreset(false); setPresetName(''); }}
+                                                            className="px-2 py-1.5 text-xs text-zinc-400 hover:text-white transition-colors"
+                                                        >
+                                                            Hủy
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => setIsSavingPreset(true)}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-400 bg-zinc-800 rounded-lg hover:bg-zinc-700 hover:text-white transition-colors"
+                                                        >
+                                                            <Save className="w-3.5 h-3.5" />
+                                                            Save Preset
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setShowPresetPicker(!showPresetPicker)}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-400 bg-zinc-800 rounded-lg hover:bg-zinc-700 hover:text-white transition-colors"
+                                                        >
+                                                            <FolderOpen className="w-3.5 h-3.5" />
+                                                            Load Preset ({presets.length})
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                {/* Preset Picker Dropdown */}
+                                                {showPresetPicker && presets.length > 0 && (
+                                                    <div className="bg-zinc-800/80 border border-zinc-600 rounded-xl p-2 max-h-40 overflow-y-auto">
+                                                        {presets.map((preset) => (
+                                                            <div
+                                                                key={preset.id}
+                                                                className="flex items-center justify-between p-2 hover:bg-zinc-700/50 rounded-lg cursor-pointer group"
+                                                            >
+                                                                <div
+                                                                    onClick={() => {
+                                                                        setDirectorNotes(preset.director_notes);
+                                                                        setDopNotes(preset.dop_notes);
+                                                                        setShowPresetPicker(false);
+                                                                    }}
+                                                                    className="flex-1"
+                                                                >
+                                                                    <div className="text-xs font-medium text-white">{preset.name}</div>
+                                                                    <div className="text-[10px] text-zinc-500 truncate max-w-[200px]">
+                                                                        {preset.director_notes?.substring(0, 50)}...
+                                                                    </div>
+                                                                </div>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        if (confirm('Xóa preset này?')) {
+                                                                            deletePreset(preset.id);
+                                                                        }
+                                                                    }}
+                                                                    className="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-300 transition-all"
+                                                                >
+                                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                {showPresetPicker && presets.length === 0 && (
+                                                    <div className="text-xs text-zinc-500 text-center py-2">
+                                                        Chưa có preset nào. Hãy tạo preset mới!
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Error */}
