@@ -129,6 +129,16 @@ export function useScriptAnalysis(userApiKey: string | null) {
                 contextInstructions += `\n[USER DOP NOTES - MANDATORY CAMERA/LIGHTING CONTEXT]:\n${researchNotes.dop}\n- Apply these cinematography guidelines to visual prompts.\n`;
             }
 
+            // Calculate expected scene count based on word count and reading speed
+            // Formula: Each scene should be 3-5s of VO. At 150 WPM, that's ~7.5-12.5 words per scene.
+            // We use ~10 words per scene as the target (4s at 150 WPM).
+            const wordsPerScene = readingSpeed === 'slow' ? 8 : readingSpeed === 'fast' ? 12 : 10;
+            const expectedSceneCount = Math.ceil(wordCount / wordsPerScene);
+            const minSceneCount = Math.max(20, Math.floor(expectedSceneCount * 0.8)); // At least 80% of expected
+            const maxSceneCount = Math.ceil(expectedSceneCount * 1.2); // At most 120% of expected
+
+            console.log('[ScriptAnalysis] Scene count calculation:', { wordCount, wordsPerScene, expectedSceneCount, minSceneCount, maxSceneCount });
+
             const prompt = `Analyze this voice-over script for a documentary video. Return JSON only.
 
 SCRIPT:
@@ -136,15 +146,24 @@ SCRIPT:
 ${scriptText}
 """
 
+CRITICAL SCENE COUNT CONSTRAINT:
+- Total words: ${wordCount}
+- Reading speed: ${wpm} WPM
+- Total duration: ~${Math.round(estimatedTotalDuration / 60)} minutes (${estimatedTotalDuration} seconds)
+- MANDATORY: Generate between ${minSceneCount} and ${maxSceneCount} scenes (approximately ${expectedSceneCount} scenes).
+- Each scene should have approximately ${wordsPerScene} words of voice-over text (3-4 seconds of reading).
+- DO NOT cluster long paragraphs into one scene. Split them into multiple scenes.
+
 TASK:
 1. Identify GLOBAL CONTEXT (World setting, Time period, Tone, Location summary).
 2. Identify CHAPTER HEADERS
 3. Extract CHARACTER NAMES (Merge aliases: e.g. "The Man" = "Étienne"). List UNIQUE physical characters only.
-4. Break into SCENES (3-5s each)
+4. Break into SCENES (~${wordsPerScene} words each, 3-4 seconds of VO)
 5. Create VISUAL PROMPTS
 
 RULES:
-- Each scene should have voice-over text (~3-4s)${contextInstructions}
+- Each scene should have voice-over text (~${wordsPerScene} words, 3-4s)${contextInstructions}
+- If a VO segment is longer than ${wordsPerScene * 2} words, SPLIT IT into multiple scenes.
 - If a VO segment needs multiple visuals, mark needsExpansion: true
 - Expansion scenes are B-roll
 - Identify Key Characters and supporting roles.
