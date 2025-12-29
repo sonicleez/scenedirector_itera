@@ -214,30 +214,41 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
                         </button>
                     )}
 
-                    <button
-                        onClick={() => {
-                            if (confirm('⚠️ Xóa TẤT CẢ ảnh?')) {
-                                onClearAllImages();
-                            }
-                        }}
-                        className="h-9 w-9 flex items-center justify-center text-red-500 hover:text-white hover:bg-red-600/20 bg-gray-900 border border-red-900/30 rounded-lg transition-all"
-                        title="Xóa tất cả ảnh"
-                    >
-                        <Trash2 size={14} />
-                    </button>
-
-                    <button
-                        onClick={() => {
-                            if (confirm('⚠️ XÓA SẠCH DỰ ÁN? Toàn bộ kịch bản và scenes sẽ bị xóa!')) {
-                                onCleanAll();
-                            }
-                        }}
-                        className="h-9 px-3 flex items-center gap-1.5 text-red-400 hover:text-white hover:bg-red-600/30 bg-gray-900 border border-red-900/30 rounded-lg transition-all text-[9px] font-bold uppercase"
-                        title="Xóa sạch toàn bộ dự án (Clean All)"
-                    >
-                        <Trash2 size={12} />
-                        <span>Clean</span>
-                    </button>
+                    {/* Combined Delete Dropdown */}
+                    <div className="relative group">
+                        <button
+                            className="h-9 px-3 flex items-center gap-1.5 text-red-500 hover:text-white hover:bg-red-600/20 bg-gray-900 border border-red-900/30 rounded-lg transition-all text-[9px] font-bold uppercase"
+                            title="Xóa dữ liệu"
+                        >
+                            <Trash2 size={14} />
+                            <span>Xóa</span>
+                            <ChevronDown size={10} />
+                        </button>
+                        <div className="absolute top-full right-0 mt-1 w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                            <button
+                                onClick={() => {
+                                    if (confirm('⚠️ Xóa TẤT CẢ ảnh? (Giữ lại kịch bản)')) {
+                                        onClearAllImages();
+                                    }
+                                }}
+                                className="w-full px-4 py-2.5 text-left text-xs text-gray-300 hover:text-white hover:bg-red-600/20 flex items-center gap-2 rounded-t-lg transition-colors"
+                            >
+                                <ImageIcon size={14} className="text-red-400" />
+                                Xóa tất cả ảnh
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (confirm('⚠️ XÓA SẠCH DỰ ÁN? Toàn bộ kịch bản và scenes sẽ bị xóa!')) {
+                                        onCleanAll();
+                                    }
+                                }}
+                                className="w-full px-4 py-2.5 text-left text-xs text-red-400 hover:text-white hover:bg-red-600/30 flex items-center gap-2 rounded-b-lg border-t border-gray-800 transition-colors"
+                            >
+                                <Trash2 size={14} />
+                                Clean All (Xóa sạch)
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
