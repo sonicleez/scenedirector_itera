@@ -23,6 +23,7 @@ export interface ChapterAnalysis {
     estimatedDuration: number; // seconds
     suggestedTimeOfDay?: string;
     suggestedWeather?: string;
+    locationAnchor?: string; // PHASE 2: Fixed location description for all scenes in chapter
 }
 
 export interface CharacterAnalysis {
@@ -141,81 +142,98 @@ export function useScriptAnalysis(userApiKey: string | null) {
             const minSceneCount = Math.max(20, Math.floor(expectedSceneCount * 0.8)); // At least 80% of expected
             const maxSceneCount = Math.ceil(expectedSceneCount * 1.2); // At most 120% of expected
 
-            console.log('[ScriptAnalysis] Scene count calculation:', { wordCount, wordsPerScene, expectedSceneCount, minSceneCount, maxSceneCount });
+            // PHASE 1: Pre-split script into sentences for consistent scene splitting
+            const sentenceSplitRegex = /(?<=[.!?])\s+(?=[A-ZÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ"])/g;
+            const sentences = scriptText.split(sentenceSplitRegex).filter(s => s.trim().length > 0);
+            const sentenceCount = sentences.length;
+
+            console.log('[ScriptAnalysis] Pre-split:', { wordCount, sentenceCount, expectedSceneCount, minSceneCount, maxSceneCount });
+
+            // Build sentences array for AI with indices
+            const sentencesForAI = sentences.map((text, idx) => `[${idx}] ${text.trim()}`).join('\n');
 
             const prompt = `Analyze this voice-over script for a documentary video. Return JSON only.
 
-SCRIPT:
+PRE-SPLIT SENTENCES (each sentence = 1 scene):
+"""
+${sentencesForAI}
+"""
+
+TOTAL: ${sentenceCount} sentences. You MUST generate ${sentenceCount} scenes (one per sentence).
+
+ORIGINAL SCRIPT (for context only):
 """
 ${scriptText}
 """
 
-CRITICAL SCENE COUNT CONSTRAINT - ABSOLUTE REQUIREMENT (FAILURE IF NOT MET):
-- Total words: ${wordCount}
-- Reading speed: ${wpm} WPM  
-- Total duration: ~${Math.round(estimatedTotalDuration / 60)} minutes (${estimatedTotalDuration} seconds)
-- !!! MANDATORY: Generate EXACTLY between ${minSceneCount} and ${maxSceneCount} scenes !!!
-- Target: ${expectedSceneCount} scenes total. This is NOT optional.
-- Each scene = approximately ${wordsPerScene} words (one sentence typically = one scene)
-- FAILURE CONDITION: If you return fewer than ${minSceneCount} scenes, the response will be REJECTED. Process the ENTIRE script.
-- TECHNIQUE: Split script sentence by sentence. Each sentence = 1 scene. Do NOT combine multiple sentences into one scene unless they describe a single camera shot.
-- DO NOT cluster paragraphs. DO NOT summarize. Break EVERY sentence into its own scene.
-
 TASK:
-1. Identify GLOBAL CONTEXT (World setting, Time period, Tone, Location summary).
-2. Identify CHAPTER HEADERS
-3. Extract CHARACTER NAMES (Merge aliases: e.g. "The Man" = "Étienne"). List UNIQUE physical characters only.
-4. Break into SCENES (~${wordsPerScene} words each, 3-4 seconds of VO)
-5. Create VISUAL PROMPTS
+1. Identify GLOBAL CONTEXT (World setting, Time period, Tone)
+2. Identify CHAPTERS with LOCATION ANCHORS (CRITICAL - see below)
+3. Extract CHARACTER NAMES (merge aliases). List UNIQUE physical characters only.
+4. For EACH sentence [index], create ONE scene with visual prompt
+5. Mark B-roll expansion only if sentence needs additional visuals
+
+CRITICAL - LOCATION ANCHOR RULE:
+- Each chapter MUST define a "locationAnchor" - a DETAILED, FIXED environment description
+- ALL scenes in that chapter MUST visually exist in this EXACT location
+- Format: "Interior/Exterior, [specific place], [decade], [architectural style], [lighting], [key props]"
+- Example: "Interior, 1940s Monte Carlo casino, Art Deco style, crystal chandeliers, mahogany tables, warm amber lighting, velvet curtains"
+- This locationAnchor will be INJECTED into every scene's visual prompt to ensure consistency
+
+VISUAL PROMPT FORMAT (MANDATORY):
+Each visualPrompt MUST follow: "[SHOT TYPE]. [Location from chapter's locationAnchor]. [Subject]. [Action]. [Lighting/Mood]."
+- SHOT TYPES: WIDE SHOT, MEDIUM SHOT, CLOSE-UP, EXTREME CLOSE-UP, OVER-THE-SHOULDER, POV
+- Include the chapter's locationAnchor elements in every scene
+- DO NOT invent new locations that differ from the chapter's locationAnchor
 
 RULES:
-- Each scene should have voice-over text (~${wordsPerScene} words, 3-4s)${contextInstructions}
-- If a VO segment is longer than ${wordsPerScene * 2} words, SPLIT IT into multiple scenes.
-- If a VO segment needs multiple visuals, mark needsExpansion: true
-- Expansion scenes are B-roll
-- Identify Key Characters and supporting roles.
-- CONSTISTENCY CHECK: Ensure the same character is not listed twice under different names. Only list characters that appear visually.
+- One sentence = one scene. DO NOT merge sentences.
+${contextInstructions}
+- If a sentence needs additional B-roll visuals, mark needsExpansion: true
+- B-roll expansion scenes MUST use the SAME locationAnchor as parent scene
+- CONSISTENCY CHECK: Same character must not appear under different names
 
 RESPOND WITH JSON ONLY:
 {
-  "globalContext": "Detailed summary of the world, era, and setting derived from script...",
+  "globalContext": "Detailed summary of world, era, setting...",
   "chapters": [
     {
       "id": "chapter_1",
       "title": "Chapter Title",
       "suggestedTimeOfDay": "night",
-      "suggestedWeather": "clear"
+      "suggestedWeather": "clear",
+      "locationAnchor": "Interior, 1940s Monte Carlo casino, Art Deco style, crystal chandeliers, mahogany gaming tables, warm amber lighting from wall sconces, velvet curtains, marble floors"
     }
   ],
   "characters": [
     {
       "name": "Étienne Marchand",
       "mentions": 5,
-      "suggestedDescription": "Faceless white mannequin, egg-shaped head. WEARING: A tailored charcoal grey 1940s wool suit with wide lapels, crisp white shirt, silk tie, and a gold pocket watch chain. (Micro-texture: Fabric has visible weave texture). SHOES: Polished black leather oxford shoes.",
+      "suggestedDescription": "Faceless white mannequin, egg-shaped head. WEARING: A tailored charcoal grey 1940s wool suit with wide lapels, crisp white shirt, silk tie, gold pocket watch chain. SHOES: Polished black leather oxfords.",
       "outfitByChapter": {
-        "chapter_1": "charcoal grey 1940s wool suit",
-        "chapter_2": "casual linen shirt and trousers"
+        "chapter_1": "charcoal grey 1940s wool suit"
       },
       "isMain": true
     }
   ],
   "scenes": [
     {
-      "voiceOverText": "Exact text from script...",
-      "visualPrompt": "WIDE SHOT. Casino interior, roulette table, elegant chandelier...",
+      "sentenceIndex": 0,
+      "voiceOverText": "Exact text from sentence [0]...",
+      "visualPrompt": "WIDE SHOT. 1940s Monte Carlo casino interior, Art Deco, crystal chandeliers. Étienne Marchand stands at the roulette table, chips in hand. Warm amber lighting, anticipation.",
       "chapterId": "chapter_1",
-      "characterNames": ["Character Name"],
+      "characterNames": ["Étienne Marchand"],
       "needsExpansion": false
     },
     {
-      "voiceOverText": "Longer text that needs multiple visuals...",
-      "visualPrompt": "First visual - establishing shot",
+      "sentenceIndex": 1,
+      "voiceOverText": "Next sentence...",
+      "visualPrompt": "CLOSE-UP. Same casino interior. Roulette wheel spinning, ball bouncing. Warm amber glow reflected on polished wood.",
       "chapterId": "chapter_1",
       "characterNames": [],
       "needsExpansion": true,
       "expansionScenes": [
-        { "visualPrompt": "B-roll: Close-up of chips", "isBRoll": true },
-        { "visualPrompt": "B-roll: Wheel spinning", "isBRoll": true }
+        { "visualPrompt": "EXTREME CLOSE-UP. Same casino. Étienne's hands placing chips. Warm lighting.", "isBRoll": true }
       ]
     }
   ]
@@ -288,6 +306,12 @@ RESPOND WITH JSON ONLY:
         existingCharacters: Character[] = []
     ): { scenes: Scene[]; groups: SceneGroup[]; newCharacters: { name: string; description: string }[]; sceneCharacterMap: Record<number, string[]> } => {
 
+        // Create chapter ID -> locationAnchor map for quick lookup
+        const chapterLocationMap: Record<string, string> = {};
+        analysis.chapters.forEach(ch => {
+            chapterLocationMap[ch.id] = ch.locationAnchor || '';
+        });
+
         const groups: SceneGroup[] = analysis.chapters.map(ch => {
             const outfitOverrides: Record<string, string> = {};
             // Map character name -> outfit for this chapter
@@ -302,7 +326,8 @@ RESPOND WITH JSON ONLY:
             return {
                 id: ch.id,
                 name: ch.title,
-                description: ch.title,
+                // PHASE 2: Store locationAnchor in description for concept image reference
+                description: ch.locationAnchor || ch.title,
                 timeOfDay: (ch.suggestedTimeOfDay as any) || 'day',
                 weather: (ch.suggestedWeather as any) || 'clear',
                 outfitOverrides
@@ -320,6 +345,9 @@ RESPOND WITH JSON ONLY:
         const sceneCharacterMap: Record<number, string[]> = {};
 
         for (const sceneAnalysis of analysis.scenes) {
+            // PHASE 2: Get locationAnchor for this scene's chapter
+            const locationAnchor = chapterLocationMap[sceneAnalysis.chapterId] || '';
+
             // Main scene with VO
             const mainScene: Scene = {
                 id: `scene_${sceneNumber}`,
@@ -334,8 +362,9 @@ RESPOND WITH JSON ONLY:
                 isVOScene: true,
                 voSecondsEstimate: sceneAnalysis.estimatedDuration,
 
-                // Visual prompt with style injection
+                // PHASE 2: Visual prompt with LOCATION ANCHOR injection
                 contextDescription: [
+                    locationAnchor ? `[LOCATION ANCHOR - MANDATORY]: ${locationAnchor}` : '',
                     stylePrompt ? `[CHARACTER STYLE]: ${stylePrompt}` : '',
                     directorDna ? `[DIRECTOR DNA]: ${directorDna}` : '',
                     directorCamera ? `[CAMERA STYLE]: ${directorCamera}` : '',
@@ -349,6 +378,7 @@ RESPOND WITH JSON ONLY:
                 isGenerating: false,
                 error: null
             };
+
 
             // Map characters to scene index (0-based)
             sceneCharacterMap[scenes.length] = sceneAnalysis.characterNames || [];
@@ -371,7 +401,10 @@ RESPOND WITH JSON ONLY:
                         isVOScene: false,
                         referenceSceneId: mainScene.id, // Reference the VO scene
 
+                        // PHASE 3: B-roll inherits locationAnchor from parent scene
                         contextDescription: [
+                            locationAnchor ? `[LOCATION ANCHOR - MANDATORY]: ${locationAnchor}` : '',
+                            `[B-ROLL FOR SCENE ${sceneNumber - 1}]: Match environment from parent scene`,
                             stylePrompt ? `[CHARACTER STYLE]: ${stylePrompt}` : '',
                             directorDna ? `[DIRECTOR DNA]: ${directorDna}` : '',
                             expansion.visualPrompt
