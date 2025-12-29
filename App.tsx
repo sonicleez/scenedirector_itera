@@ -1101,8 +1101,13 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                         existingCharacters={state.characters}
                         userApiKey={userApiKey}
                         userId={session?.user?.id || null}
-                        savedData={state.manualScriptData}
-                        onSaveData={(data) => updateStateAndRecord(s => ({ ...s, manualScriptData: data }))}
+                        initialState={state.manualScriptState}
+                        onStateChange={(manualScriptState) => {
+                            updateStateAndRecord(s => ({
+                                ...s,
+                                manualScriptState
+                            }));
+                        }}
                     />
 
                     <input

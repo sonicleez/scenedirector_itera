@@ -31,19 +31,29 @@ interface ManualScriptModalProps {
     existingCharacters: Character[];
     userApiKey: string | null;
     userId: string | null;
-    // NEW: Persist data across modal open/close
-    savedData?: {
-        scriptText?: string;
-        readingSpeed?: 'slow' | 'medium' | 'fast';
-        selectedStyleId?: string;
-        selectedDirectorId?: string;
-        selectedModel?: string;
-        directorNotes?: string;
-        dopNotes?: string;
-        storyContext?: string;
-        analysisResult?: any;
+    // [NEW] Persistence props
+    initialState?: {
+        scriptText: string;
+        readingSpeed: 'slow' | 'medium' | 'fast';
+        selectedStyleId: string;
+        selectedDirectorId: string;
+        selectedModel: string;
+        directorNotes: string;
+        dopNotes: string;
+        storyContext: string;
+        analysisResult: any | null;
     };
-    onSaveData?: (data: ManualScriptModalProps['savedData']) => void;
+    onStateChange?: (state: {
+        scriptText: string;
+        readingSpeed: 'slow' | 'medium' | 'fast';
+        selectedStyleId: string;
+        selectedDirectorId: string;
+        selectedModel: string;
+        directorNotes: string;
+        dopNotes: string;
+        storyContext: string;
+        analysisResult: any | null;
+    }) => void;
 }
 
 export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
@@ -53,17 +63,17 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
     existingCharacters,
     userApiKey,
     userId,
-    savedData,
-    onSaveData
+    initialState,
+    onStateChange
 }) => {
     // Script input
-    const [scriptText, setScriptText] = useState('');
-    const [readingSpeed, setReadingSpeed] = useState<'slow' | 'medium' | 'fast'>('medium');
+    const [scriptText, setScriptText] = useState(initialState?.scriptText || '');
+    const [readingSpeed, setReadingSpeed] = useState<'slow' | 'medium' | 'fast'>(initialState?.readingSpeed || 'medium');
 
     // Style & Director selection
-    const [selectedStyleId, setSelectedStyleId] = useState<string>('faceless-mannequin');
-    const [selectedDirectorId, setSelectedDirectorId] = useState<string>('werner_herzog');
-    const [selectedModel, setSelectedModel] = useState<string>(SCRIPT_MODELS[0].value); // Use first model as default
+    const [selectedStyleId, setSelectedStyleId] = useState<string>(initialState?.selectedStyleId || 'faceless-mannequin');
+    const [selectedDirectorId, setSelectedDirectorId] = useState<string>(initialState?.selectedDirectorId || 'werner_herzog');
+    const [selectedModel, setSelectedModel] = useState<string>(initialState?.selectedModel || SCRIPT_MODELS[0].value);
 
     // UI state
     const [showStylePicker, setShowStylePicker] = useState(false);
@@ -72,9 +82,9 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
 
     // Research Notes state
     const [showResearchNotes, setShowResearchNotes] = useState(false);
-    const [directorNotes, setDirectorNotes] = useState('');
-    const [dopNotes, setDopNotes] = useState('');
-    const [storyContext, setStoryContext] = useState(''); // [New State]
+    const [directorNotes, setDirectorNotes] = useState(initialState?.directorNotes || '');
+    const [dopNotes, setDopNotes] = useState(initialState?.dopNotes || '');
+    const [storyContext, setStoryContext] = useState(initialState?.storyContext || '');
     const [showPresetPicker, setShowPresetPicker] = useState(false);
     const [presetName, setPresetName] = useState('');
     const [isSavingPreset, setIsSavingPreset] = useState(false);
@@ -90,25 +100,17 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
     // Analysis hook
     const { isAnalyzing, analysisResult, analysisError, analyzeScript, generateSceneMap, setAnalysisResult } = useScriptAnalysis(userApiKey);
 
-    // [NEW] Load saved data when modal opens
+    // [NEW] Restore analysis result from initial state
     React.useEffect(() => {
-        if (isOpen && savedData) {
-            if (savedData.scriptText) setScriptText(savedData.scriptText);
-            if (savedData.readingSpeed) setReadingSpeed(savedData.readingSpeed);
-            if (savedData.selectedStyleId) setSelectedStyleId(savedData.selectedStyleId);
-            if (savedData.selectedDirectorId) setSelectedDirectorId(savedData.selectedDirectorId);
-            if (savedData.selectedModel) setSelectedModel(savedData.selectedModel);
-            if (savedData.directorNotes) setDirectorNotes(savedData.directorNotes);
-            if (savedData.dopNotes) setDopNotes(savedData.dopNotes);
-            if (savedData.storyContext) setStoryContext(savedData.storyContext);
-            if (savedData.analysisResult) setAnalysisResult(savedData.analysisResult);
+        if (initialState?.analysisResult && !analysisResult) {
+            setAnalysisResult(initialState.analysisResult);
         }
-    }, [isOpen, savedData, setAnalysisResult]);
+    }, [initialState?.analysisResult, analysisResult, setAnalysisResult]);
 
-    // [NEW] Save data when state changes (debounced by key field changes)
+    // [NEW] Notify parent of state changes for persistence
     React.useEffect(() => {
-        if (onSaveData && scriptText) {
-            onSaveData({
+        if (onStateChange && isOpen) {
+            onStateChange({
                 scriptText,
                 readingSpeed,
                 selectedStyleId,
@@ -120,7 +122,7 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
                 analysisResult
             });
         }
-    }, [scriptText, readingSpeed, selectedStyleId, selectedDirectorId, selectedModel, directorNotes, dopNotes, storyContext, analysisResult, onSaveData]);
+    }, [scriptText, readingSpeed, selectedStyleId, selectedDirectorId, selectedModel, directorNotes, dopNotes, storyContext, analysisResult, onStateChange, isOpen]);
 
     // [New] Auto-fill Global Context from analysis
     React.useEffect(() => {
