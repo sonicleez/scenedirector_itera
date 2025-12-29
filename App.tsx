@@ -21,6 +21,7 @@ import { UserProfileModal } from './components/modals/UserProfileModal';
 import { ManualScriptModal } from './components/modals/ManualScriptModal';
 import { ActivationScreen } from './components/ActivationScreen';
 import { AssetLibrary } from './components/sections/AssetLibrary';
+import { KeyboardShortcuts } from './components/common/KeyboardShortcuts';
 import { APP_NAME, PRIMARY_GRADIENT, PRIMARY_GRADIENT_HOVER } from './constants/presets';
 import { handleDownloadAll } from './utils/zipUtils';
 import { Scene } from './types';
@@ -803,63 +804,65 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                                     onOpenManualScript={() => setManualScriptModalOpen(true)}
                                 />
 
-                                <ScenesMapSection
-                                    scenes={state.scenes}
-                                    viewMode={viewMode}
-                                    setViewMode={setViewMode}
-                                    characters={state.characters}
-                                    products={state.products}
-                                    sceneGroups={state.sceneGroups || []}
-                                    updateScene={updateScene}
-                                    removeScene={removeScene}
-                                    insertScene={insertScene}
-                                    moveScene={moveScene}
-                                    performImageGeneration={performImageGeneration}
-                                    handleOpenImageViewer={handleOpenImageViewer}
-                                    handleGenerateAllImages={handleGenerateAllImages}
-                                    isBatchGenerating={isBatchGenerating}
-                                    isStopping={isStopping}
-                                    stopBatchGeneration={stopBatchGeneration}
-                                    handleGenerateAllVeoPrompts={handleGenerateAllVeoPrompts}
-                                    generateVeoPrompt={generateVeoPrompt}
-                                    suggestVeoPresets={suggestVeoPresets}
-                                    applyPresetToAll={applyPresetToAll}
-                                    analyzeRaccord={analyzeRaccord}
-                                    suggestNextShot={suggestNextShot}
-                                    isVeoGenerating={isVeoGenerating}
-                                    isVeoStopping={isVeoStopping}
-                                    stopVeoGeneration={stopVeoGeneration}
-                                    handleGenerateAllVideos={handleGenerateAllVideos}
-                                    isVideoGenerating={isVideoGenerating}
-                                    addScene={addScene}
-                                    detailedScript={state.detailedScript || ''}
-                                    onDetailedScriptChange={(val) => updateStateAndRecord(s => ({ ...s, detailedScript: val }))}
-                                    onCleanAll={() => updateStateAndRecord(s => ({ ...s, scenes: [] }))}
-                                    createGroup={addSceneGroup}
-                                    updateGroup={updateSceneGroup}
-                                    deleteGroup={deleteSceneGroup}
-                                    assignSceneToGroup={assignSceneToGroup}
-                                    draggedSceneIndex={draggedSceneIndex}
-                                    setDraggedSceneIndex={setDraggedSceneIndex}
-                                    dragOverIndex={dragOverIndex}
-                                    setDragOverIndex={setDragOverIndex}
-                                    onClearAllImages={() => {
-                                        if (confirm('⚠️ Delete ALL images? This action cannot be undone.')) {
-                                            updateStateAndRecord(s => ({
-                                                ...s,
-                                                scenes: s.scenes.map(sc => ({
-                                                    ...sc,
-                                                    generatedImage: null,
-                                                    endFrameImage: null,
-                                                    mediaId: null
-                                                }))
-                                            }));
-                                        }
-                                    }}
-                                    onInsertAngles={handleInsertAngles}
-                                    onExpandScene={handleExpandScene}
-                                    isExpandingSequence={isSequenceExpanding}
-                                />
+                                <div id="scenes-map-section">
+                                    <ScenesMapSection
+                                        scenes={state.scenes}
+                                        viewMode={viewMode}
+                                        setViewMode={setViewMode}
+                                        characters={state.characters}
+                                        products={state.products}
+                                        sceneGroups={state.sceneGroups || []}
+                                        updateScene={updateScene}
+                                        removeScene={removeScene}
+                                        insertScene={insertScene}
+                                        moveScene={moveScene}
+                                        performImageGeneration={performImageGeneration}
+                                        handleOpenImageViewer={handleOpenImageViewer}
+                                        handleGenerateAllImages={handleGenerateAllImages}
+                                        isBatchGenerating={isBatchGenerating}
+                                        isStopping={isStopping}
+                                        stopBatchGeneration={stopBatchGeneration}
+                                        handleGenerateAllVeoPrompts={handleGenerateAllVeoPrompts}
+                                        generateVeoPrompt={generateVeoPrompt}
+                                        suggestVeoPresets={suggestVeoPresets}
+                                        applyPresetToAll={applyPresetToAll}
+                                        analyzeRaccord={analyzeRaccord}
+                                        suggestNextShot={suggestNextShot}
+                                        isVeoGenerating={isVeoGenerating}
+                                        isVeoStopping={isVeoStopping}
+                                        stopVeoGeneration={stopVeoGeneration}
+                                        handleGenerateAllVideos={handleGenerateAllVideos}
+                                        isVideoGenerating={isVideoGenerating}
+                                        addScene={addScene}
+                                        detailedScript={state.detailedScript || ''}
+                                        onDetailedScriptChange={(val) => updateStateAndRecord(s => ({ ...s, detailedScript: val }))}
+                                        onCleanAll={() => updateStateAndRecord(s => ({ ...s, scenes: [] }))}
+                                        createGroup={addSceneGroup}
+                                        updateGroup={updateSceneGroup}
+                                        deleteGroup={deleteSceneGroup}
+                                        assignSceneToGroup={assignSceneToGroup}
+                                        draggedSceneIndex={draggedSceneIndex}
+                                        setDraggedSceneIndex={setDraggedSceneIndex}
+                                        dragOverIndex={dragOverIndex}
+                                        setDragOverIndex={setDragOverIndex}
+                                        onClearAllImages={() => {
+                                            if (confirm('⚠️ Delete ALL images? This action cannot be undone.')) {
+                                                updateStateAndRecord(s => ({
+                                                    ...s,
+                                                    scenes: s.scenes.map(sc => ({
+                                                        ...sc,
+                                                        generatedImage: null,
+                                                        endFrameImage: null,
+                                                        mediaId: null
+                                                    }))
+                                                }));
+                                            }
+                                        }}
+                                        onInsertAngles={handleInsertAngles}
+                                        onExpandScene={handleExpandScene}
+                                        isExpandingSequence={isSequenceExpanding}
+                                    />
+                                </div>
                                 <div className="flex justify-end mt-8 gap-4">
                                     <button
                                         onClick={() => setScreenplayModalOpen(true)}
@@ -1106,6 +1109,15 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                         accept=".xlsx, .xls"
                         className="hidden"
                         onChange={handleScriptUpload}
+                    />
+
+                    {/* Keyboard Shortcuts Component */}
+                    <KeyboardShortcuts
+                        onTableView={() => setViewMode('table')}
+                        onBoardView={() => setViewMode('storyboard')}
+                        onScrollToSceneMap={() => document.getElementById('scenes-map-section')?.scrollIntoView({ behavior: 'smooth' })}
+                        onSaveProject={handleSave}
+                        onOpenProject={handleOpen}
                     />
                 </>
             )}
