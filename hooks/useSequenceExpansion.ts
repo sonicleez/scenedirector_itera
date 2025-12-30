@@ -78,7 +78,7 @@ RESPONSE FORMAT:
 }
 `;
 
-            const model = "gemini-2.0-flash-exp";
+            const model = "gemini-3.0-flash";
 
             const result = await ai.models.generateContent({
                 model: model,

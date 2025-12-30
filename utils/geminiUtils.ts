@@ -80,7 +80,7 @@ export const callGeminiText = async (
     apiKey: string,
     prompt: string,
     systemPrompt: string = '',
-    model: string = 'gemini-2.0-flash-exp',
+    model: string = 'gemini-3.0-flash',
     jsonMode: boolean = false
 ): Promise<string> => {
     const trimmedKey = apiKey?.trim();
@@ -109,7 +109,7 @@ export const callGeminiVisionReasoning = async (
     apiKey: string,
     prompt: string,
     images: { data: string; mimeType: string }[],
-    model: string = 'gemini-2.0-flash-exp' // Default to "Banana Pro" (Latest Flash/Pro)
+    model: string = 'gemini-3.0-flash', // Gemini 3 Standard
 ): Promise<string> => {
     const trimmedKey = apiKey?.trim();
     if (!trimmedKey) throw new Error('Missing API Key');

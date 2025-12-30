@@ -205,7 +205,7 @@ OUTPUT ONLY THE PROMPT. DO NOT OUTPUT MARKDOWN OR EXPLANATION.`;
                             userApiKey,
                             analysisPrompt,
                             [baseImgData],
-                            'gemini-2.0-flash-exp' // "Banana Pro Reasoning"
+                            'gemini-3.0-flash' // "Gemini 3 Reasoning"
                         );
 
                         if (reasonedPrompt) {
