@@ -117,3 +117,38 @@ export async function processProjectAssets(state: any, userId: string): Promise<
     console.log(`[Storage] Finished processing. Uploaded ${uploadCount} assets.`);
     return newState;
 }
+
+export async function syncUserStatsToCloud(userId: string, stats: any) {
+    if (!userId) return;
+    try {
+        const { error } = await supabase
+            .from('profiles')
+            .update({ usage_stats: stats })
+            .eq('id', userId);
+
+        if (error) {
+            console.warn('[Storage] Failed to sync usage stats (profiles table might miss usage_stats column?):', error);
+        } else {
+            console.log('[Storage] Usage stats synced to cloud.');
+        }
+    } catch (e) {
+        console.error("[Storage] Exception syncing stats", e);
+    }
+}
+
+export async function fetchUserStatsFromCloud(userId: string) {
+    if (!userId) return null;
+    try {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('usage_stats')
+            .eq('id', userId)
+            .single();
+
+        if (error) throw error;
+        return data?.usage_stats;
+    } catch (e) {
+        console.warn("[Storage] Failed to fetch usage stats:", e);
+        return null; // Return null to fallback to local project stats
+    }
+}

@@ -44,6 +44,7 @@ import { generateId } from './utils/helpers';
 
 
 // Import Hooks
+import { fetchUserStatsFromCloud } from './utils/storageUtils';
 import { useStateManager } from './hooks/useStateManager';
 import { useImageGeneration } from './hooks/useImageGeneration';
 import { useScriptGeneration } from './hooks/useScriptGeneration';
@@ -566,6 +567,22 @@ const App: React.FC = () => {
             // setUserApiKey(''); 
         }
     }, [session]);
+
+    // Sync Usage Stats from Cloud
+    useEffect(() => {
+        const syncStats = async () => {
+            if (session?.user?.id) {
+                const cloudStats = await fetchUserStatsFromCloud(session.user.id);
+                if (cloudStats) {
+                    updateStateAndRecord(s => ({
+                        ...s,
+                        usageStats: cloudStats
+                    }));
+                }
+            }
+        };
+        syncStats();
+    }, [session?.user?.id, updateStateAndRecord]);
 
 
     useEffect(() => {

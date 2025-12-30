@@ -8,7 +8,7 @@ import {
 } from '../constants/presets';
 import { DIRECTOR_PRESETS, DirectorCategory } from '../constants/directors';
 import { getPresetById } from '../utils/scriptPresets';
-import { uploadImageToSupabase } from '../utils/storageUtils';
+import { uploadImageToSupabase, syncUserStatsToCloud } from '../utils/storageUtils';
 import { safeGetImageData } from '../utils/geminiUtils';
 
 // Helper function to clean VEO-specific tokens from prompt for image generation
@@ -682,6 +682,17 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                 const currentStats = s.usageStats || { '1K': 0, '2K': 0, '4K': 0, total: 0 };
                 const newCount = (currentStats[resolutionKey] || 0) + 1;
 
+                const updatedStats = {
+                    ...currentStats,
+                    [resolutionKey]: newCount,
+                    total: (currentStats.total || 0) + 1
+                };
+
+                // Sync to Supabase if userId is present
+                if (userId) {
+                    syncUserStatsToCloud(userId, updatedStats);
+                }
+
                 return {
                     ...s,
                     scenes: s.scenes.map(sc => sc.id === sceneId ? {
@@ -691,11 +702,7 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                         isGenerating: false,
                         error: null
                     } : sc),
-                    usageStats: {
-                        ...currentStats,
-                        [resolutionKey]: newCount,
-                        total: (currentStats.total || 0) + 1
-                    }
+                    usageStats: updatedStats
                 };
             });
 
@@ -759,13 +766,20 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                 updateStateAndRecord(s => {
                     const resolutionKey = (currentState.resolution || '1K') as '1K' | '2K' | '4K';
                     const currentStats = s.usageStats || { '1K': 0, '2K': 0, '4K': 0, total: 0 };
+
+                    const updatedStats = {
+                        ...currentStats,
+                        [resolutionKey]: (currentStats[resolutionKey] || 0) + 1,
+                        total: (currentStats.total || 0) + 1
+                    };
+
+                    if (userId) {
+                        syncUserStatsToCloud(userId, updatedStats);
+                    }
+
                     return {
                         ...s,
-                        usageStats: {
-                            ...currentStats,
-                            [resolutionKey]: (currentStats[resolutionKey] || 0) + 1,
-                            total: (currentStats.total || 0) + 1
-                        }
+                        usageStats: updatedStats
                     };
                 });
 
