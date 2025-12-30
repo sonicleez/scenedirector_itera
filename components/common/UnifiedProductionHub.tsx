@@ -25,15 +25,19 @@ interface UnifiedProductionHubProps {
     };
     logs: ProductionLogEntry[];
     onSendCommand: (command: string) => void;
+    onAddUserLog?: (message: string) => void;
     onToggleAgentVisibility?: () => void;
 }
+
 
 const UnifiedProductionHub: React.FC<UnifiedProductionHubProps> = ({
     agents,
     logs,
     onSendCommand,
+    onAddUserLog,
     onToggleAgentVisibility
 }) => {
+
     const [isExpanded, setIsExpanded] = useState(false);
     const [command, setCommand] = useState('');
     const [position, setPosition] = useState(() => {
@@ -57,6 +61,31 @@ const UnifiedProductionHub: React.FC<UnifiedProductionHubProps> = ({
     useEffect(() => {
         localStorage.setItem('unified_hub_position', JSON.stringify(position));
     }, [position]);
+
+    // Auto-reposition when expanding if too close to edge
+    useEffect(() => {
+        if (isExpanded) {
+            const hubWidth = 360;
+            const hubHeight = 500;
+            const padding = 20;
+            let newX = position.x;
+            let newY = position.y;
+
+            // Check right edge
+            if (position.x + hubWidth > window.innerWidth - padding) {
+                newX = window.innerWidth - hubWidth - padding;
+            }
+            // Check bottom edge
+            if (position.y + hubHeight > window.innerHeight - padding) {
+                newY = window.innerHeight - hubHeight - padding;
+            }
+
+            if (newX !== position.x || newY !== position.y) {
+                setPosition({ x: Math.max(padding, newX), y: Math.max(padding, newY) });
+            }
+        }
+    }, [isExpanded]);
+
 
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
         if ((e.target as HTMLElement).closest('.no-drag')) return;
@@ -123,10 +152,15 @@ const UnifiedProductionHub: React.FC<UnifiedProductionHubProps> = ({
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (command.trim()) {
+            // Log user message first
+            if (onAddUserLog) {
+                onAddUserLog(command);
+            }
             onSendCommand(command);
             setCommand('');
         }
     };
+
 
     const getStatusColor = (status: AgentStatus) => {
         switch (status) {

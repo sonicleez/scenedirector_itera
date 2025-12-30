@@ -1292,6 +1292,7 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                 }}
                 logs={state.productionLogs || []}
                 onSendCommand={handleSendCommand}
+                onAddUserLog={(msg) => addProductionLog('user', msg, 'info')}
             />
         </div>
     );
