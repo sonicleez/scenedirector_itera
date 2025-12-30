@@ -215,11 +215,14 @@ INSTRUCTIONS:
 1. Analyze IMAGE 1 (Context, Composition, Lighting, Subject).
 ${refImgData ? "2. Analyze IMAGE 2 (Reference Object/Detail)." : ""}
 3. Interpret the User Command.
+   - Does it ask to CHANGE the CAMERA ANGLE (e.g. "Zoom in", "Pan left", "High angle")?
+   - Does it ask to CHANGE the POSE?
+   - Or is it just adding/changing an object/detail?
+
 4. Generate a precise Image Generation Prompt that:
-   - STARTS with: "EDIT REQUEST: Keep the exact camera angle, subject pose, and lighting from the source image."
-   - Describes the scene EXACTLY as it is in IMAGE 1 (Locking the base).
-   - Then describes the ADDITION/CHANGE of the object/element (potentially from IMAGE 2).
-   - "Do not reimagine the shot. Do not change the subject's pose. Do not change the camera angle."
+   - IF CAMERA/POSE CHANGE REQUESTED: Describe the NEW angle/pose clearly.
+   - IF NO CAMERA/POSE CHANGE: Start with "EDIT REQUEST: Keep the exact camera angle, subject pose, and lighting from the source image."
+   - Describes the scene fully, integrating the changes NATURALISTICALLY.
 
 OUTPUT ONLY THE PROMPT. DO NOT OUTPUT MARKDOWN OR EXPLANATION.`;
 
@@ -310,15 +313,21 @@ This applies to EVERY human figure in the scene without ANY exception. If a hand
             // STYLE & NEGATIVE CONSTRAINTS (Authoritative)
             const isRealistic = effectiveStylePrompt === 'cinematic-realistic' || effectiveStylePrompt === 'vintage-film';
             const negativeStyle = isRealistic ? '!!! STRICT NEGATIVE: NO ANIME, NO CARTOON, NO 2D, NO DRAWING, NO ILLUSTRATION, NO PAINTING, NO CGI-LOOK !!!' : '';
-            const authoritativeStyle = (baseImage || refinementPrompt)
-                ? "STYLE LOCK: MATCH SOURCE IMAGE."
-                : `AUTHORITATIVE STYLE: ${styleInstruction.toUpperCase()}. ${negativeStyle}`;
+
+            // If Reasoning happened, it already built the style into the prompt. Don't override it brutally.
+            const authoritativeStyle = reasonedContext
+                ? "STYLE ADAPTATION: Follow the style described in the main prompt."
+                : (baseImage || refinementPrompt)
+                    ? "STYLE LOCK: MATCH SOURCE IMAGE."
+                    : `AUTHORITATIVE STYLE: ${styleInstruction.toUpperCase()}. ${negativeStyle}`;
 
             // Shot Scale (Angle) is the ABSOLUTE PRIORITY for composition
-            // CONSTRAINT: In EDIT MODE (baseImage), we MUST ignore propery-based scale and trust the image.
-            const scaleCmd = (baseImage || refinementPrompt)
-                ? "COMPOSITION LOCK: MATCH SOURCE IMAGE EXACTLY."
-                : (anglePrompt ? `SHOT SCALE: ${anglePrompt.toUpperCase()}.` : 'CINEMATIC WIDE SHOT.');
+            // If Reasoning happened, trust IT to set the angle (it knows if user asked for a change).
+            // If no reasoning but we have baseImage, maintain lock.
+            // Otherwise, use UI selection.
+            const scaleCmd = reasonedContext
+                ? "" // Let Reasoning control the angle
+                : (baseImage ? "COMPOSITION LOCK: MATCH SOURCE IMAGE EXACTLY." : (anglePrompt ? `SHOT SCALE: ${anglePrompt.toUpperCase()}.` : 'CINEMATIC WIDE SHOT.'));
 
             // NO DRIFT GUARD: Prevent "Chibi" or distortion if style is realistic
             const noDriftGuard = isRealistic ? "!!! MANDATORY CONSISTENCY: Maintain realistic human/object dimensions. NO DISTORTIONS. !!!" : "";
