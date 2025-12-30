@@ -58,6 +58,8 @@ import { useSequenceExpansion } from './hooks/useSequenceExpansion'; // [New Hoo
 import { useDirectorChat } from './hooks/useDirectorChat';
 import { useProductionLogger } from './hooks/useProductionLogger';
 import { useGallery } from './hooks/useGallery';
+import { useEditorLogic } from './hooks/useEditorLogic';
+import { useStyleAnalysis } from './hooks/useStyleAnalysis';
 
 import { supabase } from './utils/supabaseClient';
 
@@ -102,13 +104,13 @@ const App: React.FC = () => {
     const [isImageViewerOpen, setImageViewerOpen] = useState(false);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [viewMode, setViewMode] = useState<'table' | 'storyboard'>('table');
-    const [isEditorOpen, setIsEditorOpen] = useState(false);
-    const [editingImage, setEditingImage] = useState<any>(null);
+
+    // Editor & Analysis State extracted to hooks
+
     const [charGenState, setCharGenState] = useState<{ isOpen: boolean; charId: string | null; initialPrompt?: string }>({ isOpen: false, charId: null, initialPrompt: '' });
     const [isScreenplayModalOpen, setScreenplayModalOpen] = useState(false);
     const [draggedSceneIndex, setDraggedSceneIndex] = useState<number | null>(null);
     const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-    const [isAnalyzingStyle, setIsAnalyzingStyle] = useState(false);
 
 
     // Cloud Sync State
@@ -248,6 +250,27 @@ const App: React.FC = () => {
         loadProjectFromCloud,
         deleteProjectFromCloud
     } = useProjectSync(session?.user?.id || null);
+
+    // --- Extracted Hooks ---
+    const {
+        isEditorOpen,
+        editingImage,
+        openEditor,
+        closeEditor,
+        handleEditorSave
+    } = useEditorLogic({
+        state,
+        updateCharacter,
+        updateScene,
+        updateProduct,
+        addToGallery
+    });
+
+    const {
+        analyzeStyleFromImage,
+        isAnalyzingStyle
+    } = useStyleAnalysis(userApiKey, updateStateAndRecord, setProfileModalOpen);
+
 
     const {
         expandScene,
@@ -570,150 +593,10 @@ const App: React.FC = () => {
         updateStateAndRecord(s => ({ ...s, scriptLanguage: e.target.value as any }));
     };
 
-    const analyzeStyleFromImage = useCallback(async (imageData: string) => {
-        const rawApiKey = userApiKey || (process.env as any).API_KEY;
-        const apiKey = typeof rawApiKey === 'string' ? rawApiKey.trim() : rawApiKey;
-
-        if (!apiKey) {
-            setProfileModalOpen(true);
-            return;
-        }
-
-        setIsAnalyzingStyle(true);
-
-        try {
-            const { GoogleGenAI } = await import('@google/genai');
-            const ai = new GoogleGenAI({ apiKey });
-
-            let data: string;
-            let mimeType: string = 'image/jpeg';
-
-            if (imageData.startsWith('data:')) {
-                const [header, base64Data] = imageData.split(',');
-                data = base64Data;
-                mimeType = header.match(/:(.*?);/)?.[1] || 'image/jpeg';
-            } else {
-                throw new Error('Invalid image format');
-            }
-
-            const analyzePrompt = `Analyze the artistic style of this image in detail. Provide a comprehensive prompt that could be used to generate images in the exact same style.
-
-Return the style description in English, including:
-1. Art style (photorealistic, anime, watercolor, oil painting, digital art, etc.)
-2. Color palette and mood
-3. Lighting characteristics
-4. Texture and detail level
-5. Composition tendencies
-6. Any distinctive visual elements
-
-Format as a single paragraph of style instructions, suitable for use as an AI image generation prompt. Be specific and detailed.`;
-
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.0-flash',
-                contents: { parts: [{ inlineData: { data, mimeType } }, { text: analyzePrompt }] }
-            });
-
-            // Extract text from Gemini response - handle multiple formats
-            let styleDescription = '';
-            try {
-                // Try different ways to get the text
-                const candidate = response.candidates?.[0];
-                const textPart = candidate?.content?.parts?.find((p: any) => p.text);
-                styleDescription = textPart?.text || '';
-            } catch (e) {
-                console.error('Failed to extract text from response:', e);
-            }
-
-            if (styleDescription) {
-                updateStateAndRecord(s => ({
-                    ...s,
-                    stylePrompt: 'custom',
-                    customStyleInstruction: styleDescription.trim(),
-                    customStyleImage: imageData // Save the image itself for visual reference
-                }));
-            } else {
-                throw new Error('Không nhận được kết quả từ AI');
-            }
-
-
-        } catch (error: any) {
-            console.error('Style analysis failed:', error);
-            alert(`❌ Không thể phân tích style: ${error.message}`);
-        } finally {
-            setIsAnalyzingStyle(false);
-        }
-    }, [userApiKey, updateStateAndRecord]);
-
-    const closeEditor = useCallback(() => {
-        setIsEditorOpen(false);
-    }, []);
-
-    const openEditor = (id: string, image: string, type: any, propIndex?: number, viewKey?: string) => {
-        let editorHistory = undefined;
-        if (type === 'scene') {
-            editorHistory = state.scenes.find(s => s.id === id)?.editHistory;
-        } else if (['master', 'face', 'body', 'side', 'back'].includes(type) || viewKey) {
-            const char = state.characters.find(c => c.id === id);
-            if (char) {
-                const key = viewKey || type;
-                if (key === 'master') editorHistory = char.masterEditHistory;
-                else if (key === 'face') editorHistory = char.faceEditHistory;
-                else if (key === 'body') editorHistory = char.bodyEditHistory;
-                else if (key === 'side') editorHistory = char.sideEditHistory;
-                else if (key === 'back') editorHistory = char.backEditHistory;
-            }
-        } else if (type === 'product') {
-            const prod = state.products.find(p => p.id === id);
-            if (prod) {
-                if (viewKey && viewKey !== 'master') editorHistory = prod.viewEditHistories?.[viewKey];
-                else editorHistory = prod.editHistory;
-            }
-        }
-
-        setEditingImage({ id, image, type, propIndex, viewKey, history: editorHistory });
-        setIsEditorOpen(true);
-    };
-
-    const handleEditorSave = useCallback((newImage: string, history: any[], savedViewKey?: string) => {
-        if (!editingImage) return;
-        const { id, type, propIndex, viewKey: initialViewKey } = editingImage;
-        const viewKey = savedViewKey || initialViewKey;
-
-        console.log('[Editor] Saving:', { type, id, viewKey, historyLength: history?.length });
-
-        // Add edited image to gallery automatically
-        addToGallery(newImage, 'edit', 'Edited version', id);
-
-        if (type === 'prop' && typeof propIndex === 'number') {
-            const char = state.characters.find(c => c.id === id);
-            if (char) {
-                const newProps = [...char.props];
-                newProps[propIndex] = { ...newProps[propIndex], image: newImage };
-                updateCharacter(id, { props: newProps });
-            }
-        }
-        else if (type === 'master' || viewKey === 'master') updateCharacter(id, { masterImage: newImage, masterEditHistory: history });
-        else if (type === 'face' || viewKey === 'face') updateCharacter(id, { faceImage: newImage, faceEditHistory: history });
-        else if (type === 'body' || viewKey === 'body') updateCharacter(id, { bodyImage: newImage, bodyEditHistory: history });
-        else if (type === 'side' || viewKey === 'side') updateCharacter(id, { sideImage: newImage, sideEditHistory: history });
-        else if (type === 'back' || viewKey === 'back') updateCharacter(id, { backImage: newImage, backEditHistory: history });
-        else if (type === 'scene') updateScene(id, { generatedImage: newImage, editHistory: history });
-        else if (type === 'product') {
-            const product = state.products.find(p => p.id === id);
-            if (product) {
-                if (viewKey && viewKey !== 'master') {
-                    const newViews = { ...product.views, [viewKey]: newImage };
-                    const newViewHistories = { ...(product.viewEditHistories || {}), [viewKey]: history };
-                    updateProduct(id, { views: newViews, viewEditHistories: newViewHistories });
-                } else {
-                    updateProduct(id, { masterImage: newImage, editHistory: history });
-                }
-            }
-        }
-
-        setEditingImage(null);
-        setIsEditorOpen(false);
-    }, [editingImage, state.characters, state.products, updateCharacter, updateScene, updateProduct, addToGallery, setIsEditorOpen]);
+    // deleted: analyzeStyleFromImage
+    // deleted: closeEditor
+    // deleted: openEditor
+    // deleted: handleEditorSave
 
     const handleDeleteAsset = (id: string) => {
         updateStateAndRecord(s => ({
