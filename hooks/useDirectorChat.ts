@@ -336,24 +336,22 @@ OUTPUT FORMAT: JSON only
                     try {
                         const directiveText = entities.directive
                             ? `4. ADDITIONAL DIRECTIVE (PRIORITY #1): "${entities.directive}".
-                               - IF ADDING AN OBJECT (e.g. backpack): describe it vividly (color, material, shape) based on SOURCE prompt, and place it exactly where requested in TARGET. 
-                               - MAKE THE OBJECT VISIBLE and CLEAR in the new scene description.
-                               - Example: "On the table sits the weathered leather backpack from the previous scene."`
+                               - IF ADDING AN OBJECT: Describe it vividly (color, material) based on SOURCE, and place it in TARGET.
+                               - IMPORTANT: DO NOT CHANGE THE TARGET ROOM/ENVIRONMENT unless explicitly asked. Merge the object into the EXISTING room.`
                             : '';
 
                         const syncPrompt = `As the Director, you need to fix Scene ${tgtScene.sceneNumber} to match Scene ${srcScene.sceneNumber}'s visual DNA.
                         
-                        SOURCE SCENE (Reference):
+                        SOURCE SCENE (Ref Object/Style):
                         "${srcScene.contextDescription}"
                         
-                        TARGET SCENE (To be Modified):
+                        TARGET SCENE (Environment to KEEP):
                         "${tgtScene.contextDescription}"
                         
                         RULES:
-                        1. INTEGRATE THE DIRECTIVE FIRST. If asked to add an object, ensure it is mentioned PROMINENTLY in the new description.
-                        2. Keep the TARGET scene's setting/context (e.g. if it's a room with a mirror, keep the room and mirror).
-                        3. Inject the SOURCE scene's visual style (lighting, mood).
-                        4. DO NOT remove the main character unless asked.
+                        1. PRESERVE TARGET ENVIRONMENT: Keep the original room details (e.g. "round window", "attic", "mirror"). DO NOT replace them with Source environment details.
+                        2. EXECUTE DIRECTIVE: Insert the requested object/action modification seamlessly into the Target environment.
+                        3. SYNC STYLE ONLY: Use Source's lighting/mood/texture, but apply it to Target's geometry.
                         ${directiveText}
                         
                         OUTPUT: The corrected complete prompt for TARGET scene.`;
