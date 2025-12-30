@@ -1,6 +1,23 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { GripVertical, Copy, Download, Layers, Play, Plus, RefreshCw, Trash, User, Box, Sparkles, Wand2, Image as ImageIcon } from 'lucide-react';
 import { Scene, Character, Product } from '../../types';
+
+const LiveTimer: React.FC<{ startTime: number }> = ({ startTime }) => {
+    const [elapsed, setElapsed] = useState(0);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setElapsed(Date.now() - startTime);
+        }, 100);
+        return () => clearInterval(interval);
+    }, [startTime]);
+
+    return (
+        <span className="font-bold text-yellow-400">
+            {(elapsed / 1000).toFixed(1)}s
+        </span>
+    );
+};
 import { ExpandableTextarea } from '../common/ExpandableTextarea';
 import { CAMERA_ANGLES, LENS_OPTIONS, TRANSITION_TYPES, VEO_MODES, VEO_PRESETS } from '../../constants/presets';
 
@@ -403,9 +420,16 @@ export const SceneRow: React.FC<SceneRowProps> = ({
 
 
                         {scene.isGenerating && !scene.videoStatus ? (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/80 z-10">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mb-2"></div>
-                                <span className="text-[10px] text-green-400 animate-pulse">Rendering Image...</span>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/80 z-10 backdrop-blur-[1px]">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mb-2 shadow-[0_0_15px_rgba(34,197,94,0.4)]"></div>
+                                <div className="text-[10px] text-green-400 font-mono flex flex-col items-center gap-1">
+                                    <span className="tracking-widest animate-pulse">RENDERING</span>
+                                    {scene.generationStartTime && (
+                                        <div className="bg-black/40 px-2 py-0.5 rounded border border-green-500/30 flex items-center gap-1">
+                                            ⏱ <LiveTimer startTime={scene.generationStartTime} />
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         ) : scene.generatedImage ? (
                             <>

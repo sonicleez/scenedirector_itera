@@ -139,6 +139,7 @@ export interface Scene {
 
   // Stats
   generationDuration?: number; // Time taken to generate this image (ms)
+  generationStartTime?: number; // Timestamp when generation started (for realtime timer)
 
   // UI state
   isGenerating: boolean;

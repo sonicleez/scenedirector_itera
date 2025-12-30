@@ -109,7 +109,7 @@ export function useImageGeneration(
 
         updateStateAndRecord(s => ({
             ...s,
-            scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, isGenerating: true, error: null } : sc)
+            scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, isGenerating: true, error: null, generationStartTime: Date.now(), generationDuration: undefined } : sc)
         }));
 
         const startTime = Date.now();
@@ -757,6 +757,7 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                     scenes: s.scenes.map(sc => sc.id === sceneId ? {
                         ...sc,
                         generationDuration: duration,
+                        generationStartTime: undefined,
                         ...(fromManual ? { endFrameImage: imageUrl } : { generatedImage: imageUrl }),
                         mediaId: fromManual ? sc.mediaId : (mediaId || sc.mediaId),
                         isGenerating: false,
@@ -775,7 +776,7 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
             console.error("Image generation failed:", error);
             updateStateAndRecord(s => ({
                 ...s,
-                scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, isGenerating: false, error: (error as Error).message } : sc)
+                scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, isGenerating: false, generationStartTime: undefined, error: (error as Error).message } : sc)
             }));
         }
     }, [stateRef, userApiKey, updateStateAndRecord, setApiKeyModalOpen, userId]);
