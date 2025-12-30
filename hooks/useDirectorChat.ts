@@ -1,7 +1,15 @@
-import { useCallback } from 'react';
-import { ProjectState, AgentStatus, Scene } from '../types';
+import { useCallback, useRef } from 'react';
+import { ProjectState, AgentStatus, Scene, ProductionLogEntry } from '../types';
 import { callGeminiText } from '../utils/geminiUtils';
 
+// Memory for pending actions
+interface PendingAction {
+    type: string;
+    sceneId?: string;
+    sceneNumber?: number;
+    directive?: string;
+    timestamp: number;
+}
 
 interface UseDirectorChatProps {
     state: ProjectState;
@@ -33,9 +41,22 @@ export const useDirectorChat = ({
     onClearAllImages
 }: UseDirectorChatProps) => {
 
+    // Memory: Store pending action for continuation
+    const pendingActionRef = useRef<PendingAction | null>(null);
 
+    // Build conversation history from production logs
+    const getConversationHistory = useCallback(() => {
+        const logs = state.productionLogs || [];
+        const recentLogs = logs.slice(-10); // Last 10 messages
+        return recentLogs.map(log =>
+            `[${log.sender.toUpperCase()}]: ${log.message}`
+        ).join('\n');
+    }, [state.productionLogs]);
 
     const recognizeIntent = useCallback(async (command: string) => {
+        const conversationHistory = getConversationHistory();
+        const pendingAction = pendingActionRef.current;
+
         const systemPrompt = `You are the AI Director of a film production system. 
 Your task is to recognize the user's intent from their natural language command.
 
@@ -46,6 +67,16 @@ CURRENT PROJECT STATE:
 - Research Notes: ${state.researchNotes?.story || 'None'}
 - Project Context: ${state.detailedScript?.substring(0, 500) || 'None'}...
 
+RECENT CONVERSATION (IMPORTANT - Use this for context):
+${conversationHistory || '(No prior conversation)'}
+
+${pendingAction ? `PENDING ACTION (Waiting for confirmation):
+- Type: ${pendingAction.type}
+- Scene: ${pendingAction.sceneNumber || 'N/A'}
+- Directive: ${pendingAction.directive || 'N/A'}
+` : ''}
+
+
 
 INTENTS:
 
@@ -53,7 +84,7 @@ INTENTS:
 2. REGENERATE_RANGE: Redo specific scenes (e.g. "Cảnh 54-60", "Cảnh 15").
 3. UPDATE_STYLE: Change style for future (ungenerated) scenes.
 4. PROD_Q_AND_A: Answer questions about the script, characters, or production status.
-5. SYNERGY_DIRECTIVE: Give a technical instruction to the DOP.
+5. SYNERGY_DIRECTIVE: Give a technical instruction to the DOP (e.g. "cảnh 3 cho medium shot").
 6. MATERIAL_INHERITANCE: Sample visual details or materials from one scene and apply to another.
 7. SYNC_AND_REGENERATE: Fix a scene to match another scene's DNA AND regenerate it.
 8. ADD_SCENE: Add new scene(s) (e.g. "Thêm 3 cảnh mới", "Thêm cảnh").
@@ -61,7 +92,12 @@ INTENTS:
 10. INSERT_SCENE: Insert scene at specific position (e.g. "Chèn cảnh sau cảnh 5").
 11. CLEAR_ALL_IMAGES: Clear all generated images (e.g. "Xóa hết ảnh", "Clear ảnh").
 12. UPDATE_SCENE_PROMPT: Edit a specific scene's prompt (e.g. "Sửa prompt cảnh 3 thành...").
+13. EXECUTE_PENDING: User confirms to execute the previously discussed action (e.g. "thực thi", "bắt đầu", "làm đi", "OK", "xác nhận"). IMPORTANT: Check PENDING ACTION and RECENT CONVERSATION to determine what to execute.
 
+IMPORTANT RULES:
+- If user says "thực thi", "bắt đầu", "làm đi" - check RECENT CONVERSATION to understand WHAT to execute.
+- For SYNERGY_DIRECTIVE about camera angles/shots: store the scene number and directive for later execution.
+- For EXECUTE_PENDING: Look at conversation history to determine which specific scene to regenerate.
 
 OUTPUT FORMAT: JSON only
 {
@@ -75,7 +111,7 @@ OUTPUT FORMAT: JSON only
     "targetSceneId": "string", // for MATERIAL_INHERITANCE
     "count": number, // for ADD_SCENE
     "insertAfter": number, // for INSERT_SCENE (scene number)
-    "sceneNumber": number, // for UPDATE_SCENE_PROMPT
+    "sceneNumber": number, // for UPDATE_SCENE_PROMPT, SYNERGY_DIRECTIVE, EXECUTE_PENDING
     "newPrompt": "string" // for UPDATE_SCENE_PROMPT
   },
   "response": "Brief professional acknowledgment in Vietnamese"
@@ -192,21 +228,49 @@ OUTPUT FORMAT: JSON only
 
 
             case 'SYNERGY_DIRECTIVE':
+                const directiveSceneNum = entities.sceneNumber;
+                const directiveScene = directiveSceneNum
+                    ? state.scenes.find(s => parseInt(s.sceneNumber) === directiveSceneNum)
+                    : null;
+
                 addProductionLog('director', response || 'Đã gửi chỉ thị cho DOP.', 'directive');
                 setAgentState('dop', 'thinking', `Đang điều chỉnh theo yêu cầu: ${entities.directive}`, 'DOP Optimization');
 
                 try {
-                    const dopResponsePrompt = `You are the DOP (Director of Photography). The Director gave you this directive: "${entities.directive}".
+                    const dopResponsePrompt = `You are the DOP (Director of Photography). The Director gave you this directive: "${entities.directive}"${directiveScene ? ` for Scene ${directiveScene.sceneNumber}` : ''}.
                     How do you technically implement this? 
-                    OUTPUT: Brief technical response in Vietnamese (max 20 words).`;
+                    OUTPUT: Brief technical response in Vietnamese (max 30 words).`;
 
                     const dopResponse = await callGeminiText(userApiKey || '', dopResponsePrompt, 'You are an Expert DOP.', 'gemini-3-flash-preview', false);
 
-
-
                     addProductionLog('dop', dopResponse, 'info');
                     setAgentState('dop', 'success', dopResponse);
-                    setAgentState('director', 'success', 'DOP đã xác nhận và lên phương án kỹ thuật.');
+
+                    // Store the pending action for later execution
+                    if (directiveScene) {
+                        pendingActionRef.current = {
+                            type: 'SYNERGY_DIRECTIVE',
+                            sceneId: directiveScene.id,
+                            sceneNumber: directiveSceneNum,
+                            directive: entities.directive,
+                            timestamp: Date.now()
+                        };
+
+                        // Update the scene's camera angle in the prompt
+                        const updatedPrompt = `${directiveScene.contextDescription}\n[Camera: ${entities.directive}]`;
+                        updateStateAndRecord(s => ({
+                            ...s,
+                            scenes: s.scenes.map(scene =>
+                                scene.id === directiveScene.id
+                                    ? { ...scene, contextDescription: updatedPrompt, cameraAngleOverride: entities.directive }
+                                    : scene
+                            )
+                        }));
+
+                        setAgentState('director', 'success', `DOP đã xác nhận. Cảnh ${directiveSceneNum} đã được cập nhật. Nói "thực thi" để tạo lại ảnh.`);
+                    } else {
+                        setAgentState('director', 'success', 'DOP đã xác nhận và lên phương án kỹ thuật.');
+                    }
                 } catch (e) {
                     setAgentState('dop', 'success', 'DOP: Đã rõ, tôi sẽ điều chỉnh kỹ thuật ngay.');
                 }
@@ -405,6 +469,59 @@ OUTPUT FORMAT: JSON only
                     }
                 } else {
                     setAgentState('director', 'error', 'Vui lòng chỉ định số cảnh và nội dung prompt mới.');
+                }
+                break;
+
+            case 'EXECUTE_PENDING':
+                const pending = pendingActionRef.current;
+                const execSceneNum = entities.sceneNumber || pending?.sceneNumber;
+
+                if (pending && pending.sceneId) {
+                    // Execute the pending action
+                    addProductionLog('director', response || `Đang thực thi yêu cầu đã xác nhận cho cảnh ${pending.sceneNumber}...`, 'info');
+                    setAgentState('director', 'speaking', `Đang tạo lại cảnh ${pending.sceneNumber}...`, 'Executing');
+
+                    // Clear the image first
+                    updateStateAndRecord(s => ({
+                        ...s,
+                        scenes: s.scenes.map(scene =>
+                            scene.id === pending.sceneId
+                                ? { ...scene, generatedImage: null }
+                                : scene
+                        )
+                    }));
+
+                    // Regenerate the specific scene
+                    await handleGenerateAllImages([pending.sceneId]);
+
+                    // Clear the pending action after execution
+                    pendingActionRef.current = null;
+
+                    setAgentState('director', 'success', `Đã hoàn thành tạo lại cảnh ${pending.sceneNumber}!`);
+                } else if (execSceneNum) {
+                    // User specified a scene directly
+                    const sceneToExec = state.scenes.find(s => parseInt(s.sceneNumber) === execSceneNum);
+
+                    if (sceneToExec) {
+                        addProductionLog('director', response || `Đang tạo lại cảnh ${execSceneNum}...`, 'info');
+                        setAgentState('director', 'speaking', `Tạo lại cảnh ${execSceneNum}...`, 'Regenerating');
+
+                        updateStateAndRecord(s => ({
+                            ...s,
+                            scenes: s.scenes.map(scene =>
+                                scene.id === sceneToExec.id
+                                    ? { ...scene, generatedImage: null }
+                                    : scene
+                            )
+                        }));
+
+                        await handleGenerateAllImages([sceneToExec.id]);
+                        setAgentState('director', 'success', `Đã hoàn thành cảnh ${execSceneNum}!`);
+                    } else {
+                        setAgentState('director', 'error', `Không tìm thấy cảnh ${execSceneNum}.`);
+                    }
+                } else {
+                    setAgentState('director', 'error', 'Không có yêu cầu đang chờ xử lý. Vui lòng chỉ định cảnh cần thực thi.');
                 }
                 break;
 
