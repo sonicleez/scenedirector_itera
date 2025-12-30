@@ -56,6 +56,8 @@ import { useAuth } from './hooks/useAuth';
 import { useProjectSync } from './hooks/useProjectSync';
 import { useSequenceExpansion } from './hooks/useSequenceExpansion'; // [New Hook]
 import { useDirectorChat } from './hooks/useDirectorChat';
+import { useProductionLogger } from './hooks/useProductionLogger';
+import { useGallery } from './hooks/useGallery';
 
 import { supabase } from './utils/supabaseClient';
 
@@ -79,99 +81,13 @@ const App: React.FC = () => {
     // --- Helper Logic ---
 
 
-    const addToGallery = useCallback((image: string, type: string, prompt?: string, sourceId?: string) => {
-        updateStateAndRecord(s => ({
-            ...s,
-            assetGallery: [
-                {
-                    id: `asset_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-                    image,
-                    type,
-                    prompt,
-                    sourceId,
-                    timestamp: Date.now()
-                },
-                ...(s.assetGallery || [])
-            ].slice(0, 500) // Keep last 500 assets
-        }));
-    }, [updateStateAndRecord]);
-
+    // --- Helper Logic ---
+    const { addToGallery } = useGallery(updateStateAndRecord);
     const [zoom, setZoom] = useState(1);
     const [isProfileModalOpen, setProfileModalOpen] = useState(false);
 
     // --- AI Agent Helper ---
-    const lastLogRef = useRef<{ agent: string; message: string; time: number }>({ agent: '', message: '', time: 0 });
-
-    const addProductionLog = useCallback((sender: 'director' | 'dop' | 'user' | 'system', message: string, type: 'info' | 'success' | 'warning' | 'error' | 'directive' = 'info', stage?: string) => {
-        // Update lastLogRef for director/dop to prevent duplicate from setAgentState
-        if (sender === 'director' || sender === 'dop') {
-            lastLogRef.current = { agent: sender, message, time: Date.now() };
-        }
-
-        updateStateAndRecord(s => ({
-            ...s,
-            productionLogs: [
-                ...(s.productionLogs || []),
-                {
-                    id: Math.random().toString(36).substring(7),
-                    timestamp: Date.now(),
-                    sender,
-                    message,
-                    type,
-                    stage
-                }
-            ].slice(-100)
-        }));
-    }, [updateStateAndRecord]);
-
-    const setAgentState = useCallback((agent: 'director' | 'dop', status: AgentStatus, message?: string, stage?: string) => {
-        updateStateAndRecord(s => ({
-            ...s,
-            agents: {
-                ...s.agents!,
-                [agent]: { ...s.agents![agent], status, message, currentStage: stage, lastAction: Date.now() }
-            }
-        }));
-
-        // Auto-log for non-idle status with message, but prevent rapid duplicates
-        if (message && status !== 'idle') {
-            const now = Date.now();
-            const isDuplicate = lastLogRef.current.agent === agent &&
-                lastLogRef.current.message === message &&
-                (now - lastLogRef.current.time) < 2000;
-
-            if (!isDuplicate) {
-                lastLogRef.current = { agent, message, time: now };
-                addProductionLog(agent, message, status === 'error' ? 'error' : status === 'success' ? 'success' : 'info', stage);
-            }
-        }
-    }, [updateStateAndRecord, addProductionLog]);
-
-    // Auto-dismissal for success messages
-
-    useEffect(() => {
-        const agents = state.agents;
-        if (!agents) return;
-
-        const timeout = setTimeout(() => {
-            let changed = false;
-            const newAgents = { ...agents };
-
-            ['director', 'dop'].forEach((key) => {
-                const agent = (agents as any)[key];
-                if (agent.status === 'success' && Date.now() - agent.lastAction > 5000) {
-                    newAgents[key as 'director' | 'dop'] = { ...agent, status: 'idle', message: '' };
-                    changed = true;
-                }
-            });
-
-            if (changed) {
-                updateStateAndRecord(s => ({ ...s, agents: newAgents }));
-            }
-        }, 1000);
-
-        return () => clearTimeout(timeout);
-    }, [state.agents, updateStateAndRecord]);
+    const { addProductionLog, setAgentState } = useProductionLogger(state, updateStateAndRecord);
 
     const [isScriptModalOpen, setScriptModalOpen] = useState(false);
 

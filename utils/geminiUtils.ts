@@ -1,5 +1,35 @@
 import { GoogleGenAI } from "@google/genai";
 
+// Helper function to safely extract base64 data from both URL and base64 images
+export const safeGetImageData = async (imageStr: string): Promise<{ data: string; mimeType: string } | null> => {
+    if (!imageStr) return null;
+
+    try {
+        if (imageStr.startsWith('data:')) {
+            const mimeType = imageStr.substring(5, imageStr.indexOf(';'));
+            const data = imageStr.split('base64,')[1];
+            return { data, mimeType };
+        } else if (imageStr.startsWith('http')) {
+            const response = await fetch(imageStr);
+            if (!response.ok) throw new Error('Failed to fetch image');
+            const blob = await response.blob();
+            const mimeType = blob.type || 'image/jpeg';
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve({
+                    data: (reader.result as string).split(',')[1],
+                    mimeType
+                });
+                reader.readAsDataURL(blob);
+            });
+        }
+        return null;
+    } catch (error) {
+        console.error('Error in safeGetImageData:', error);
+        return null;
+    }
+};
+
 export const callGeminiAPI = async (
     apiKey: string,
     prompt: string,
@@ -17,36 +47,10 @@ export const callGeminiAPI = async (
 
         if (imageContext) {
             console.log('[Gemini Gen] 📎 Using Reference Image...');
-            let base64Data: string;
-            let mimeType: string = 'image/jpeg';
-
-            if (imageContext.startsWith('data:')) {
-                // It's already a Base64 Data URI
-                base64Data = imageContext.split('base64,')[1];
-                mimeType = imageContext.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
-            } else if (imageContext.startsWith('http')) {
-                // It's a URL, we need to fetch and convert it
-                console.log('[Gemini Gen] 🌐 Fetching image from URL...');
-                try {
-                    const imgRes = await fetch(imageContext);
-                    if (!imgRes.ok) throw new Error('Failed to fetch image from URL');
-                    const blob = await imgRes.blob();
-                    mimeType = blob.type || 'image/jpeg';
-                    base64Data = await new Promise<string>((resolve, reject) => {
-                        const reader = new FileReader();
-                        reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-                        reader.onerror = reject;
-                        reader.readAsDataURL(blob);
-                    });
-                } catch (fetchError: any) {
-                    console.error('[Gemini Gen] ❌ Failed to fetch URL image:', fetchError.message);
-                    return null;
-                }
-            } else {
-                // Assume it's raw base64 without the data URI prefix
-                base64Data = imageContext;
+            const contextData = await safeGetImageData(imageContext);
+            if (contextData) {
+                parts.push({ inlineData: { data: contextData.data, mimeType: contextData.mimeType } });
             }
-            parts.push({ inlineData: { data: base64Data, mimeType } });
         }
 
         parts.push({ text: prompt });

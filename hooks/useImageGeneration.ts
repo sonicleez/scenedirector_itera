@@ -9,37 +9,7 @@ import {
 import { DIRECTOR_PRESETS, DirectorCategory } from '../constants/directors';
 import { getPresetById } from '../utils/scriptPresets';
 import { uploadImageToSupabase } from '../utils/storageUtils';
-
-// Helper function to safely extract base64 data from both URL and base64 images
-const safeGetImageData = async (imageStr: string): Promise<{ data: string; mimeType: string } | null> => {
-    if (!imageStr) return null;
-
-    try {
-        if (imageStr.startsWith('data:')) {
-            // It's a base64 data URI
-            const [header, data] = imageStr.split(',');
-            const mimeType = header.match(/:(.*?);/)?.[1] || 'image/jpeg';
-            return { data, mimeType };
-        } else if (imageStr.startsWith('http')) {
-            // It's a URL, fetch and convert
-            console.log('[ImageGen] 🌐 Converting URL to Base64...');
-            const response = await fetch(imageStr);
-            if (!response.ok) throw new Error('Failed to fetch image');
-            const blob = await response.blob();
-            const mimeType = blob.type || 'image/jpeg';
-            const data = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
-            return { data, mimeType };
-        }
-    } catch (e) {
-        console.error('[ImageGen] ❌ Failed to process image:', e);
-    }
-    return null;
-};
+import { safeGetImageData } from '../utils/geminiUtils';
 
 // Helper function to clean VEO-specific tokens from prompt for image generation
 const cleanPromptForImageGen = (prompt: string): string => {
