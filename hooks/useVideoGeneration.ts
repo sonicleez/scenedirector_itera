@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import { ProjectState } from '../types';
+import { ProjectState, AgentStatus } from '../types';
+
 import { CAMERA_ANGLES, LENS_OPTIONS, VEO_PRESETS } from '../constants/presets';
 import { Scene } from '../types';
 
@@ -14,6 +15,18 @@ export function useVideoGeneration(
     const [isVeoStopping, setIsVeoStopping] = useState(false);
     const [isVideoGenerating, setIsVideoGenerating] = useState(false);
     const stopVeoRef = useRef(false);
+
+    // AI Agent Status Update Helper
+    const setAgentState = useCallback((agent: 'director' | 'dop', status: AgentStatus, message?: string) => {
+        updateStateAndRecord(s => ({
+            ...s,
+            agents: {
+                ...s.agents!,
+                [agent]: { status, message, lastAction: Date.now() }
+            }
+        }));
+    }, [updateStateAndRecord]);
+
 
     const stopVeoGeneration = useCallback(() => {
         if (isVeoGenerating) {
@@ -162,6 +175,9 @@ Return ONLY the video prompt string. NO explanations, NO markdown.
         if (scenesToProcess.length === 0) return alert("Không có phân cảnh nào có ảnh để tạo Veo prompt.");
 
         setIsVeoGenerating(true);
+        setAgentState('director', 'thinking', 'Đang phân tích kịch bản để tối ưu Prompt cho Veo 3.1...');
+        setAgentState('dop', 'idle', '');
+
         const rawApiKey = userApiKey || (process.env as any).API_KEY;
         const apiKey = typeof rawApiKey === 'string' ? rawApiKey.trim() : rawApiKey;
         if (!apiKey) {
@@ -174,7 +190,9 @@ Return ONLY the video prompt string. NO explanations, NO markdown.
             // STEP 1: DOP Auto-Suggest Presets for scenes without preset
             const scenesNeedingPreset = scenesToProcess.filter(s => !s.veoPreset);
             if (scenesNeedingPreset.length > 0) {
+                setAgentState('dop', 'thinking', 'Đang tự động đề xuất phong cách (Presets) dựa trên phân tích hình ảnh...');
                 console.log('[DOP Veo] Auto-suggesting presets for', scenesNeedingPreset.length, 'scenes...');
+
 
                 const ai = new GoogleGenAI({ apiKey });
                 const scenesInfo = scenesNeedingPreset.map(s =>
@@ -232,18 +250,25 @@ Return ONLY the video prompt string. NO explanations, NO markdown.
             console.log('[Veo] Generating prompts for', scenesToProcess.length, 'scenes...');
             for (const scene of scenesToProcess) {
                 if (stopVeoRef.current) {
+                    setAgentState('director', 'idle', 'Đã dừng theo yêu cầu người dùng.');
                     console.log('[Veo] Stopped by user');
                     break;
                 }
+                setAgentState('director', 'speaking', `Đang tối ưu Veo Prompt cho Phân cảnh ${scene.sceneNumber}...`);
                 await generateVeoPrompt(scene.id);
                 await new Promise(r => setTimeout(r, 200));
             }
+            setAgentState('director', 'success', 'Hoàn tất tối ưu toàn bộ Veo Prompts!');
+
         } finally {
             setIsVeoGenerating(false);
             setIsVeoStopping(false);
             stopVeoRef.current = false;
+            setAgentState('director', 'idle', '');
+            setAgentState('dop', 'idle', '');
         }
-    }, [state.scenes, userApiKey, generateVeoPrompt, setApiKeyModalOpen, updateStateAndRecord]);
+    }, [state.scenes, userApiKey, generateVeoPrompt, setApiKeyModalOpen, updateStateAndRecord, setAgentState]);
+
 
     const handleGenerateAllVideos = useCallback(async () => {
         alert("Video generation currently requires an external integration and is disabled in this version.");

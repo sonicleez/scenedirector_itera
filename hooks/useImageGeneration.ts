@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import { ProjectState, Scene } from '../types';
+import { ProjectState, Scene, AgentStatus } from '../types';
+
 import {
     GLOBAL_STYLES, CAMERA_MODELS, LENS_OPTIONS, CAMERA_ANGLES,
     DEFAULT_META_TOKENS, TRANSITION_TYPES
@@ -67,6 +68,18 @@ export function useImageGeneration(
     const [isBatchGenerating, setIsBatchGenerating] = useState(false);
     const [isStopping, setIsStopping] = useState(false);
     const stopRef = useRef(false);
+
+    // AI Agent Status Update Helper
+    const setAgentState = useCallback((agent: 'director' | 'dop', status: AgentStatus, message?: string) => {
+        updateStateAndRecord(s => ({
+            ...s,
+            agents: {
+                ...s.agents!,
+                [agent]: { status, message, lastAction: Date.now() }
+            }
+        }));
+    }, [updateStateAndRecord]);
+
 
     const stopBatchGeneration = useCallback(() => {
         if (isBatchGenerating) {
@@ -722,12 +735,19 @@ The NEW scene has its OWN camera style as specified in the current prompt. DO NO
         setIsStopping(false);
         stopRef.current = false;
 
+        setAgentState('director', 'thinking', 'Đang lập kế hoạch sản xuất cho các phân cảnh...');
+        setAgentState('dop', 'idle', '');
+
+
         try {
             for (let i = 0; i < scenesToGenerate.length; i++) {
                 const scene = scenesToGenerate[i];
                 if (stopRef.current) break;
 
+                setAgentState('director', 'speaking', `Đang chỉ đạo Phân cảnh ${scene.sceneNumber}...`);
                 await performImageGeneration(scene.id);
+                setAgentState('director', 'success', `Đã tạo xong ảnh Phân cảnh ${scene.sceneNumber}.`);
+
 
                 // Get the newly generated image
                 const updatedState = stateRef.current;
@@ -740,7 +760,9 @@ The NEW scene has its OWN camera style as specified in the current prompt. DO NO
                     const prevScene = currentSceneIndex > 0 ? updatedState.scenes[currentSceneIndex - 1] : null;
 
                     if (prevScene?.generatedImage) {
+                        setAgentState('dop', 'thinking', 'Đang kiểm tra tính nhất quán (Raccord) với cảnh trước...');
                         console.log('[DOP] Validating raccord between scenes...');
+
 
                         // [DOP UI FEEDBACK] Show validation in progress
                         updateStateAndRecord(s => ({
@@ -778,7 +800,9 @@ The NEW scene has its OWN camera style as specified in the current prompt. DO NO
                             let enhancedCorrection = lastValidation.correctionPrompt;
 
                             if (makeRetryDecision && currentImage) {
+                                setAgentState('dop', 'speaking', 'Phát hiện lỗi Raccord! Đang phân tích khả năng sửa đổi...');
                                 console.log('[DOP Agent] Analyzing if retry will succeed...');
+
 
                                 // [DOP UI FEEDBACK] Show decision agent thinking
                                 updateStateAndRecord(s => ({
@@ -909,8 +933,11 @@ The NEW scene has its OWN camera style as specified in the current prompt. DO NO
         } finally {
             setIsBatchGenerating(false);
             setIsStopping(false);
+            setAgentState('director', 'idle', '');
+            setAgentState('dop', 'idle', '');
         }
-    }, [state.scenes, performImageGeneration, isDOPEnabled, validateRaccordWithVision, makeRetryDecision, userApiKey, stateRef, updateStateAndRecord]);
+    }, [state.scenes, performImageGeneration, isDOPEnabled, validateRaccordWithVision, makeRetryDecision, userApiKey, stateRef, updateStateAndRecord, setAgentState]);
+
 
     return {
         isBatchGenerating,

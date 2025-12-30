@@ -327,7 +327,12 @@ export const INITIAL_STATE: ProjectState = {
     activeDirectorId: undefined,
     customDirectors: [],
     assetGallery: [],
+    agents: {
+        director: { status: 'idle' },
+        dop: { status: 'idle' }
+    }
 };
+
 
 export const CREATIVE_PRESETS = [
     {

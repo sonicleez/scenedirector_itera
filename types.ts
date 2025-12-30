@@ -271,7 +271,23 @@ export interface ProjectState {
     storyContext: string;
     analysisResult: any | null; // ScriptAnalysisResult - use any to avoid circular import
   };
+
+  // Agent Thinking State
+  agents?: {
+    director: AgentState;
+    dop: AgentState;
+  };
 }
+
+export type AgentStatus = 'idle' | 'thinking' | 'speaking' | 'success' | 'error';
+
+export interface AgentState {
+  status: AgentStatus;
+  message?: string;
+  thought?: string; // Internal internal thought
+  lastAction?: number;
+}
+
 
 export interface Product {
   id: string;

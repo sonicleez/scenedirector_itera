@@ -13,6 +13,8 @@ import { StyleSettingsSection } from './components/sections/StyleSettingsSection
 import { ScenesMapSection } from './components/sections/ScenesMapSection';
 import { CharacterDetailModal } from './components/modals/CharacterDetailModal';
 import { ProductDetailModal } from "./components/ProductDetailModal";
+import ThinkingAgents from './components/common/ThinkingAgents';
+
 import { AdvancedImageEditor } from './components/modals/AdvancedImageEditor';
 import { ScreenplayModal } from './components/modals/ScreenplayModal';
 import { AuthModal } from './components/modals/AuthModal';
@@ -863,6 +865,10 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                                         isExpandingSequence={isSequenceExpanding}
                                     />
                                 </div>
+
+                                {/* Floating AI Agents */}
+                                <ThinkingAgents agents={state.agents} />
+
                                 <div className="flex justify-end mt-8 gap-4">
                                     <button
                                         onClick={() => setScreenplayModalOpen(true)}
