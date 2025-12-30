@@ -71,3 +71,32 @@ export const callGeminiAPI = async (
         return null;
     }
 };
+
+export const callGeminiText = async (
+    apiKey: string,
+    prompt: string,
+    systemPrompt: string = '',
+    model: string = 'gemini-1.5-flash',
+    jsonMode: boolean = false
+): Promise<string> => {
+    const trimmedKey = apiKey?.trim();
+    if (!trimmedKey) throw new Error('Missing API Key');
+
+    try {
+        const ai = new GoogleGenAI({ apiKey: trimmedKey });
+
+        const response = await ai.models.generateContent({
+            model: model,
+            contents: [{
+                role: 'user',
+                parts: [{ text: `${systemPrompt}\n\nUSER COMMAND: ${prompt}` }]
+            }],
+            config: jsonMode ? { responseMimeType: "application/json" } : {}
+        });
+
+        return response.text;
+    } catch (err: any) {
+        console.error('[Gemini Text] ❌ Error:', err.message);
+        throw err;
+    }
+};

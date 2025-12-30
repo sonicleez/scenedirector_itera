@@ -58,7 +58,9 @@ export function useImageGeneration(
     userApiKey: string | null,
     setApiKeyModalOpen: (open: boolean) => void,
     isContinuityMode: boolean,
-    setAgentState: (agent: 'director' | 'dop', status: AgentStatus, message?: string) => void,
+    setAgentState: (agent: 'director' | 'dop', status: AgentStatus, message?: string, stage?: string) => void,
+    addProductionLog?: (sender: 'director' | 'dop' | 'user' | 'system', message: string, type?: string, stage?: string) => void,
+
     userId?: string,
     isOutfitLockMode?: boolean,
     addToGallery?: (image: string, type: string, prompt?: string, sourceId?: string) => void,
@@ -721,13 +723,17 @@ The NEW scene has its OWN camera style as specified in the current prompt. DO NO
         }
     }, [stateRef, userApiKey, setApiKeyModalOpen, userId]);
 
-    const handleGenerateAllImages = useCallback(async () => {
-        const scenesToGenerate = state.scenes.filter(s => !s.generatedImage && s.contextDescription);
-        if (scenesToGenerate.length === 0) return alert("Tất cả các phân cảnh có mô tả đã có ảnh.");
+    const handleGenerateAllImages = useCallback(async (specificSceneIds?: string[]) => {
+        const scenesToGenerate = specificSceneIds
+            ? state.scenes.filter(s => specificSceneIds.includes(s.id))
+            : state.scenes.filter(s => !s.generatedImage && s.contextDescription);
+
+        if (scenesToGenerate.length === 0) return alert("Không có phân cảnh nào cần tạo ảnh.");
 
         setIsBatchGenerating(true);
         setIsStopping(false);
         stopRef.current = false;
+
 
         setAgentState('director', 'thinking', 'Đang lập kế hoạch sản xuất cho các phân cảnh...');
         setAgentState('dop', 'idle', '');
@@ -899,7 +905,16 @@ The NEW scene has its OWN camera style as specified in the current prompt. DO NO
 
                         if (retryCount >= MAX_DOP_RETRIES && !lastValidation.isValid) {
                             console.warn('[DOP] Max retries reached. Marking scene for manual review.');
+                            if (addProductionLog) {
+                                addProductionLog('dop', `CẢNH BÁO: Cảnh ${scene.sceneNumber} gặp lỗi raccord nghiêm trọng (${lastValidation.errors[0]?.description}). Đã cố gắng sửa ${MAX_DOP_RETRIES} lần nhưng không thành công.`, 'warning');
+                            }
+                            // Proactive: Inform Director to update DNA for future scenes
+                            if (lastValidation.errors.some(e => e.type === 'character')) {
+                                addProductionLog('dop', 'Chỉ thị cho Director: Identity raccord bị trôi. Hãy rà soát lại Visual DNA cho các cảnh sau.', 'directive');
+                            }
+
                             updateStateAndRecord(s => ({
+
                                 ...s,
                                 scenes: s.scenes.map(sc => sc.id === scene.id ? {
                                     ...sc,
@@ -908,6 +923,9 @@ The NEW scene has its OWN camera style as specified in the current prompt. DO NO
                             }));
                         } else if (lastValidation.isValid) {
                             console.log('[DOP] Raccord validation PASSED');
+                            if (addProductionLog) {
+                                addProductionLog('dop', `Cảnh ${scene.sceneNumber} khớp raccord hoàn hảo. Tiếp tục sản xuất.`, 'success');
+                            }
                             // [DOP UI FEEDBACK] Clear status on success
                             updateStateAndRecord(s => ({
                                 ...s,
@@ -917,6 +935,7 @@ The NEW scene has its OWN camera style as specified in the current prompt. DO NO
                                 } : sc)
                             }));
                         }
+
                     }
                 }
 

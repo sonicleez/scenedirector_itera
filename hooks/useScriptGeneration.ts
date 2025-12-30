@@ -4,13 +4,16 @@ import { ProjectState, Scene, Character, Product, DirectorPreset } from '../type
 import { getPresetById } from '../utils/scriptPresets';
 import { buildScriptPrompt, buildGroupRegenerationPrompt } from '../utils/promptBuilder';
 import { generateId } from '../utils/helpers';
+import { callGeminiText } from '../utils/geminiUtils';
+
 
 export function useScriptGeneration(
     state: ProjectState,
     updateStateAndRecord: (updater: (prevState: ProjectState) => ProjectState) => void,
     userApiKey: string | null,
     setApiKeyModalOpen: (open: boolean) => void,
-    setAgentState: (agent: 'director' | 'dop', status: any, message?: string) => void
+    setAgentState: (agent: 'director' | 'dop', status: any, message?: string, stage?: string) => void
+
 ) {
 
     const [isScriptGenerating, setIsScriptGenerating] = useState(false);
@@ -129,17 +132,72 @@ export function useScriptGeneration(
             const rawText = response.text || '{}';
             const jsonResponse = JSON.parse(rawText);
 
-            setAgentState('dop', 'success', `Kịch bản với ${jsonResponse.scenes.length} phân cảnh đã sẵn sàng!`);
-
-            return {
-
+            const finalScript = {
                 globalStoryContext: jsonResponse.global_story_context || '',
                 detailedStory: jsonResponse.detailed_story || '',
                 groups: jsonResponse.scene_groups || [],
                 scenes: jsonResponse.scenes || []
             };
 
+            // --- Pre-Production Style Audit (The "Gatekeeper") ---
+            setAgentState('director', 'thinking', 'Đang thực hiện Style Audit để đồng bộ visual DNA...', 'Pre-Prod Audit');
+
+            const auditPrompt = `You are the AI Director. Audit the following generated scenes for visual and material consistency.
+            
+            SCENES:
+            ${finalScript.scenes.map((s: any) => `Scene ${s.scene_number}: ${s.visual_context}`).join('\n')}
+
+
+            GUIDELINES:
+            1. Characters MUST have consistent visual DNA (materials, clothing descriptions, facial features) across all scenes.
+            2. If you detect a character is described as "human" in one scene but "mannequin" in another, harmonize them.
+            3. Synchronize lighting and weather keywords if they are in the same location/time.
+            
+            OUTPUT: JSON array of string (the corrected visual_context for each scene), same order.`;
+
+            try {
+                const auditedTextsRaw = await callGeminiText(apiKey, auditPrompt, 'System: Expert Film Director.', 'gemini-3-flash-preview', true);
+
+
+                const auditedTexts = JSON.parse(auditedTextsRaw);
+
+                if (Array.isArray(auditedTexts) && auditedTexts.length === finalScript.scenes.length) {
+                    finalScript.scenes = finalScript.scenes.map((s: any, idx: number) => ({
+                        ...s,
+                        visual_context: auditedTexts[idx]
+                    }));
+                    setAgentState('director', 'success', 'Style Audit hoàn tất! Visual DNA đã được đồng bộ.');
+
+                    // --- Extract Material Kit for future reference ---
+                    const kitPrompt = `Based on these audited scenes, extract a "Material Kit" (5-10 technical words like 'brushed aluminum', 'cinematic lighting', '8k octane') that should be used in EVERY future prompt for this project to maintain visual DNA.
+                    SCENES:
+                    ${auditedTexts.slice(0, 3).join('\n')}
+                    OUTPUT: Just the comma-separated words.`;
+
+                    try {
+                        const kit = await callGeminiText(apiKey, kitPrompt, 'System: Expert Technical Director.', 'gemini-3-flash-preview', false);
+
+
+                        updateStateAndRecord(s => ({
+                            ...s,
+                            researchNotes: {
+                                ...s.researchNotes,
+                                materialKit: kit
+                            }
+                        }));
+                    } catch (e) { console.error('Kit extraction failed:', e); }
+                }
+            } catch (auditError) {
+
+                console.error('Style Audit failed:', auditError);
+                // Fallback: Continue with original scenes if audit fails
+            }
+
+            return finalScript;
+
+
         } catch (error) {
+
             console.error("Script generation failed:", error);
             alert("Tạo kịch bản thất bại. Vui lòng thử lại.");
             return null;

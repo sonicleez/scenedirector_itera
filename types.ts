@@ -219,7 +219,9 @@ export interface ProjectState {
   customScriptInstruction?: string; // Custom meta tokens for script generation
   stylePrompt: string;
   imageModel: string; // Selected Image Gen Model
+  genyuToken?: string; // Token for Genyu API access
   aspectRatio: string; // "16:9" | "9:16" | "1:1" | "4:3" | "3:4"
+
   resolution: string;
   scriptModel?: string; // Selected Script Gen Model (Gemini 3 series)
   scriptLanguage: string; // 'vietnamese' | 'language1' | 'custom'
@@ -257,7 +259,9 @@ export interface ProjectState {
     director?: string;  // Director's storytelling/emotional notes
     dop?: string;       // DOP's cinematography/lighting notes
     story?: string;     // [New] Global Story Context / World Setting (e.g. "Casino in Monte Carlo, 2019")
+    materialKit?: string; // [New] Persistent technical DNA tokens for consistency
   };
+
 
   // Manual Script Analysis State (persist to avoid re-analyzing)
   manualScriptState?: {
@@ -278,7 +282,10 @@ export interface ProjectState {
     dop: AgentState;
   };
 
+  productionLogs?: ProductionLogEntry[];
+
   // Generation Configuration (NEW)
+
   generationConfig?: GenerationConfig;
 }
 
@@ -297,7 +304,18 @@ export interface AgentState {
   message?: string;
   thought?: string; // Internal internal thought
   lastAction?: number;
+  currentStage?: string; // NEW: Granular stage for loading indicators (e.g. "Analyzing Visual DNA")
 }
+
+export interface ProductionLogEntry {
+  id: string;
+  timestamp: number;
+  sender: 'director' | 'dop' | 'user' | 'system';
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error' | 'directive';
+  stage?: string;
+}
+
 
 
 export interface Product {

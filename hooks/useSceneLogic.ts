@@ -5,7 +5,8 @@ import { generateId } from '../utils/helpers';
 export function useSceneLogic(
     state: ProjectState,
     updateStateAndRecord: (updater: (prevState: ProjectState) => ProjectState) => void,
-    setAgentState: (agent: 'director' | 'dop', status: any, message?: string) => void
+    setAgentState: (agent: 'director' | 'dop', status: any, message?: string, stage?: string) => void
+
 ) {
 
     const addScene = useCallback(() => {

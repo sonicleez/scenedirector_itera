@@ -11,7 +11,9 @@ export function useProductLogic(
     userApiKey: string | null,
     setApiKeyModalOpen: (open: boolean) => void,
     userId?: string,
-    addToGallery?: (image: string, type: string, prompt?: string, sourceId?: string) => void
+    addToGallery?: (image: string, type: string, prompt?: string, sourceId?: string) => void,
+    setAgentState?: (agent: 'director' | 'dop', status: any, message?: string, stage?: string) => void
+
 ) {
     const addProduct = useCallback(() => {
         const newProduct: Product = {

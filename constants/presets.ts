@@ -331,7 +331,9 @@ export const INITIAL_STATE: ProjectState = {
         director: { status: 'idle' },
         dop: { status: 'idle' }
     },
+    productionLogs: [],
     generationConfig: {
+
         imageDelay: 500,
         veoDelay: 200,
         insertAngleDelay: 1000,

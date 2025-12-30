@@ -9,23 +9,17 @@ export function useVideoGeneration(
     state: ProjectState,
     updateStateAndRecord: (updater: (prevState: ProjectState) => ProjectState) => void,
     userApiKey: string | null,
-    setApiKeyModalOpen: (open: boolean) => void
+    setApiKeyModalOpen: (open: boolean) => void,
+    setAgentState?: (agent: 'director' | 'dop', status: AgentStatus, message?: string, stage?: string) => void,
+    addProductionLog?: (sender: 'director' | 'dop' | 'user' | 'system', message: string, type?: string, stage?: string) => void
 ) {
+
     const [isVeoGenerating, setIsVeoGenerating] = useState(false);
     const [isVeoStopping, setIsVeoStopping] = useState(false);
     const [isVideoGenerating, setIsVideoGenerating] = useState(false);
     const stopVeoRef = useRef(false);
 
-    // AI Agent Status Update Helper
-    const setAgentState = useCallback((agent: 'director' | 'dop', status: AgentStatus, message?: string) => {
-        updateStateAndRecord(s => ({
-            ...s,
-            agents: {
-                ...s.agents!,
-                [agent]: { status, message, lastAction: Date.now() }
-            }
-        }));
-    }, [updateStateAndRecord]);
+
 
 
     const stopVeoGeneration = useCallback(() => {

@@ -13,7 +13,9 @@ export function useCharacterLogic(
     userApiKey: string | null,
     setApiKeyModalOpen: (open: boolean) => void,
     userId?: string,
-    addToGallery?: (image: string, type: string, prompt?: string, sourceId?: string) => void
+    addToGallery?: (image: string, type: string, prompt?: string, sourceId?: string) => void,
+    setAgentState?: (agent: 'director' | 'dop', status: any, message?: string, stage?: string) => void
+
 ) {
     const updateCharacter = useCallback((id: string, updates: Partial<Character>) => {
         updateStateAndRecord(s => ({

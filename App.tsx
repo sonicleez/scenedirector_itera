@@ -13,7 +13,7 @@ import { StyleSettingsSection } from './components/sections/StyleSettingsSection
 import { ScenesMapSection } from './components/sections/ScenesMapSection';
 import { CharacterDetailModal } from './components/modals/CharacterDetailModal';
 import { ProductDetailModal } from "./components/ProductDetailModal";
-import ThinkingAgents from './components/common/ThinkingAgents';
+import UnifiedProductionHub from './components/common/UnifiedProductionHub';
 
 import { AdvancedImageEditor } from './components/modals/AdvancedImageEditor';
 import { ScreenplayModal } from './components/modals/ScreenplayModal';
@@ -26,8 +26,21 @@ import { AssetLibrary } from './components/sections/AssetLibrary';
 import { KeyboardShortcuts } from './components/common/KeyboardShortcuts';
 import { APP_NAME, PRIMARY_GRADIENT, PRIMARY_GRADIENT_HOVER } from './constants/presets';
 import { handleDownloadAll } from './utils/zipUtils';
-import { Scene } from './types';
+import {
+    ProjectState,
+    ScriptPreset,
+    DirectorPreset,
+    Character,
+    Product,
+    Scene,
+    AgentStatus,
+    AgentState,
+    ProductionLogEntry,
+    CharacterStyleDefinition,
+    GenerationConfig
+} from './types';
 import { generateId } from './utils/helpers';
+
 
 
 // Import Hooks
@@ -42,7 +55,10 @@ import { useVideoGeneration } from './hooks/useVideoGeneration';
 import { useAuth } from './hooks/useAuth';
 import { useProjectSync } from './hooks/useProjectSync';
 import { useSequenceExpansion } from './hooks/useSequenceExpansion'; // [New Hook]
+import { useDirectorChat } from './hooks/useDirectorChat';
+
 import { supabase } from './utils/supabaseClient';
+
 
 const App: React.FC = () => {
     const { session, profile, isPro, subscriptionExpired, loading, signOut } = useAuth();
@@ -61,6 +77,8 @@ const App: React.FC = () => {
     } = useStateManager();
 
     // --- Helper Logic ---
+
+
     const addToGallery = useCallback((image: string, type: string, prompt?: string, sourceId?: string) => {
         updateStateAndRecord(s => ({
             ...s,
@@ -82,17 +100,39 @@ const App: React.FC = () => {
     const [isProfileModalOpen, setProfileModalOpen] = useState(false);
 
     // --- AI Agent Helper ---
-    const setAgentState = useCallback((agent: 'director' | 'dop', status: any, message?: string) => {
+    const setAgentState = useCallback((agent: 'director' | 'dop', status: AgentStatus, message?: string, stage?: string) => {
         updateStateAndRecord(s => ({
             ...s,
             agents: {
                 ...s.agents!,
-                [agent]: { status, message, lastAction: Date.now() }
+                [agent]: { ...s.agents![agent], status, message, currentStage: stage, lastAction: Date.now() }
             }
+        }));
+
+        if (message && status !== 'idle') {
+            addProductionLog(agent, message, status === 'error' ? 'error' : status === 'success' ? 'success' : 'info', stage);
+        }
+    }, [updateStateAndRecord]);
+
+    const addProductionLog = useCallback((sender: 'director' | 'dop' | 'user' | 'system', message: string, type: 'info' | 'success' | 'warning' | 'error' | 'directive' = 'info', stage?: string) => {
+        updateStateAndRecord(s => ({
+            ...s,
+            productionLogs: [
+                ...(s.productionLogs || []),
+                {
+                    id: Math.random().toString(36).substring(7),
+                    timestamp: Date.now(),
+                    sender,
+                    message,
+                    type,
+                    stage
+                }
+            ].slice(-100)
         }));
     }, [updateStateAndRecord]);
 
     // Auto-dismissal for success messages
+
     useEffect(() => {
         const agents = state.agents;
         if (!agents) return;
@@ -165,7 +205,8 @@ const App: React.FC = () => {
         analyzeAndGenerateSheets,
         generateCharacterSheets,
         generateCharacterImage
-    } = useCharacterLogic(state, updateStateAndRecord, userApiKey, setProfileModalOpen, session?.user.id, addToGallery);
+    } = useCharacterLogic(state, updateStateAndRecord, userApiKey, setProfileModalOpen, session?.user.id, addToGallery, setAgentState);
+
 
     const {
         addProduct,
@@ -173,7 +214,8 @@ const App: React.FC = () => {
         deleteProduct,
         handleProductMasterImageUpload,
         handleGenerateProductFromPrompt
-    } = useProductLogic(state, updateStateAndRecord, userApiKey, setProfileModalOpen, session?.user.id, addToGallery);
+    } = useProductLogic(state, updateStateAndRecord, userApiKey, setProfileModalOpen, session?.user.id, addToGallery, setAgentState);
+
 
     const {
         addScene,
@@ -214,13 +256,28 @@ const App: React.FC = () => {
         setProfileModalOpen,
         isContinuityMode,
         setAgentState,
+        addProductionLog,
         session?.user?.id,
+
         isOutfitLockMode,
         addToGallery,
         isDOPEnabled,
         validateRaccordWithVision,
         makeRetryDecision
     );
+
+    // --- Director Chat Hook ---
+    const { handleCommand: handleDirectorCommand } = useDirectorChat({
+        state,
+        userApiKey,
+        setAgentState,
+        addProductionLog,
+        stopBatchGeneration,
+        updateStateAndRecord,
+        handleGenerateAllImages
+    });
+
+
 
 
     const {
@@ -233,7 +290,7 @@ const App: React.FC = () => {
         suggestVeoPresets,
         applyPresetToAll,
         stopVeoGeneration,
-    } = useVideoGeneration(state, updateStateAndRecord, userApiKey, setProfileModalOpen);
+    } = useVideoGeneration(state, updateStateAndRecord, userApiKey, setProfileModalOpen, setAgentState, addProductionLog);
 
     const {
         loading: projectLoading,
@@ -312,6 +369,43 @@ const App: React.FC = () => {
         { keys: 'ctrl+z', callback: undo },
         { keys: 'ctrl+y', callback: redo },
         { keys: 'ctrl+shift+z', callback: redo },
+        {
+            keys: 'ctrl+k', callback: (e) => {
+                e?.preventDefault();
+                // 1. Try to find existing input
+                let input = document.getElementById('director-command-bar') as HTMLInputElement;
+
+                // 2. If not found, try to click the expansion button
+                if (!input) {
+                    const expandBtn = document.querySelector('[aria-label="Expand Hub"]') as HTMLButtonElement;
+                    if (expandBtn) expandBtn.click();
+                    // Wait for render
+                    setTimeout(() => {
+                        input = document.getElementById('director-command-bar') as HTMLInputElement;
+                        if (input) input.focus();
+                    }, 100);
+                } else {
+                    input.focus();
+                }
+            }
+        },
+        {
+            keys: 'cmd+k', callback: (e) => {
+                e?.preventDefault();
+                let input = document.getElementById('director-command-bar') as HTMLInputElement;
+                if (!input) {
+                    const expandBtn = document.querySelector('[aria-label="Expand Hub"]') as HTMLButtonElement;
+                    if (expandBtn) expandBtn.click();
+                    setTimeout(() => {
+                        input = document.getElementById('director-command-bar') as HTMLInputElement;
+                        if (input) input.focus();
+                    }, 100);
+                } else {
+                    input.focus();
+                }
+            }
+        },
+
     ]);
 
     // Handle Insert Angles: Create new scenes with different camera angles from source image
@@ -733,7 +827,13 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
         }
     };
 
+    const handleSendCommand = useCallback((command: string) => {
+        handleDirectorCommand(command);
+    }, [handleDirectorCommand]);
+
+
     return (
+
         <div className="h-screen w-screen bg-brand-dark text-brand-cream overflow-hidden relative">
             {loading ? (
                 <div className="flex flex-col items-center justify-center h-full">
@@ -1175,7 +1275,6 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                         className="hidden"
                         onChange={handleScriptUpload}
                     />
-
                     {/* Keyboard Shortcuts Component */}
                     <KeyboardShortcuts
                         onTableView={() => setViewMode('table')}
@@ -1186,14 +1285,21 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                     />
                 </>
             )}
-            {/* Floating AI Agents - Moved to root level for stability */}
-            <ThinkingAgents agents={state.agents || {
-                director: { status: 'idle' },
-                dop: { status: 'idle' }
-            }} />
+
+
+            {/* Global UI Layer: Unified Production Hub */}
+            <UnifiedProductionHub
+                agents={state.agents || {
+                    director: { status: 'idle' },
+                    dop: { status: 'idle' }
+                }}
+                logs={state.productionLogs || []}
+                onSendCommand={handleSendCommand}
+            />
         </div>
     );
 };
+
 
 export default App;
 
