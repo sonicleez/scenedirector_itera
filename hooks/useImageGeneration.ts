@@ -665,7 +665,20 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                 }
             }
 
-
+            // 5g. EXPLICIT BASE IMAGE (IMG2IMG / EDITING)
+            if (baseImage) {
+                const imgData = await safeGetImageData(baseImage);
+                if (imgData) {
+                    console.log('[ImageGen] Base Image Detected - Running in Edit/Variation Mode');
+                    parts.push({
+                        text: `[SOURCE_IMAGE_FOR_EDITING]:
+1. This is the PRIMARY BASE IMAGE.
+2. ACTION: Reshoot/Edit this shot based on the prompt.
+3. CONSTRAINT: If the prompt asks for camera movement (Zoom/Pan) or detail change, START from this image's composition and subjects. Do not hallucinate a new scene from scratch.`
+                    });
+                    parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
+                }
+            }
             if (continuityInstruction) {
                 finalImagePrompt = `${continuityInstruction.trim()} ${finalImagePrompt}`;
             }
