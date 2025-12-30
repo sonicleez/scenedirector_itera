@@ -379,6 +379,11 @@ export const SceneRow: React.FC<SceneRowProps> = ({
                     >
                         {scene.generatedImage && (
                             <div className="absolute top-1 left-1 z-20 flex items-center gap-1">
+                                {scene.generationDuration && (
+                                    <div className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-black/60 text-yellow-400 backdrop-blur-sm border border-yellow-500/30 flex items-center gap-0.5" title="Execution Time">
+                                        ⚡ {(scene.generationDuration / 1000).toFixed(1)}s
+                                    </div>
+                                )}
                                 <div className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${scene.imageRole === 'start-frame' ? 'bg-green-600 text-white' :
                                     scene.imageRole === 'end-frame' ? 'bg-red-600 text-white' :
                                         'bg-gray-700 text-gray-300'

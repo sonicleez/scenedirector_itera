@@ -112,6 +112,8 @@ export function useImageGeneration(
             scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, isGenerating: true, error: null } : sc)
         }));
 
+        const startTime = Date.now();
+
         try {
             // --- 1. GET STYLE PROMPT ---
             let styleInstruction = '';
@@ -678,6 +680,7 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
             );
 
             updateStateAndRecord(s => {
+                const duration = Date.now() - startTime;
                 const resolutionKey = (currentState.resolution || '1K') as '1K' | '2K' | '4K';
                 const currentStats = s.usageStats || { '1K': 0, '2K': 0, '4K': 0, total: 0 };
                 const newCount = (currentStats[resolutionKey] || 0) + 1;
@@ -695,8 +698,10 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
 
                 return {
                     ...s,
+                    totalGenerationTime: (s.totalGenerationTime || 0) + duration,
                     scenes: s.scenes.map(sc => sc.id === sceneId ? {
                         ...sc,
+                        generationDuration: duration,
                         ...(fromManual ? { endFrameImage: imageUrl } : { generatedImage: imageUrl }),
                         mediaId: fromManual ? sc.mediaId : (mediaId || sc.mediaId),
                         isGenerating: false,
@@ -817,6 +822,7 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
         stopRef.current = false;
 
         console.log('[BatchGen] Starting batch generation...');
+        const batchStartTime = Date.now();
         setAgentState('director', 'thinking', 'Đang lập kế hoạch sản xuất cho các phân cảnh...');
         setAgentState('dop', 'idle', '');
 
@@ -1033,13 +1039,24 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                 await new Promise(r => setTimeout(r, imageDelay));
             }
         } catch (e) {
-
-            console.error(e);
+            console.error('[BatchGen] Generation interrupted:', e);
+            setAgentState('director', 'error', 'Có lỗi xảy ra khi tạo ảnh.');
         } finally {
             setIsBatchGenerating(false);
-            setIsStopping(false);
-            setAgentState('director', 'idle', '');
             setAgentState('dop', 'idle', '');
+
+            if (!stopRef.current) {
+                const batchDuration = Date.now() - batchStartTime;
+                const seconds = Math.floor(batchDuration / 1000);
+                const timeStr = seconds > 60 ? `${Math.floor(seconds / 60)}m ${seconds % 60}s` : `${seconds}s`;
+
+                setAgentState('director', 'success', `Đã hoàn thành! Tổng thời gian: ${timeStr}`);
+                if (addProductionLog) {
+                    addProductionLog('director', `Production hoàn tất. Thời gian thực thi: ${timeStr}`, 'success');
+                }
+            } else {
+                setAgentState('director', 'idle', 'Đã dừng production.');
+            }
         }
     }, [state.scenes, performImageGeneration, isDOPEnabled, validateRaccordWithVision, makeRetryDecision, userApiKey, stateRef, updateStateAndRecord, setAgentState]);
 

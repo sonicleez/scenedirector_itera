@@ -137,6 +137,9 @@ export interface Scene {
   voSecondsEstimate?: number; // Estimated VO duration in seconds
   referenceSceneId?: string; // For B-roll: ID of the VO scene this expands
 
+  // Stats
+  generationDuration?: number; // Time taken to generate this image (ms)
+
   // UI state
   isGenerating: boolean;
   error: string | null;
@@ -285,6 +288,7 @@ export interface ProjectState {
   productionLogs?: ProductionLogEntry[];
 
   // Usage Statistics (Persisted)
+  totalGenerationTime?: number; // Total accumulative generation time (ms)
   usageStats?: {
     '1K': number;
     '2K': number;
