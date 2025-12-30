@@ -18,7 +18,7 @@ interface UseDirectorChatProps {
     addProductionLog: (sender: 'director' | 'dop' | 'user' | 'system', message: string, type?: string, stage?: string) => void;
     stopBatchGeneration: () => void;
     updateStateAndRecord: (updater: (s: ProjectState) => ProjectState) => void;
-    handleGenerateAllImages: (specificSceneIds?: string[]) => Promise<void>;
+    handleGenerateAllImages: (specificSceneIds?: string[], referenceMap?: { [key: string]: string }) => Promise<void>;
     // Scene Management
     addScene: () => void;
     removeScene: (id: string) => void;
@@ -310,8 +310,9 @@ OUTPUT FORMAT: JSON only
                         addProductionLog('director', 'Đang tự động tạo lại cảnh với DNA mới...', 'info');
                         setAgentState('director', 'speaking', 'Đang tạo lại ảnh với Visual DNA mới...', 'Regenerating');
 
-                        // Trigger regeneration for the target scene
-                        await handleGenerateAllImages([targetScene.id]);
+                        // Trigger regeneration for the target scene with VISUAL DNA REFERENCE
+                        const refMap = sourceScene.generatedImage ? { [targetScene.id]: sourceScene.generatedImage } : undefined;
+                        await handleGenerateAllImages([targetScene.id], refMap);
 
                         setAgentState('director', 'success', `Đã đồng bộ và tạo lại cảnh ${targetScene.sceneNumber} với DNA từ cảnh ${sourceScene.sceneNumber}.`);
                     } catch (e) {
@@ -361,7 +362,10 @@ OUTPUT FORMAT: JSON only
 
                         // Auto-regenerate
                         setAgentState('director', 'speaking', `Đang tạo lại cảnh ${tgtScene.sceneNumber}...`, 'Regenerating');
-                        await handleGenerateAllImages([tgtScene.id]);
+
+                        // Pass reference image map
+                        const refMap = srcScene.generatedImage ? { [tgtScene.id]: srcScene.generatedImage } : undefined;
+                        await handleGenerateAllImages([tgtScene.id], refMap);
 
                         setAgentState('director', 'success', `Đã sửa và tạo lại cảnh ${tgtScene.sceneNumber} thành công!`);
                     } catch (e) {

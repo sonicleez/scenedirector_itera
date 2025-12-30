@@ -124,7 +124,8 @@ export function useImageGeneration(
         }
     };
 
-    const performImageGeneration = useCallback(async (sceneId: string, refinementPrompt?: string, isEndFrame: boolean = false) => {
+    // referenceImage: Optional image URL to use as visual DNA reference (from another scene)
+    const performImageGeneration = useCallback(async (sceneId: string, refinementPrompt?: string, isEndFrame: boolean = false, referenceImage?: string) => {
         const currentState = stateRef.current;
         const currentSceneIndex = currentState.scenes.findIndex(s => s.id === sceneId);
         const sceneToUpdate = currentState.scenes[currentSceneIndex];
@@ -368,6 +369,30 @@ This applies to EVERY human figure in the scene without ANY exception. If a hand
             const parts: any[] = [];
             let continuityInstruction = '';
             const isPro = currentState.imageModel === 'gemini-3-pro-image-preview';
+
+            // 5.0 DNA REFERENCE IMAGE INJECTION (From Director Chat - SYNC/REGENERATE)
+            // This is a VERY HIGH PRIORITY reference - the user explicitly asked to match this scene
+            if (referenceImage) {
+                const dnaImgData = await safeGetImageData(referenceImage);
+                if (dnaImgData) {
+                    const refLabel = 'DNA_VISUAL_REFERENCE';
+                    parts.push({
+                        text: `[${refLabel}]: !!! CRITICAL VISUAL DNA ANCHOR !!!
+This is the MANDATORY reference image that defines the EXACT visual style for this scene.
+MATCH PRECISELY:
+- Color grading and palette
+- Lighting direction and intensity
+- Material textures and surface quality
+- Camera angle and composition
+- Atmospheric mood and ambiance
+- Character appearance (if present)
+Use this as the AUTHORITATIVE source for visual consistency. The output MUST look like it belongs in the same film/sequence as this reference.` });
+                    parts.push({ inlineData: { data: dnaImgData.data, mimeType: dnaImgData.mimeType } });
+                    continuityInstruction += '(DNA REFERENCE ENFORCED) ';
+                    console.log('[ImageGen] 🧬 DNA Reference Image injected for visual consistency');
+                }
+            }
+
 
             // 5a. CHARACTER FACE ID ANCHOR (ABSOLUTE FIRST - Before Style!)
             // Using Google's recommended pattern: "Use supplied image as reference for how [name] should look"
@@ -723,8 +748,10 @@ The NEW scene has its OWN camera style as specified in the current prompt. DO NO
         }
     }, [stateRef, userApiKey, setApiKeyModalOpen, userId]);
 
-    const handleGenerateAllImages = useCallback(async (specificSceneIds?: string[]) => {
-        console.log('[BatchGen] handleGenerateAllImages called', { specificSceneIds, totalScenes: state.scenes.length });
+    // specificSceneIds: Optional list of specific IDs to regenerate
+    // referenceMap: Optional mapping of sceneId -> sourceImageURL for DNA syncing
+    const handleGenerateAllImages = useCallback(async (specificSceneIds?: string[], referenceMap?: { [key: string]: string }) => {
+        console.log('[BatchGen] handleGenerateAllImages called', { specificSceneIds, hasReferenceMap: !!referenceMap });
 
         const scenesToGenerate = specificSceneIds
             ? state.scenes.filter(s => specificSceneIds.includes(s.id))
@@ -752,7 +779,11 @@ The NEW scene has its OWN camera style as specified in the current prompt. DO NO
                 if (stopRef.current) break;
 
                 setAgentState('director', 'speaking', `Đang chỉ đạo Phân cảnh ${scene.sceneNumber}...`);
-                await performImageGeneration(scene.id);
+
+                // Check if this scene has a specific DNA reference image
+                const dnaReference = referenceMap ? referenceMap[scene.id] : undefined;
+
+                await performImageGeneration(scene.id, undefined, false, dnaReference);
                 setAgentState('director', 'success', `Đã tạo xong ảnh Phân cảnh ${scene.sceneNumber}.`);
 
 
