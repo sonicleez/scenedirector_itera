@@ -877,11 +877,7 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                                     />
                                 </div>
 
-                                {/* Floating AI Agents */}
-                                <ThinkingAgents agents={state.agents || {
-                                    director: { status: 'idle' },
-                                    dop: { status: 'idle' }
-                                }} />
+
 
 
                                 <div className="flex justify-end mt-8 gap-4">
@@ -1149,8 +1145,14 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                     />
                 </>
             )}
+            {/* Floating AI Agents - Moved to root level for stability */}
+            <ThinkingAgents agents={state.agents || {
+                director: { status: 'idle' },
+                dop: { status: 'idle' }
+            }} />
         </div>
     );
 };
 
 export default App;
+

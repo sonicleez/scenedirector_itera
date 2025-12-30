@@ -10,14 +10,17 @@ interface ThinkingAgentsProps {
 }
 
 const ThinkingAgents: React.FC<ThinkingAgentsProps> = ({ agents }) => {
-    // Persistent state for positions
+    // Persistent state for positions (using snapped side and Y)
     const [positions, setPositions] = React.useState(() => {
-        const saved = localStorage.getItem('agent_positions');
+        const saved = localStorage.getItem('agent_positions_v2');
         return saved ? JSON.parse(saved) : {
-            director: { x: 24, y: 24, side: 'left' },
-            dop: { x: 24, y: 24, side: 'right' }
+            director: { y: 80, side: 'left' as const },
+            dop: { y: 80, side: 'right' as const }
         };
     });
+
+    // Temp screen X during drag
+    const [dragX, setDragX] = React.useState<number | null>(null);
 
     // Persistent state for minimized state
     const [minimized, setMinimized] = React.useState(() => {
@@ -29,7 +32,7 @@ const ThinkingAgents: React.FC<ThinkingAgentsProps> = ({ agents }) => {
     const dragOffset = React.useRef({ x: 0, y: 0 });
 
     React.useEffect(() => {
-        localStorage.setItem('agent_positions', JSON.stringify(positions));
+        localStorage.setItem('agent_positions_v2', JSON.stringify(positions));
     }, [positions]);
 
     React.useEffect(() => {
@@ -37,8 +40,6 @@ const ThinkingAgents: React.FC<ThinkingAgentsProps> = ({ agents }) => {
     }, [minimized]);
 
     const handleMouseDown = (e: React.MouseEvent, agent: 'director' | 'dop') => {
-        if ((e.target as HTMLElement).closest('.toggle-btn')) return;
-
         setDragging(agent);
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         dragOffset.current = {
@@ -52,16 +53,33 @@ const ThinkingAgents: React.FC<ThinkingAgentsProps> = ({ agents }) => {
         const handleMouseMove = (e: MouseEvent) => {
             if (!dragging) return;
 
-            const x = dragging === 'director' ? e.clientX - dragOffset.current.x : window.innerWidth - e.clientX - (48 - dragOffset.current.x);
-            const y = window.innerHeight - e.clientY - (48 - dragOffset.current.y);
+            // Constrain Y to viewport
+            const yFromBottom = window.innerHeight - e.clientY - (48 - dragOffset.current.y);
+            const clampedY = Math.max(20, Math.min(window.innerHeight - 100, yFromBottom));
 
             setPositions(prev => ({
                 ...prev,
-                [dragging]: { ...prev[dragging], x, y }
+                [dragging]: { ...prev[dragging], y: clampedY }
             }));
+
+            setDragX(e.clientX - dragOffset.current.x);
         };
 
-        const handleMouseUp = () => setDragging(null);
+        const handleMouseUp = (e: MouseEvent) => {
+            if (!dragging) return;
+
+            // Snap to nearest side
+            const threshold = window.innerWidth / 2;
+            const finalSide = e.clientX < threshold ? 'left' : 'right';
+
+            setPositions(prev => ({
+                ...prev,
+                [dragging]: { ...prev[dragging], side: finalSide }
+            }));
+
+            setDragging(null);
+            setDragX(null);
+        };
 
         if (dragging) {
             window.addEventListener('mousemove', handleMouseMove);
@@ -88,23 +106,31 @@ const ThinkingAgents: React.FC<ThinkingAgentsProps> = ({ agents }) => {
         const isMinimized = minimized[agentKey];
         const isActive = agent.status !== 'idle';
         const side = pos.side;
+        const isCurrentlyDragging = dragging === agentKey;
 
+        // Calculate dynamic style
         const style: React.CSSProperties = {
             bottom: `${pos.y}px`,
-            [side]: `${pos.x}px`,
-            cursor: dragging === agentKey ? 'grabbing' : 'grab',
-            transition: dragging === agentKey ? 'none' : 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+            zIndex: isCurrentlyDragging ? 1000 : 300,
+            cursor: isCurrentlyDragging ? 'grabbing' : 'grab',
+            transition: isCurrentlyDragging ? 'none' : 'all 0.5s cubic-bezier(0.19, 1, 0.22, 1)'
         };
+
+        if (isCurrentlyDragging && dragX !== null) {
+            style.left = `${dragX}px`;
+        } else {
+            style[side] = '24px';
+        }
 
         return (
             <div
                 onMouseDown={(e) => handleMouseDown(e, agentKey)}
                 style={style}
-                className={`fixed z-[300] flex flex-col items-${side === 'left' ? 'start' : 'end'} select-none animate-in fade-in duration-700`}
+                className={`fixed flex flex-col items-${side === 'left' ? 'start' : 'end'} select-none group`}
             >
                 {/* Thought/Message Bubble */}
                 {!isMinimized && agent.message && (
-                    <div className={`mb-4 max-w-xs p-4 rounded-2xl backdrop-blur-xl border ${side === 'left' ? 'rounded-bl-none' : 'rounded-br-none'} transition-all duration-500 shadow-2xl relative group ${agent.status === 'error' ? 'bg-red-900/20 border-red-500/40 text-red-200' :
+                    <div className={`mb-4 max-w-xs p-4 rounded-2xl backdrop-blur-xl border ${side === 'left' ? 'rounded-bl-none' : 'rounded-br-none'} transition-all duration-500 shadow-2xl relative ${agent.status === 'error' ? 'bg-red-900/20 border-red-500/40 text-red-200' :
                         agent.status === 'success' ? 'bg-green-900/20 border-green-500/40 text-green-200' :
                             'bg-gray-900/60 border-white/10 text-white'
                         }`}>
@@ -113,7 +139,7 @@ const ThinkingAgents: React.FC<ThinkingAgentsProps> = ({ agents }) => {
                             <p className="text-xs font-bold leading-relaxed tracking-tight">{agent.message}</p>
                         </div>
 
-                        {/* Thinking Dots if status is thinking */}
+                        {/* Thinking Dots */}
                         {agent.status === 'thinking' && (
                             <div className="flex gap-1 mt-2">
                                 <div className="w-1 h-1 bg-current rounded-full animate-bounce"></div>
@@ -133,21 +159,28 @@ const ThinkingAgents: React.FC<ThinkingAgentsProps> = ({ agents }) => {
                 {/* Avatar Container */}
                 <div className="flex items-center gap-3">
                     {side === 'right' && !isMinimized && (
-                        <div className="text-right">
+                        <div className="text-right pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
                             <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">{name}</p>
                             <p className={`text-[9px] font-bold ${colorClass.replace('bg-', 'text-')} uppercase`}>{agent.status}</p>
                         </div>
                     )}
 
-                    <div className={`group relative ${isMinimized ? 'scale-75 opacity-70 hover:opacity-100' : ''} transition-all duration-300`}>
+                    <div
+                        className={`relative transition-all duration-300 ${isMinimized ? 'scale-75 opacity-50 hover:opacity-100' : 'scale-100 hover:scale-110'}`}
+                        onClick={(e) => {
+                            // Only toggle if not dragging (threshold check)
+                            if (!isCurrentlyDragging) {
+                                setMinimized(prev => ({ ...prev, [agentKey]: !prev[agentKey] }));
+                            }
+                        }}
+                    >
                         <div className={`w-12 h-12 rounded-full ${colorClass} p-0.5 shadow-2xl relative animate-float`}>
-
                             {/* Glow effect */}
                             <div className={`absolute inset-0 rounded-full blur-md ${colorClass} opacity-30 animate-pulse`}></div>
 
                             <div className="w-full h-full rounded-full bg-gray-950 flex items-center justify-center relative z-10 border border-white/10 overflow-hidden">
                                 {isMinimized ? (
-                                    <Icon size={16} className="opacity-50" />
+                                    <Icon size={16} className="opacity-40" />
                                 ) : (
                                     <Icon size={20} className={agent.status === 'thinking' ? 'animate-pulse' : ''} />
                                 )}
@@ -160,21 +193,15 @@ const ThinkingAgents: React.FC<ThinkingAgentsProps> = ({ agents }) => {
                                         'bg-gray-500'
                                 }`}></div>
 
-                            {/* Toggle Button Overlay */}
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setMinimized(prev => ({ ...prev, [agentKey]: !prev[agentKey] }));
-                                }}
-                                className="toggle-btn absolute inset-0 z-30 opacity-0 group-hover:opacity-100 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-full transition-opacity cursor-pointer text-[10px] font-bold text-white uppercase"
-                            >
-                                {isMinimized ? 'Show' : 'Hide'}
-                            </button>
+                            {/* Hint Overlay */}
+                            <div className="absolute inset-0 z-30 opacity-0 group-hover:opacity-100 flex items-center justify-center bg-black/40 backdrop-blur-[2px] rounded-full transition-opacity pointer-events-none">
+                                <span className="text-[8px] font-black text-white uppercase">{isMinimized ? 'Show' : 'Hide'}</span>
+                            </div>
                         </div>
                     </div>
 
                     {side === 'left' && !isMinimized && (
-                        <div className="text-left">
+                        <div className="text-left pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
                             <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">{name}</p>
                             <p className={`text-[9px] font-bold ${colorClass.replace('bg-', 'text-')} uppercase`}>{agent.status}</p>
                         </div>
@@ -188,17 +215,17 @@ const ThinkingAgents: React.FC<ThinkingAgentsProps> = ({ agents }) => {
         <>
             <style>
                 {`
-          @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-8px); }
-          }
-          .animate-float {
-            animation: float 4s ease-in-out infinite;
-          }
-        `}
+                @keyframes float {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(-8px); }
+                }
+                .animate-float {
+                    animation: float 4s ease-in-out infinite;
+                }
+                `}
             </style>
-            <div className="pointer-events-none">
-                <div className="pointer-events-auto">
+            <div className="fixed inset-0 pointer-events-none z-[999]">
+                <div className="pointer-events-auto contents">
                     {renderAgent('director', director, Clapperboard, 'Director', 'bg-brand-red')}
                     {renderAgent('dop', dop, Camera, 'DOP Assistant', 'bg-blue-600')}
                 </div>
