@@ -108,10 +108,7 @@ const App: React.FC = () => {
                 [agent]: { ...s.agents![agent], status, message, currentStage: stage, lastAction: Date.now() }
             }
         }));
-
-        if (message && status !== 'idle') {
-            addProductionLog(agent, message, status === 'error' ? 'error' : status === 'success' ? 'success' : 'info', stage);
-        }
+        // Note: Do NOT auto-log here. Hooks should call addProductionLog explicitly to avoid duplicates.
     }, [updateStateAndRecord]);
 
     const addProductionLog = useCallback((sender: 'director' | 'dop' | 'user' | 'system', message: string, type: 'info' | 'success' | 'warning' | 'error' | 'directive' = 'info', stage?: string) => {
