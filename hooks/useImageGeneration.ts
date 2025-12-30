@@ -125,7 +125,13 @@ export function useImageGeneration(
     };
 
     // referenceImage: Optional image URL to use as visual DNA reference (from another scene)
-    const performImageGeneration = useCallback(async (sceneId: string, refinementPrompt?: string, isEndFrame: boolean = false, referenceImage?: string) => {
+    const performImageGeneration = useCallback(async (
+        sceneId: string,
+        refinementPrompt?: string,
+        fromManual: boolean = false,
+        referenceImage?: string,
+        baseImage?: string // NEW: Optional base image for Img2Img editing
+    ) => {
         const currentState = stateRef.current;
         const currentSceneIndex = currentState.scenes.findIndex(s => s.id === sceneId);
         const sceneToUpdate = currentState.scenes[currentSceneIndex];
@@ -401,6 +407,17 @@ Use this image strictly as a "Style & Material" reference, NOT a pixel-perfect l
                     parts.push({ inlineData: { data: dnaImgData.data, mimeType: dnaImgData.mimeType } });
                     continuityInstruction += '(DNA REFERENCE ENFORCED) ';
                     console.log('[ImageGen] 🧬 DNA Reference Image injected for visual consistency');
+                }
+            }
+
+            // 5.0.1 BASE IMAGE INJECTION (For Img2Img / Editing)
+            // If baseImage is provided, this is an EDIT operation, not a generation from scratch.
+            if (baseImage) {
+                const baseImgData = await safeGetImageData(baseImage);
+                if (baseImgData) {
+                    parts.unshift({ inlineData: { data: baseImgData.data, mimeType: baseImgData.mimeType } }); // Put Base Image FIRST
+                    parts.unshift({ text: `!!! EDITING INSTRUCTION !!!: The image provided below is the BASE SCENE. You MUST MODIFY this exact image. PRESERVE the room layout, lighting, and camera angle of this BASE IMAGE. ONLY add/remove objects as described in the prompt.` });
+                    console.log('[ImageGen] 🖼️ Base Image Editing Mode activated');
                 }
             }
 
@@ -686,8 +703,8 @@ The NEW scene has its OWN camera style as specified in the current prompt. DO NO
                 ...s,
                 scenes: s.scenes.map(sc => sc.id === sceneId ? {
                     ...sc,
-                    ...(isEndFrame ? { endFrameImage: imageUrl } : { generatedImage: imageUrl }),
-                    mediaId: isEndFrame ? sc.mediaId : (mediaId || sc.mediaId),
+                    ...(fromManual ? { endFrameImage: imageUrl } : { generatedImage: imageUrl }),
+                    mediaId: fromManual ? sc.mediaId : (mediaId || sc.mediaId),
                     isGenerating: false,
                     error: null
                 } : sc)
@@ -695,7 +712,7 @@ The NEW scene has its OWN camera style as specified in the current prompt. DO NO
 
             // Add to session gallery
             if (addToGallery) {
-                addToGallery(imageUrl, isEndFrame ? 'end-frame' : 'scene', finalImagePrompt, sceneId);
+                addToGallery(imageUrl, fromManual ? 'end-frame' : 'scene', finalImagePrompt, sceneId);
             }
 
         } catch (error) {
@@ -794,7 +811,10 @@ The NEW scene has its OWN camera style as specified in the current prompt. DO NO
                 // Check if this scene has a specific DNA reference image
                 const dnaReference = referenceMap ? referenceMap[scene.id] : undefined;
 
-                await performImageGeneration(scene.id, undefined, false, dnaReference);
+                // Check if scene ALREADY has an image -> Treat as Base Image for Editing
+                const existingBaseImage = scene.generatedImage || undefined;
+
+                await performImageGeneration(scene.id, undefined, false, dnaReference, existingBaseImage);
                 setAgentState('director', 'success', `Đã tạo xong ảnh Phân cảnh ${scene.sceneNumber}.`);
 
 

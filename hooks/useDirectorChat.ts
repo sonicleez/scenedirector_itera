@@ -364,8 +364,8 @@ OUTPUT FORMAT: JSON only
                             ...s,
                             scenes: s.scenes.map(scene => scene.id === tgtScene.id ? {
                                 ...scene,
-                                contextDescription: fixedPrompt,
-                                generatedImage: null
+                                contextDescription: fixedPrompt
+                                // PRESERVE generatedImage so it can be used as Base Image for editing
                             } : scene)
                         }));
 
