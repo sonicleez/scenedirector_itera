@@ -361,6 +361,14 @@ This applies to EVERY human figure in the scene without ANY exception. If a hand
                 finalImagePrompt = `!!! MANDATORY OBJECT LOCK: ${sceneToUpdate.referenceImageDescription.toUpperCase()} !!! Draw the following objects EXACTLY as shown in the [AUTHORITATIVE_VISUAL_REFERENCE] image: ${sceneToUpdate.referenceImageDescription.toUpperCase()}. Match design, material, and color. ${finalImagePrompt}`;
             }
 
+            // AUTO-DETECT OBJECT INSERTION FROM CONTEXT (e.g. "sits the... on the table")
+            // This aids in overcoming "Reference Image Blindness" where the model ignores new objects.
+            const objectInsertionMatch = cleanedContext.match(/(?:sits|placed|lying|resting)\s+(?:a|the)\s+([a-zA-Z\s]+?)\s+(?:on|in|at)\s+(?:the|a)\s+([a-zA-Z\s]+)/i);
+            if (objectInsertionMatch) {
+                const [_, objName, locName] = objectInsertionMatch;
+                finalImagePrompt = `!!! PRIORITY RENDER INSTRUCTION: DRAW A ${objName.toUpperCase()} ON THE ${locName.toUpperCase()} !!! The ${objName} MUST be visible in the scene. ${finalImagePrompt}`;
+            }
+
             if (refinementPrompt) {
                 finalImagePrompt = `REFINEMENT: ${refinementPrompt}. BASE PROMPT: ${finalImagePrompt}`;
             }
