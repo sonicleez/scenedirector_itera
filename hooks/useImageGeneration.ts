@@ -459,9 +459,27 @@ This applies to EVERY human figure in the scene without ANY exception. If a hand
             if (referenceImage) {
                 const dnaImgData = await safeGetImageData(referenceImage);
                 if (dnaImgData) {
-                    const refLabel = 'DNA_VISUAL_REFERENCE';
-                    parts.push({
-                        text: `[${refLabel}]: !!! CRITICAL VISUAL DNA ANCHOR !!!
+                    // Check if this is COMPOSITE mode (has object description) or STYLE mode
+                    const objectToExtract = sceneToUpdate.referenceImageDescription;
+
+                    if (objectToExtract) {
+                        // COMPOSITE MODE: Extract specific object from reference
+                        const refLabel = 'OBJECT_SOURCE_IMAGE';
+                        parts.push({
+                            text: `[${refLabel}]: !!! EXTRACT OBJECT FROM THIS IMAGE !!!
+Look at this reference image and FIND the object: "${objectToExtract}".
+COPY the EXACT appearance of "${objectToExtract}" (color, texture, shape, details) from THIS image.
+ADD this object to the BASE scene (the first image) in a natural position.
+DO NOT copy the background or other elements from this reference - ONLY the specified object.`
+                        });
+                        parts.push({ inlineData: { data: dnaImgData.data, mimeType: dnaImgData.mimeType } });
+                        continuityInstruction += `(COMPOSITE: Add "${objectToExtract}" from reference) `;
+                        console.log('[ImageGen] 🎯 COMPOSITE Mode: Extracting object:', objectToExtract);
+                    } else {
+                        // STYLE MODE: Match visual DNA/style
+                        const refLabel = 'DNA_VISUAL_REFERENCE';
+                        parts.push({
+                            text: `[${refLabel}]: !!! CRITICAL VISUAL DNA ANCHOR !!!
 This is the MANDATORY reference image that defines the EXACT visual style for this scene.
 MATCH PRECISELY:
 - Color grading, palette, and lighting atmosphere
@@ -474,9 +492,10 @@ IMPORTANT EXCEPTIONS - DEFER TO PROMPT FOR:
 - COMPOSITION (If text prompt changes camera angle, FOLLOW THE TEXT)
 
 Use this image strictly as a "Style & Material" reference, NOT a pixel-perfect layout content constraint.` });
-                    parts.push({ inlineData: { data: dnaImgData.data, mimeType: dnaImgData.mimeType } });
-                    continuityInstruction += '(DNA REFERENCE ENFORCED) ';
-                    console.log('[ImageGen] 🧬 DNA Reference Image injected for visual consistency');
+                        parts.push({ inlineData: { data: dnaImgData.data, mimeType: dnaImgData.mimeType } });
+                        continuityInstruction += '(DNA REFERENCE ENFORCED) ';
+                        console.log('[ImageGen] 🧬 DNA Reference Image injected for visual consistency');
+                    }
                 }
             }
 
