@@ -444,6 +444,10 @@ INSTRUCTION: Using the provided target image as the base, add ${objectDesc} (vis
                             } : scene)
                         }));
 
+                        // Wait for React state to sync (critical for referenceImageDescription to be available)
+                        await new Promise(resolve => setTimeout(resolve, 400));
+                        console.log('[Director] COMPOSITE: State synced, referenceImageDescription should be:', objectDesc);
+
                         // Generate with:
                         // - baseImageMap: Target's existing image (CANVAS to edit)
                         // - referenceMap: Source's image (for object appearance)
