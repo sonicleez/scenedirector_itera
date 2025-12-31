@@ -94,6 +94,7 @@ INTENTS:
 11. CLEAR_ALL_IMAGES: Clear all generated images (e.g. "Xóa hết ảnh", "Clear ảnh").
 12. UPDATE_SCENE_PROMPT: Edit a specific scene's prompt (e.g. "Sửa prompt cảnh 3 thành...").
 13. EXECUTE_PENDING: User confirms to execute the previously discussed action (e.g. "thực thi", "bắt đầu", "làm đi", "OK", "xác nhận"). IMPORTANT: Check PENDING ACTION and RECENT CONVERSATION to determine what to execute.
+14. COMPOSITE_OBJECT_TRANSFER: Take an object from one scene and add it to another scene (e.g. "tham chiếu cảnh 2, thêm chiếc cặp vào cảnh 1", "lấy cái túi từ cảnh 3 đặt lên bàn ở cảnh 1"). The TARGET scene (where object is added) should be EDITED, not regenerated. The SOURCE scene provides the object reference only.
 
 IMPORTANT RULES:
 - If user says "thực thi", "bắt đầu", "làm đi" - check RECENT CONVERSATION to understand WHAT to execute.
@@ -115,7 +116,10 @@ OUTPUT FORMAT: JSON only
     "sceneNumber": number, // for UPDATE_SCENE_PROMPT, SYNERGY_DIRECTIVE, EXECUTE_PENDING
     "newPrompt": "string", // for UPDATE_SCENE_PROMPT
     "visualDirective": "string", // Optional: If user provides visual description for new/inserted scene (e.g. "extreme closeup of hand").
-    "referencePrevious": boolean // Optional: true if user implies continuity with previous scene (e.g. "zoom in", "next shot").
+    "referencePrevious": boolean, // Optional: true if user implies continuity with previous scene (e.g. "zoom in", "next shot").
+    "sourceSceneNumber": number, // for COMPOSITE_OBJECT_TRANSFER: scene containing the object to extract
+    "targetSceneNumber": number, // for COMPOSITE_OBJECT_TRANSFER: scene to EDIT (add object to)
+    "objectDescription": "string" // for COMPOSITE_OBJECT_TRANSFER: description of the object to transfer (e.g. "chiếc cặp", "cái túi")
   },
   "response": "Brief professional acknowledgment in Vietnamese"
 }`;
@@ -384,6 +388,70 @@ OUTPUT FORMAT: JSON only
                     }
                 } else {
                     setAgentState('director', 'error', 'Tôi không tìm thấy cảnh nguồn hoặc cảnh đích.');
+                }
+                break;
+
+            case 'COMPOSITE_OBJECT_TRANSFER':
+                // CRITICAL: Target scene is EDITED (preserved), Source scene is only for REFERENCE
+                const compositeSource = state.scenes.find(s =>
+                    s.sceneNumber === String(entities.sourceSceneNumber) ||
+                    s.id === entities.sourceSceneId
+                );
+                const compositeTarget = state.scenes.find(s =>
+                    s.sceneNumber === String(entities.targetSceneNumber) ||
+                    s.id === entities.targetSceneId
+                );
+
+                if (compositeSource && compositeTarget) {
+                    const objectDesc = entities.objectDescription || 'the object';
+                    addProductionLog('director', response || `Đang thêm ${objectDesc} từ cảnh ${compositeSource.sceneNumber} vào cảnh ${compositeTarget.sceneNumber}.`, 'info');
+                    setAgentState('director', 'thinking', `Đang chuẩn bị composite: ${objectDesc}...`, 'Composite');
+
+                    try {
+                        // Generate edit prompt that describes what to ADD
+                        const compositePrompt = `EDIT the target scene by ADDING an object from the reference.
+
+TARGET SCENE (KEEP THIS SCENE'S LAYOUT, CAMERA, SUBJECT):
+"${compositeTarget.contextDescription}"
+
+OBJECT TO ADD (from reference image):
+"${objectDesc}"
+
+INSTRUCTION: Using the provided target image as the base, add ${objectDesc} (visible in the reference image) to the scene. 
+- KEEP the target scene's composition, camera angle, and main subject EXACTLY.
+- Only ADD the new object in a natural position.
+- Match the object's appearance from the reference image.`;
+
+                        const editPrompt = await callGeminiText(userApiKey || '', compositePrompt, 'You are an Expert VFX Compositor. Output only the final edit instruction prompt.', 'gemini-3.0-flash', false);
+
+                        // Update the target scene's prompt
+                        updateStateAndRecord(s => ({
+                            ...s,
+                            scenes: s.scenes.map(scene => scene.id === compositeTarget.id ? {
+                                ...scene,
+                                contextDescription: editPrompt || `Add ${objectDesc} from reference to ${compositeTarget.contextDescription}`,
+                                referenceImage: compositeSource.generatedImage, // Source as REFERENCE for object
+                                referenceImageDescription: objectDesc
+                            } : scene)
+                        }));
+
+                        // Generate with:
+                        // - baseImageMap: Target's existing image (CANVAS to edit)
+                        // - referenceMap: Source's image (for object appearance)
+                        setAgentState('director', 'speaking', `Đang chỉnh sửa cảnh ${compositeTarget.sceneNumber}...`, 'Editing');
+
+                        const baseMap = compositeTarget.generatedImage ? { [compositeTarget.id]: compositeTarget.generatedImage } : undefined;
+                        const refMap = compositeSource.generatedImage ? { [compositeTarget.id]: compositeSource.generatedImage } : undefined;
+
+                        await handleGenerateAllImages([compositeTarget.id], refMap, baseMap);
+
+                        setAgentState('director', 'success', `Đã thêm ${objectDesc} vào cảnh ${compositeTarget.sceneNumber} thành công!`);
+                    } catch (e) {
+                        console.error('[Director] COMPOSITE_OBJECT_TRANSFER error:', e);
+                        setAgentState('director', 'error', `Lỗi khi thêm vật thể vào cảnh.`);
+                    }
+                } else {
+                    setAgentState('director', 'error', 'Tôi không tìm thấy cảnh nguồn hoặc cảnh đích. Vui lòng chỉ rõ số cảnh.');
                 }
                 break;
 
