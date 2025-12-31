@@ -524,8 +524,21 @@ INSTRUCTION: Using the provided target image as the base, add ${objectDesc} (vis
                     // If user implies continuity OR explicitly asks for similar shot
                     if (entities.referencePrevious && prevScene.generatedImage) {
                         initialData.referenceImage = prevScene.generatedImage;
-                        initialData.referenceImageDescription = "Previous moment in sequence. Maintain visual continuity.";
-                        addProductionLog('director', 'Đang dùng ảnh cảnh trước làm tham chiếu (Reference)...', 'info');
+
+                        // Check if this is an ANGLE CHANGE request (zoom, close-up, etc.)
+                        // If so, DON'T set referenceImageDescription to allow Reasoning to handle angle change
+                        const isAngleChange = entities.visualDirective &&
+                            /zoom|close.?up|wide|medium|long|pan|angle|shot/i.test(entities.visualDirective);
+
+                        if (!isAngleChange) {
+                            // Only set description for style matching, not for angle changes
+                            initialData.referenceImageDescription = "Previous moment in sequence. Maintain visual continuity.";
+                        }
+
+                        addProductionLog('director', isAngleChange
+                            ? 'Tạo góc máy mới từ cảnh trước...'
+                            : 'Đang dùng ảnh cảnh trước làm tham chiếu (Reference)...', 'info');
+                        console.log('[Director] INSERT_SCENE - isAngleChange:', isAngleChange, 'directive:', entities.visualDirective);
                     }
 
                     // Execute Insertion
