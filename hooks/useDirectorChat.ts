@@ -546,9 +546,13 @@ INSTRUCTION: Using the provided target image as the base, add ${objectDesc} (vis
 
                     if (entities.visualDirective) {
                         setAgentState('director', 'speaking', `Đang tạo cảnh mới: ${entities.visualDirective}...`, 'Generating');
-                        // Trigger generation after delay to allow React state update
-                        // Increased to 500ms to ensure stateRef.current is fully synced
+
+                        // Wait for React state to sync before generating
+                        // Using 400ms which is typically enough for React to flush updates
+                        const startWait = Date.now();
                         setTimeout(() => {
+                            console.log(`[Director] State sync wait: ${Date.now() - startWait}ms, starting generation for scene ${newId}`);
+
                             // If we referenced previous image, pass it as Base Image (Edit Mode)
                             // to ensure continuity of pose/details (e.g. Zoom In, Variation)
                             let baseMap: { [key: string]: string } | undefined;
@@ -558,7 +562,7 @@ INSTRUCTION: Using the provided target image as the base, add ${objectDesc} (vis
                             }
 
                             handleGenerateAllImages([newId], undefined, baseMap);
-                        }, 500);
+                        }, 400);
                     } else {
                         setAgentState('director', 'success', `Đã chèn cảnh mới sau cảnh ${insertAfterNum}.`);
                     }
