@@ -233,7 +233,7 @@ OUTPUT ONLY THE PROMPT. DO NOT OUTPUT MARKDOWN OR EXPLANATION.`;
                             userApiKey,
                             analysisPrompt,
                             imagesToSend,
-                            'gemini-3.0-flash' // "Gemini 3 Reasoning"
+                            'gemini-2.5-flash' // "Gemini 3 Reasoning"
                         );
 
                         if (reasonedPrompt) {

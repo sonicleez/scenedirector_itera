@@ -430,7 +430,7 @@ INSTRUCTION: Using the provided target image as the base, add ${objectDesc} (vis
 - Match the object's appearance from the reference image.`;
 
                         console.log('[Director] Calling Gemini for composite prompt...');
-                        const editPrompt = await callGeminiText(userApiKey || '', compositePrompt, 'You are an Expert VFX Compositor. Output only the final edit instruction prompt.', 'gemini-3.0-flash', false);
+                        const editPrompt = await callGeminiText(userApiKey || '', compositePrompt, 'You are an Expert VFX Compositor. Output only the final edit instruction prompt.', 'gemini-2.5-flash', false);
                         console.log('[Director] Got edit prompt:', editPrompt?.substring(0, 100) + '...');
 
                         // Update the target scene's prompt

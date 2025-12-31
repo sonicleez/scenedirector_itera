@@ -325,7 +325,7 @@ export const analyzeImage = async (apiKey: string, image: GeneratedImage): Promi
     try {
         const ai = getAi(apiKey);
         const response = await ai.models.generateContent({
-            model: 'gemini-3.0-flash',
+            model: 'gemini-2.5-flash',
             contents: [{
                 parts: [
                     {
