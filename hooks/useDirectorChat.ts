@@ -526,7 +526,12 @@ INSTRUCTION: Using the provided target image as the base, add ${objectDesc} (vis
 
                     // NEW: Image Reference Transfer (Consistency)
                     // If user implies continuity OR explicitly asks for similar shot
+                    // Store prevScene image for baseMap (used in angle change mode)
+                    let prevSceneImage: string | undefined;
+
                     if (entities.referencePrevious && prevScene.generatedImage) {
+                        prevSceneImage = prevScene.generatedImage;
+
                         // Check if this is an ANGLE CHANGE request (zoom, close-up, etc.)
                         const isAngleChange = entities.visualDirective &&
                             /zoom|close.?up|wide|medium|long|pan|angle|shot/i.test(entities.visualDirective);
@@ -558,11 +563,11 @@ INSTRUCTION: Using the provided target image as the base, add ${objectDesc} (vis
                         setTimeout(() => {
                             console.log(`[Director] State sync wait: ${Date.now() - startWait}ms, starting generation for scene ${newId}`);
 
-                            // If we referenced previous image, pass it as Base Image (Edit Mode)
-                            // to ensure continuity of pose/details (e.g. Zoom In, Variation)
+                            // Pass as Base Image to maintain subject identity
+                            // Works for both angle change (Reasoning controls angle) and style continuity
                             let baseMap: { [key: string]: string } | undefined;
-                            if (entities.referencePrevious && initialData.referenceImage) {
-                                baseMap = { [newId]: initialData.referenceImage };
+                            if (entities.referencePrevious && prevSceneImage) {
+                                baseMap = { [newId]: prevSceneImage };
                                 console.log('[Director] Passing Previous Image as Base Image for Continuity Insert');
                             }
 
