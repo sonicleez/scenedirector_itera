@@ -393,14 +393,21 @@ OUTPUT FORMAT: JSON only
 
             case 'COMPOSITE_OBJECT_TRANSFER':
                 // CRITICAL: Target scene is EDITED (preserved), Source scene is only for REFERENCE
-                const compositeSource = state.scenes.find(s =>
-                    s.sceneNumber === String(entities.sourceSceneNumber) ||
-                    s.id === entities.sourceSceneId
-                );
-                const compositeTarget = state.scenes.find(s =>
-                    s.sceneNumber === String(entities.targetSceneNumber) ||
-                    s.id === entities.targetSceneId
-                );
+                // Fix: Handle different sceneNumber formats (1, '1', '001', etc.)
+                const srcNum = entities.sourceSceneNumber;
+                const tgtNum = entities.targetSceneNumber;
+                console.log('[Director] COMPOSITE_OBJECT_TRANSFER - Looking for source:', srcNum, 'target:', tgtNum);
+
+                const compositeSource = state.scenes.find(s => {
+                    const sNum = parseInt(s.sceneNumber, 10);
+                    return sNum === srcNum || s.id === entities.sourceSceneId;
+                });
+                const compositeTarget = state.scenes.find(s => {
+                    const sNum = parseInt(s.sceneNumber, 10);
+                    return sNum === tgtNum || s.id === entities.targetSceneId;
+                });
+
+                console.log('[Director] Found source:', compositeSource?.sceneNumber, 'target:', compositeTarget?.sceneNumber);
 
                 if (compositeSource && compositeTarget) {
                     const objectDesc = entities.objectDescription || 'the object';
@@ -422,7 +429,9 @@ INSTRUCTION: Using the provided target image as the base, add ${objectDesc} (vis
 - Only ADD the new object in a natural position.
 - Match the object's appearance from the reference image.`;
 
+                        console.log('[Director] Calling Gemini for composite prompt...');
                         const editPrompt = await callGeminiText(userApiKey || '', compositePrompt, 'You are an Expert VFX Compositor. Output only the final edit instruction prompt.', 'gemini-3.0-flash', false);
+                        console.log('[Director] Got edit prompt:', editPrompt?.substring(0, 100) + '...');
 
                         // Update the target scene's prompt
                         updateStateAndRecord(s => ({
@@ -443,6 +452,7 @@ INSTRUCTION: Using the provided target image as the base, add ${objectDesc} (vis
                         const baseMap = compositeTarget.generatedImage ? { [compositeTarget.id]: compositeTarget.generatedImage } : undefined;
                         const refMap = compositeSource.generatedImage ? { [compositeTarget.id]: compositeSource.generatedImage } : undefined;
 
+                        console.log('[Director] Calling image generation with baseMap:', !!baseMap, 'refMap:', !!refMap);
                         await handleGenerateAllImages([compositeTarget.id], refMap, baseMap);
 
                         setAgentState('director', 'success', `Đã thêm ${objectDesc} vào cảnh ${compositeTarget.sceneNumber} thành công!`);
