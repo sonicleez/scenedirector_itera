@@ -74,7 +74,7 @@ export function useImageGeneration(
 
             const response = await ai.models.generateContent({
                 model: model,
-                contents: fullParts,
+                contents: [{ parts: fullParts }],
                 config: {
                     imageConfig: {
                         aspectRatio: aspectRatio || "16:9",
