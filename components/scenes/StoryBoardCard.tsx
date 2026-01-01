@@ -156,6 +156,18 @@ export const StoryBoardCard: React.FC<StoryBoardCardProps> = ({
                 <div className="absolute top-2 left-2 p-1.5 bg-black/50 text-white rounded cursor-grab active:cursor-grabbing opacity-0 group-hover/card:opacity-100 transition-opacity">
                     <GripVertical size={14} />
                 </div>
+
+                {/* Key Frame Badge + Toggle */}
+                <button
+                    onClick={(e) => { e.stopPropagation(); updateScene(scene.id, { isKeyFrame: !scene.isKeyFrame }); }}
+                    className={`absolute top-2 right-2 px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide transition-all ${scene.isKeyFrame
+                            ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/30'
+                            : 'bg-black/50 text-gray-400 opacity-0 group-hover/card:opacity-100 hover:bg-yellow-500/20 hover:text-yellow-400'
+                        }`}
+                    title={scene.isKeyFrame ? 'Remove Key Frame (scenes will use previous anchor)' : 'Mark as Key Frame (hero shot for nearby scenes)'}
+                >
+                    {scene.isKeyFrame ? '⭐ KEY' : '☆ Key'}
+                </button>
             </div>
 
             {/* Content Section */}

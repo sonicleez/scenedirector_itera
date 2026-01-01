@@ -137,6 +137,9 @@ export interface Scene {
   voSecondsEstimate?: number; // Estimated VO duration in seconds
   referenceSceneId?: string; // For B-roll: ID of the VO scene this expands
 
+  // Key Frame Strategy
+  isKeyFrame?: boolean; // Mark as hero shot - becomes reference anchor for nearby scenes
+
   // Stats
   generationDuration?: number; // Time taken to generate this image (ms)
   generationStartTime?: number; // Timestamp when generation started (for realtime timer)

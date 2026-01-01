@@ -49,7 +49,9 @@ export function useImageGeneration(
 
     /**
      * Storyboard Mode: Find the best cascade reference image for visual consistency
+     * Priority: Nearest KEY FRAME > Nearest any scene > Group conceptImage
      * - Looks for the nearest scene with an image in the SAME SceneGroup
+     * - KEY FRAMES are prioritized as they are hero shots
      * - Falls back to group's conceptImage if no scene has image
      * - Returns undefined if no reference available (first scene in group)
      */
@@ -74,8 +76,22 @@ export function useImageGeneration(
             return undefined;
         }
 
-        // 2. Find nearest scene BEFORE current (by sceneNumber)
         const currentNum = parseInt(currentScene.sceneNumber);
+
+        // 2. PRIORITY: Find nearest KEY FRAME (hero shot) first
+        const keyFramesInGroup = sameGroupScenes.filter(s => s.isKeyFrame);
+        if (keyFramesInGroup.length > 0) {
+            // Find nearest key frame by scene number distance
+            const sortedByDistance = keyFramesInGroup.sort((a, b) => {
+                const distA = Math.abs(parseInt(a.sceneNumber) - currentNum);
+                const distB = Math.abs(parseInt(b.sceneNumber) - currentNum);
+                return distA - distB;
+            });
+            console.log(`[Cascade] Scene ${currentScene.sceneNumber} referencing KEY FRAME Scene ${sortedByDistance[0].sceneNumber} ⭐`);
+            return sortedByDistance[0].generatedImage!;
+        }
+
+        // 3. Fallback: Find nearest scene BEFORE current (by sceneNumber)
         const beforeScenes = sameGroupScenes
             .filter(s => parseInt(s.sceneNumber) < currentNum)
             .sort((a, b) => parseInt(b.sceneNumber) - parseInt(a.sceneNumber));
@@ -85,7 +101,7 @@ export function useImageGeneration(
             return beforeScenes[0].generatedImage!;
         }
 
-        // 3. If no scene before, check if any scene AFTER has image (edge case: regenerating earlier scene)
+        // 4. If no scene before, check if any scene AFTER has image (edge case: regenerating earlier scene)
         const afterScenes = sameGroupScenes
             .filter(s => parseInt(s.sceneNumber) > currentNum)
             .sort((a, b) => parseInt(a.sceneNumber) - parseInt(b.sceneNumber));
@@ -1022,8 +1038,23 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
 
 
         try {
-            for (let i = 0; i < scenesToGenerate.length; i++) {
-                const scene = scenesToGenerate[i];
+            // KEY FRAME STRATEGY: Generate Key Frames FIRST within each group
+            // This ensures hero shots are available as references for other scenes
+            const sortedScenes = [...scenesToGenerate].sort((a, b) => {
+                // Key frames first
+                if (a.isKeyFrame && !b.isKeyFrame) return -1;
+                if (!a.isKeyFrame && b.isKeyFrame) return 1;
+                // Then by scene number
+                return parseInt(a.sceneNumber) - parseInt(b.sceneNumber);
+            });
+
+            const keyFrameCount = sortedScenes.filter(s => s.isKeyFrame).length;
+            if (keyFrameCount > 0) {
+                console.log(`[BatchGen] ⭐ Key Frame Strategy: ${keyFrameCount} key frames will be generated first`);
+            }
+
+            for (let i = 0; i < sortedScenes.length; i++) {
+                const scene = sortedScenes[i];
                 if (stopRef.current) break;
 
                 setAgentState('director', 'speaking', `Đang chỉ đạo Phân cảnh ${scene.sceneNumber}...`);
