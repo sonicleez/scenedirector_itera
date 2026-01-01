@@ -1,7 +1,18 @@
 /**
- * Split a storyboard image (2x2 grid) into individual panels
+ * Determine optimal grid layout based on panel count
+ */
+export function getGridLayout(panelCount: number): { cols: number; rows: number } {
+    if (panelCount === 1) return { cols: 1, rows: 1 };
+    if (panelCount === 2) return { cols: 2, rows: 1 }; // Horizontal strip
+    if (panelCount === 3) return { cols: 3, rows: 1 }; // Horizontal strip
+    return { cols: 2, rows: 2 }; // Standard 2x2 for 4
+}
+
+/**
+ * Split a storyboard image into individual panels
+ * Automatically determines grid layout based on panelCount
  * @param fullImage Base64 encoded image
- * @param panelCount Number of panels to extract (default 4)
+ * @param panelCount Number of panels to extract (1-4)
  * @returns Array of base64 encoded panel images
  */
 export async function splitStoryboardImage(
@@ -21,9 +32,8 @@ export async function splitStoryboardImage(
                     return;
                 }
 
-                // Calculate panel dimensions (2x2 grid)
-                const cols = 2;
-                const rows = Math.ceil(panelCount / cols);
+                // Dynamic grid layout based on panel count
+                const { cols, rows } = getGridLayout(panelCount);
                 const panelWidth = Math.floor(img.width / cols);
                 const panelHeight = Math.floor(img.height / rows);
 
@@ -55,7 +65,7 @@ export async function splitStoryboardImage(
                     }
                 }
 
-                console.log(`[ImageSplitter] Split image into ${panels.length} panels (${panelWidth}x${panelHeight} each)`);
+                console.log(`[ImageSplitter] Split into ${panels.length} panels (${cols}x${rows} grid, ${panelWidth}x${panelHeight} each)`);
                 resolve(panels);
             } catch (error) {
                 reject(error);
@@ -73,21 +83,4 @@ export async function splitStoryboardImage(
             img.src = `data:image/jpeg;base64,${fullImage}`;
         }
     });
-}
-
-/**
- * Validate that an image appears to be a grid/storyboard
- * (Optional helper for quality control)
- */
-export function estimateGridQuality(
-    img: HTMLImageElement
-): { isGrid: boolean; confidence: number } {
-    // Simple heuristic: storyboard images are typically square-ish
-    const aspectRatio = img.width / img.height;
-    const isSquarish = aspectRatio > 0.8 && aspectRatio < 1.2;
-
-    return {
-        isGrid: isSquarish,
-        confidence: isSquarish ? 0.8 : 0.3
-    };
 }

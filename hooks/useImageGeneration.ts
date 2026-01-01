@@ -1055,14 +1055,20 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                 });
 
                 for (const [groupId, scenes] of Object.entries(groupedScenes)) {
-                    // Process in chunks of 4
+                    // Track last image from previous batch for continuity
+                    let lastBatchImage: string | undefined = undefined;
+
+                    // Process in chunks of up to 4
                     for (let i = 0; i < scenes.length; i += 4) {
                         if (stopRef.current) break;
 
                         const batch = scenes.slice(i, i + 4);
                         const batchNumbers = batch.map(s => s.sceneNumber).join(', ');
-                        console.log(`[BatchGen] Generating storyboard for scenes: ${batchNumbers}`);
-                        setAgentState('director', 'thinking', `Đang tạo storyboard cho cảnh ${batchNumbers}...`);
+                        const batchIndex = Math.floor(i / 4) + 1;
+                        const totalBatches = Math.ceil(scenes.length / 4);
+
+                        console.log(`[BatchGen] Storyboard batch ${batchIndex}/${totalBatches} for group "${groupId}": scenes ${batchNumbers} (${batch.length} panels)`);
+                        setAgentState('director', 'thinking', `Đang tạo storyboard ${batchIndex}/${totalBatches}: cảnh ${batchNumbers}...`);
 
                         // Mark scenes as generating
                         batch.forEach(scene => {
@@ -1073,16 +1079,17 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                         });
 
                         try {
-                            // Build storyboard prompt WITH character/style references
+                            // Build storyboard prompt WITH character/style references + previous batch anchor
                             const { parts: storyboardParts } = await buildStoryboardPromptWithRefs(
                                 batch,
                                 stateRef.current,
-                                safeGetImageData
+                                safeGetImageData,
+                                lastBatchImage // Pass last batch's final image for continuity
                             );
 
-                            console.log(`[BatchGen] Storyboard prompt built with ${storyboardParts.length} parts (text + ${storyboardParts.filter(p => (p as any).inlineData).length} images)`);
+                            console.log(`[BatchGen] Storyboard prompt: ${storyboardParts.length} parts (${storyboardParts.filter(p => (p as any).inlineData).length} images${lastBatchImage ? ', +1 continuity anchor' : ''})`);
 
-                            // Generate using Gemini (4-panel storyboard)
+                            // Generate using Gemini
                             const ai = new GoogleGenAI({ apiKey: userApiKey! });
                             const response = await ai.models.generateContent({
                                 model: state.imageModel || 'gemini-2.0-flash-exp-image-generation',
@@ -1105,7 +1112,7 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                             }
 
                             if (storyboardImage) {
-                                // Split storyboard into individual panels
+                                // Split storyboard into individual panels (dynamic grid)
                                 const panels = await splitStoryboardImage(storyboardImage, batch.length);
                                 console.log(`[BatchGen] Split into ${panels.length} panels`);
 
@@ -1124,9 +1131,13 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                                     }
                                 });
 
+                                // Store last panel for next batch continuity
+                                lastBatchImage = panels[panels.length - 1];
+                                console.log(`[BatchGen] Saved last panel as continuity anchor for next batch`);
+
                                 setAgentState('director', 'success', `Đã tạo xong ${batch.length} cảnh từ storyboard!`);
                                 if (addProductionLog) {
-                                    addProductionLog('director', `Storyboard batch hoàn thành: Cảnh ${batchNumbers}`, 'success');
+                                    addProductionLog('director', `Storyboard batch ${batchIndex}/${totalBatches} hoàn thành: Cảnh ${batchNumbers}`, 'success');
                                 }
                             } else {
                                 throw new Error('No image in storyboard response');

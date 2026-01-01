@@ -1,5 +1,6 @@
 import { Scene, Character, ProjectState } from '../types';
 import { DIRECTOR_PRESETS } from '../constants/directors';
+import { getGridLayout } from './imageSplitter';
 
 interface StoryboardPromptResult {
     textPrompt: string;
@@ -9,14 +10,16 @@ interface StoryboardPromptResult {
 /**
  * Build a comprehensive storyboard prompt with character references
  * Returns both text prompt and image parts for API call
+ * @param previousBatchImage - Last image from previous batch for continuity (optional)
  */
 export async function buildStoryboardPromptWithRefs(
     scenes: Scene[],
     state: ProjectState,
-    safeGetImageData: (url: string) => Promise<{ data: string; mimeType: string } | null>
+    safeGetImageData: (url: string) => Promise<{ data: string; mimeType: string } | null>,
+    previousBatchImage?: string // NEW: For cross-batch reference
 ): Promise<StoryboardPromptResult> {
-    const positions = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
-    const maxScenes = Math.min(scenes.length, 4);
+    const panelCount = Math.min(scenes.length, 4);
+    const { cols, rows } = getGridLayout(panelCount);
     const parts: StoryboardPromptResult['parts'] = [];
 
     // 1. STYLE INJECTION
@@ -70,8 +73,27 @@ export async function buildStoryboardPromptWithRefs(
         }
     }
 
-    // 4. PANEL DESCRIPTIONS
-    const panelDescriptions = scenes.slice(0, maxScenes).map((scene, i) => {
+    // 5. PREVIOUS BATCH REFERENCE (for cross-batch continuity)
+    if (previousBatchImage) {
+        const prevImg = await safeGetImageData(previousBatchImage);
+        if (prevImg) {
+            parts.push({
+                text: `[CONTINUITY ANCHOR] - This is the LAST image from the previous batch. Match the style, characters, and environment EXACTLY to maintain continuity.`
+            });
+            parts.push({ inlineData: { data: prevImg.data, mimeType: prevImg.mimeType } });
+        }
+    }
+
+    // 6. PANEL DESCRIPTIONS (dynamic based on panel count)
+    const positionLabels: Record<number, string[]> = {
+        1: ['center'],
+        2: ['left', 'right'],
+        3: ['left', 'center', 'right'],
+        4: ['top-left', 'top-right', 'bottom-left', 'bottom-right']
+    };
+    const positions = positionLabels[panelCount] || positionLabels[4];
+
+    const panelDescriptions = scenes.slice(0, panelCount).map((scene, i) => {
         const position = positions[i];
         const description = scene.contextDescription || scene.language1 || `Scene ${scene.sceneNumber}`;
         const charNames = state.characters
@@ -82,15 +104,23 @@ export async function buildStoryboardPromptWithRefs(
         return `Panel ${i + 1} (${position}): ${description}${charNames ? ` [Characters: ${charNames}]` : ''}`;
     }).join('\n\n');
 
-    // 5. FINAL TEXT PROMPT
-    const textPrompt = `CREATE A 4-PANEL STORYBOARD IMAGE (2x2 grid layout).
+    // 7. DYNAMIC GRID LAYOUT INSTRUCTION
+    const gridDesc = panelCount === 1
+        ? 'a SINGLE IMAGE (full frame)'
+        : panelCount === 2
+            ? '2 PANELS side by side (1x2 horizontal strip)'
+            : panelCount === 3
+                ? '3 PANELS in a row (1x3 horizontal strip)'
+                : '4 PANELS in a 2x2 grid';
+
+    // 8. FINAL TEXT PROMPT
+    const textPrompt = `CREATE A ${panelCount}-PANEL STORYBOARD IMAGE (${cols}x${rows} layout).
 
 ${styleInstruction}
 
 LAYOUT REQUIREMENTS:
-- Single image containing 4 DISTINCT PANELS in a 2x2 grid
+- Single image containing ${panelCount} DISTINCT PANELS as ${gridDesc}
 - Each panel separated by thin black borders (2-3px)
-- Aspect ratio: Square (1:1) for the full image
 - Each panel is a SEPARATE shot/moment
 
 STRICT CONSISTENCY RULES:
@@ -99,11 +129,12 @@ STRICT CONSISTENCY RULES:
 - Lighting conditions MUST be CONSISTENT
 - Color grading MUST be CONSISTENT
 - Environment/location MUST be THE SAME
+${previousBatchImage ? '- MATCH the continuity anchor image for style and characters' : ''}
 
 PANEL CONTENTS:
 ${panelDescriptions}
 
-CRITICAL: This is ONE IMAGE with 4 sub-panels, NOT 4 separate images.`;
+CRITICAL: This is ONE IMAGE with ${panelCount} sub-panels, NOT ${panelCount} separate images.`;
 
     parts.push({ text: textPrompt });
 
