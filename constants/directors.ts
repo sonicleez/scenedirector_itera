@@ -62,7 +62,7 @@ export const DIRECTOR_PRESETS: Record<DirectorCategory, DirectorPreset[]> = {
             origin: 'Á',
             description: 'Sát thủ ẩn dụ: Tương phản xã hội kịch tính, ánh sáng kể chuyện.',
             dna: 'Dark humor aesthetic, Social contrast, Multi-layered scenes, Dynamic framing.',
-            signatureCameraStyle: 'Split diopter shots, Vertical movement (stairs/levels), Voyeuristic framing, Long master shots, Slow reveal dolly',
+            signatureCameraStyle: 'Vertical framing (stairs/levels for class divide), Deliberate dolly motivated by character, Long choreographed master shots, Static observation shots, Handheld only for chaos',
             quote: 'Once you overcome the one-inch tall barrier of subtitles.'
         },
         {
