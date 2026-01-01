@@ -1082,6 +1082,25 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                             e.type === 'character' || e.type === 'prop'
                         );
 
+                        // FIX: If validation passed OR no critical errors, clear the checking status immediately
+                        if (lastValidation.isValid || criticalErrors.length === 0) {
+                            updateStateAndRecord(s => ({
+                                ...s,
+                                scenes: s.scenes.map(sc => sc.id === scene.id ? {
+                                    ...sc,
+                                    error: lastValidation.isValid ? null : `ℹ️ Minor issues (non-critical): ${lastValidation.errors.map(e => e.description).join('; ')}`
+                                } : sc)
+                            }));
+
+                            if (lastValidation.isValid) {
+                                console.log('[DOP] Raccord validation PASSED - clearing status');
+                                setAgentState('dop', 'success', `Cảnh ${scene.sceneNumber} khớp raccord hoàn hảo!`);
+                            } else {
+                                console.log('[DOP] Only minor issues found - continuing without retry');
+                                setAgentState('dop', 'idle', '');
+                            }
+                        }
+
                         // Use Decision Agent if available, otherwise use simple retry logic
                         if (!lastValidation.isValid && criticalErrors.length > 0) {
                             console.log(`[DOP] RACCORD ERROR DETECTED:`, criticalErrors);
@@ -1120,13 +1139,24 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                                 if (decision.action === 'skip') {
                                     console.log('[DOP Agent] SKIP - errors are unfixable, saving credits');
                                     shouldRetry = false;
+
+                                    // FIX: Clear checking status and show clear unfixable message
+                                    const unfixableMsg = decision.reason.includes('face') || decision.reason.includes('identity')
+                                        ? `🚫 UNFIXABLE: Nhân vật khác (AI không thể sửa - cần chọn reference khác hoặc regenerate từ đầu)`
+                                        : `⚠️ DOP Skip: ${decision.reason}`;
+
                                     updateStateAndRecord(s => ({
                                         ...s,
                                         scenes: s.scenes.map(sc => sc.id === scene.id ? {
                                             ...sc,
-                                            error: `⚠️ DOP: ${decision.reason} (manual review needed)`
+                                            error: unfixableMsg
                                         } : sc)
                                     }));
+
+                                    setAgentState('dop', 'error', 'Lỗi không thể sửa tự động - cần review thủ công');
+                                    if (addProductionLog) {
+                                        addProductionLog('dop', unfixableMsg, 'warning');
+                                    }
                                 } else if (decision.action === 'try_once') {
                                     MAX_DOP_RETRIES = 1; // Reduce retries for uncertain cases
                                     if (decision.enhancedPrompt) {
