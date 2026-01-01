@@ -124,8 +124,7 @@ export function useCharacterLogic(
                 model: 'gemini-2.5-flash',
                 contents: { parts: [{ inlineData: { data, mimeType } }, { text: analyzePrompt }] },
                 config: {
-                    responseMimeType: "application/json",
-                    thinkingConfig: { thinkingLevel: 'low' as any }
+                    responseMimeType: "application/json"
                 }
             });
 
@@ -236,8 +235,7 @@ Return JSON:
                 model: 'gemini-2.5-flash',
                 contents: { parts: [{ inlineData: { data, mimeType } }, { text: analyzePrompt }] },
                 config: {
-                    responseMimeType: "application/json",
-                    thinkingConfig: { thinkingLevel: 'medium' as any }
+                    responseMimeType: "application/json"
                 }
             });
 
