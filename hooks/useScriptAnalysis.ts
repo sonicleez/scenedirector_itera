@@ -35,7 +35,9 @@ export interface CharacterAnalysis {
 }
 
 export interface SceneAnalysis {
-    voiceOverText: string;
+    voiceOverText: string;      // Narration/commentary (off-screen narrator)
+    dialogueText?: string;       // Character dialogue (spoken on-screen)
+    dialogueSpeaker?: string;    // Who is speaking the dialogue
     visualPrompt: string;
     chapterId: string;
     characterNames: string[];
@@ -204,6 +206,17 @@ VISUAL PROMPT FORMAT:
 - SHOT TYPES: WIDE SHOT, MEDIUM SHOT, CLOSE-UP, EXTREME CLOSE-UP, POV
 - Include locationAnchor elements in every scene
 
+CRITICAL - VOICE OVER vs DIALOGUE DETECTION:
+- VOICE OVER (voiceOverText): Narration text read by off-screen narrator. Third-person descriptions.
+- DIALOGUE (dialogueText): Direct speech by a character on-screen. Usually in quotes or preceded by speaker name.
+  
+DETECTION RULES:
+- If sentence is quoted speech like "Badge. Monegasque police." → This is DIALOGUE
+- If sentence has format "Name said: ..." or "...," he/she said → Extract as DIALOGUE
+- If sentence starts with name + colon like "John: Hello" → This is DIALOGUE  
+- Pure narration without quotes = VOICE OVER only
+- A sentence CAN have BOTH (narration + embedded dialogue)
+
 RULES:
 - One sentence = one scene. DO NOT merge sentences.
 ${contextInstructions}
@@ -237,21 +250,35 @@ RESPOND WITH JSON ONLY:
   "scenes": [
     {
       "sentenceIndex": 0,
-      "voiceOverText": "Exact text from sentence [0]...",
+      "voiceOverText": "Monte Carlo, March 2019. 11:47 p.m. A man in a charcoal suit stands at the edge of a roulette table.",
+      "dialogueText": null,
+      "dialogueSpeaker": null,
       "visualPrompt": "WIDE SHOT. 1940s Monte Carlo casino interior, Art Deco, crystal chandeliers. Étienne Marchand stands at the roulette table, chips in hand. Warm amber lighting, anticipation.",
       "chapterId": "chapter_1",
       "characterNames": ["Étienne Marchand"],
       "needsExpansion": false
     },
     {
-      "sentenceIndex": 1,
-      "voiceOverText": "Next sentence...",
-      "visualPrompt": "CLOSE-UP. Same casino interior. Roulette wheel spinning, ball bouncing. Warm amber glow reflected on polished wood.",
+      "sentenceIndex": 5,
+      "voiceOverText": "Two plainclothes officers intercept him near the coat check.",
+      "dialogueText": "Badge. Monegasque police. Monsieur, we need to speak with you regarding your activities this evening.",
+      "dialogueSpeaker": "Police Officer",
+      "visualPrompt": "MEDIUM SHOT. Casino lobby. Two officers in suits approach Étienne, one showing badge. Tense atmosphere.",
+      "chapterId": "chapter_1",
+      "characterNames": ["Étienne Marchand", "Police Officer"],
+      "needsExpansion": false
+    },
+    {
+      "sentenceIndex": 10,
+      "voiceOverText": "Next narration sentence without dialogue...",
+      "dialogueText": null,
+      "dialogueSpeaker": null,
+      "visualPrompt": "CLOSE-UP. Casino interior. Roulette wheel spinning, ball bouncing.",
       "chapterId": "chapter_1",
       "characterNames": [],
       "needsExpansion": true,
       "expansionScenes": [
-        { "visualPrompt": "EXTREME CLOSE-UP. Same casino. Étienne's hands placing chips. Warm lighting.", "isBRoll": true }
+        { "visualPrompt": "EXTREME CLOSE-UP. Same casino. Étienne's hands placing chips.", "isBRoll": true }
       ]
     }
   ]
@@ -372,13 +399,20 @@ RESPOND WITH JSON ONLY:
                 id: `scene_${sceneNumber}`,
                 sceneNumber: String(sceneNumber),
                 groupId: sceneAnalysis.chapterId,
-                language1: '',
-                vietnamese: '',
+
+                // Dialogue - if AI detected dialogue, format it with speaker
+                language1: sceneAnalysis.dialogueText
+                    ? (sceneAnalysis.dialogueSpeaker
+                        ? `${sceneAnalysis.dialogueSpeaker}: ${sceneAnalysis.dialogueText}`
+                        : sceneAnalysis.dialogueText)
+                    : '',
+                vietnamese: '', // Secondary language empty by default
+
                 promptName: `Scene ${sceneNumber}`,
 
-                // VO fields
+                // VO fields - narration text
                 voiceOverText: sceneAnalysis.voiceOverText,
-                isVOScene: true,
+                isVOScene: Boolean(sceneAnalysis.voiceOverText),
                 voSecondsEstimate: sceneAnalysis.estimatedDuration,
 
                 // PHASE 2: Visual prompt with LOCATION ANCHOR injection
