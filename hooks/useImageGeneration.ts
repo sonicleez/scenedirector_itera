@@ -61,9 +61,13 @@ export function useImageGeneration(
     ): string | undefined => {
         if (!currentScene.groupId) return undefined;
 
-        // 1. Get ALL scenes in same group that have generated images
+        // 1. Get ALL scenes in same group that have generated images AND are valid (no critical errors)
         const sameGroupScenes = currentState.scenes.filter(
-            s => s.groupId === currentScene.groupId && s.generatedImage && s.id !== currentScene.id
+            s => s.groupId === currentScene.groupId &&
+                s.generatedImage &&
+                s.id !== currentScene.id &&
+                // IGNORE scenes with Critical DOP Errors (Unfixable / Wrong Person) to prevent error propagation
+                (!s.error || (!s.error.includes('UNFIXABLE') && !s.error.includes('DOP Skip')))
         );
 
         if (sameGroupScenes.length === 0) {
