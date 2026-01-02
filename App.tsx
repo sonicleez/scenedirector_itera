@@ -21,6 +21,7 @@ import { AuthModal } from './components/modals/AuthModal';
 import { ProjectBrowserModal } from './components/modals/ProjectBrowserModal';
 import { UserProfileModal } from './components/modals/UserProfileModal';
 import { ManualScriptModal } from './components/modals/ManualScriptModal';
+import { ExcelImportModal } from './components/modals/ExcelImportModal';
 import { ActivationScreen } from './components/ActivationScreen';
 import { AssetLibrary } from './components/sections/AssetLibrary';
 import { KeyboardShortcuts } from './components/common/KeyboardShortcuts';
@@ -119,6 +120,7 @@ const App: React.FC = () => {
     const [isProjectBrowserOpen, setProjectBrowserOpen] = useState(false);
     const [isLibraryOpen, setLibraryOpen] = useState(false);
     const [isManualScriptModalOpen, setManualScriptModalOpen] = useState(false);
+    const [isExcelImportModalOpen, setExcelImportModalOpen] = useState(false);
     const [cloudProjects, setCloudProjects] = useState<any[]>([]);
 
     const mainContentRef = useRef<HTMLDivElement>(null);
@@ -828,6 +830,7 @@ const App: React.FC = () => {
                                     isScriptGenerating={isScriptGenerating}
                                     onTriggerFileUpload={triggerFileUpload}
                                     onOpenManualScript={() => setManualScriptModalOpen(true)}
+                                    onOpenExcelImport={() => setExcelImportModalOpen(true)}
                                     generationConfig={state.generationConfig || {
                                         imageDelay: 500,
                                         veoDelay: 200,
@@ -1152,6 +1155,19 @@ const App: React.FC = () => {
                         }}
                     />
 
+                    <ExcelImportModal
+                        isOpen={isExcelImportModalOpen}
+                        onClose={() => setExcelImportModalOpen(false)}
+                        onImport={(result) => {
+                            // Merge imported data into state
+                            updateStateAndRecord(s => ({
+                                ...s,
+                                sceneGroups: [...(s.sceneGroups || []), ...result.groups],
+                                scenes: [...s.scenes, ...result.scenes],
+                                characters: [...s.characters, ...result.characters]
+                            }));
+                        }}
+                    />
                     <input
                         id="script-upload-input"
                         type="file"

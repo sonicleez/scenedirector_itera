@@ -37,6 +37,7 @@ interface StyleSettingsSectionProps {
     isOutfitLockMode: boolean;
     toggleOutfitLockMode: () => void;
     onOpenManualScript?: () => void; // NEW: Open Manual Script Import modal
+    onOpenExcelImport?: () => void; // NEW: Open Excel Import modal
     generationConfig?: import('../../types').GenerationConfig;
     onGenerationConfigChange?: (config: import('../../types').GenerationConfig) => void;
 }
@@ -78,6 +79,7 @@ export const StyleSettingsSection: React.FC<StyleSettingsSectionProps> = ({
     isOutfitLockMode,
     toggleOutfitLockMode,
     onOpenManualScript,
+    onOpenExcelImport,
     generationConfig,
     onGenerationConfigChange
 }) => {
@@ -351,6 +353,14 @@ export const StyleSettingsSection: React.FC<StyleSettingsSectionProps> = ({
                             className={`w-full px-6 py-2 font-semibold text-white rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-violet-700/20`}
                         >
                             📝 Manual Script
+                        </button>
+                    </div>
+                    <div className="w-full relative">
+                        <button
+                            onClick={onOpenExcelImport}
+                            className={`w-full px-6 py-2 font-semibold text-white rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-emerald-700/20`}
+                        >
+                            📊 Import Excel
                         </button>
                     </div>
                 </div>
