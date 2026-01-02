@@ -835,8 +835,6 @@ const App: React.FC = () => {
                                         concurrencyLimit: 1
                                     }}
                                     onGenerationConfigChange={(config) => updateStateAndRecord(s => ({ ...s, generationConfig: config }))}
-                                    batchGenerationMode={state.batchGenerationMode}
-                                    onBatchGenerationModeChange={(mode) => updateStateAndRecord(s => ({ ...s, batchGenerationMode: mode }))}
                                 />
 
 
