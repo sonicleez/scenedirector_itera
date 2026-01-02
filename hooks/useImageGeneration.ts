@@ -341,17 +341,24 @@ OUTPUT ONLY THE PROMPT. DO NOT OUTPUT MARKDOWN OR EXPLANATION.`;
                     return `[${c.name}: ${c.description}]`;
                 }).join(' ');
 
-                const outfitConstraint = ' (MANDATORY COSTUME LOCK: Character MUST be wearing the exact clothing/uniform shown in their FULL BODY reference image OR the specified OUTFIT OVERRIDE. ABSOLUTELY NO NAKEDNESS.)';
+                const hasAnimal = selectedChars.some(c =>
+                    /horse|snake|dog|cat|wolf|bird|lion|tiger|dragon|animal|creature|bear|eagle|fish|shark|whale/i.test(c.name) ||
+                    /horse|snake|dog|cat|wolf|bird|lion|tiger|dragon|animal|creature|bear|eagle|fish|shark|whale/i.test(c.description)
+                );
+
+                const outfitConstraint = hasAnimal
+                    ? '' // No outfit lock for animals
+                    : ' (MANDATORY COSTUME LOCK: Character MUST be wearing the exact clothing/uniform shown in their FULL BODY reference image OR the specified OUTFIT OVERRIDE. ABSOLUTELY NO NAKEDNESS.)';
 
                 // FACELESS ENFORCEMENT
                 const isFacelessMode = currentState.globalCharacterStyleId?.includes('faceless');
-                const facelessConstraint = isFacelessMode
+                const facelessConstraint = (isFacelessMode && !hasAnimal)
                     ? ' !!! STRICT FACELESS MODE: NO FACES, NO EYES, NO MOUTH. Heads must be turned away, in shadow, or obscured. !!! '
                     : '';
 
                 // MANNEQUIN MATERIAL ENFORCEMENT (Critical for style consistency)
                 const isMannequinMode = currentState.globalCharacterStyleId?.includes('mannequin');
-                const mannequinMaterialConstraint = isMannequinMode
+                const mannequinMaterialConstraint = (isMannequinMode && !hasAnimal)
                     ? `!!! ABSOLUTE MANNEQUIN MATERIAL LOCK !!!
 ALL human figures in this scene (main characters, supporting characters, background crowds, extras, hands, body parts) MUST have:
 - HEAD: Smooth cast resin material, pristine white mannequin finish, egg-shaped featureless head, NO facial features (NO eyes, NO nose, NO mouth, NO ears, NO hair)
@@ -599,15 +606,26 @@ Use this image strictly as a "Style & Material" reference, NOT a pixel-perfect l
             // Using Google's recommended pattern: "Use supplied image as reference for how [name] should look"
             for (const char of selectedChars) {
                 // PRIMARY ANCHOR: Face ID (most important)
+                const isAnimal = /horse|snake|dog|cat|wolf|bird|lion|tiger|dragon|animal|creature|bear|eagle|fish|shark|whale/i.test(char.name) ||
+                    /horse|snake|dog|cat|wolf|bird|lion|tiger|dragon|animal|creature|bear|eagle|fish|shark|whale/i.test(char.description);
+
                 if (char.faceImage) {
                     const imgData = await safeGetImageData(char.faceImage);
                     if (imgData) {
                         const refLabel = `IDENTITY_${char.name.toUpperCase().replace(/\s+/g, '_')}`;
-                        // Google pattern: explicit name + "use as reference for how X should look"
-                        parts.push({ text: `[${refLabel}]: !!! MANDATORY IDENTITY LOCK !!! Use this supplied image as the ONLY AUTHORITATIVE reference for how ${char.name} should look. Match face structure, features, and identity 100%. ABSOLUTELY NO VARIATION in facial structure allowed. ${char.description}` });
+
+                        if (isAnimal) {
+                            // ANIMAL/CREATURE LOGIC: Softer lock, focus on species/texture, NO face structure mapping
+                            parts.push({ text: `[${refLabel}]: VISUAL REFERENCE for ${char.name}. Use this image as a guide for the creature's appearance (species, color, pattern, size). Do NOT treat this as a human face. Blend it naturally into the scene.` });
+                            console.log(`[ImageGen] 🐾 Injected CREATURE reference for ${char.name}`);
+                        } else {
+                            // HUMAN LOGIC: Strict Face Lock
+                            parts.push({ text: `[${refLabel}]: !!! MANDATORY IDENTITY LOCK !!! Use this supplied image as the ONLY AUTHORITATIVE reference for how ${char.name} should look. Match face structure, features, and identity 100%. ABSOLUTELY NO VARIATION in facial structure allowed. ${char.description}` });
+                            console.log(`[ImageGen] 👤 Injected FACE reference for ${char.name}`);
+                        }
+
                         parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
                         continuityInstruction += `(STRICT IDENTITY LOCK: ${char.name}) `;
-                        console.log(`[ImageGen] 👤 Injected FACE reference for ${char.name}`);
                     } else {
                         console.warn(`[ImageGen] ⚠️ Failed to load FACE image for ${char.name}`);
                     }
