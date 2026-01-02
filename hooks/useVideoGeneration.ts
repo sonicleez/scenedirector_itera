@@ -87,7 +87,16 @@ export function useVideoGeneration(
                 }
             }
 
-            const scriptText = state.scriptLanguage === 'vietnamese' ? scene.vietnamese : scene.language1;
+            // Determine effective language for script text
+            const effectiveLanguage = state.scriptLanguage === 'custom'
+                ? (state.customScriptLanguage || 'English')
+                : (state.scriptLanguage === 'vietnamese' ? 'Vietnamese' : 'English');
+
+            // Get script text based on language setting
+            const scriptText = state.scriptLanguage === 'vietnamese'
+                ? scene.vietnamese
+                : scene.language1; // For 'custom', we use language1 field with the custom language label
+
             const context = scene.contextDescription || '';
             const promptName = scene.promptName || '';
             const sceneProducts = (state.products || []).filter(p => (scene.productIds || []).includes(p.id));
@@ -110,7 +119,7 @@ You are generating a prompt to ANIMATE the provided keyframe image. The image is
 **SOURCE IMAGE CONTEXT (from user):**
 - Scene Description: "${context}"
 - Scene Intent: "${promptName}"
-- Dialogue/Script: "${scriptText}"
+- Dialogue/Script (${effectiveLanguage}): "${scriptText}"
 - Products visible: "${productContext}"
 - Camera Angle: "${scene.cameraAngleOverride === 'custom' ? scene.customCameraAngle : (CAMERA_ANGLES.find(a => a.value === scene.cameraAngleOverride)?.label || 'Auto')}"
 - Lens Style: "${scene.lensOverride === 'custom' ? scene.customLensOverride : (LENS_OPTIONS.find(l => l.value === scene.lensOverride)?.label || 'Auto')}"
