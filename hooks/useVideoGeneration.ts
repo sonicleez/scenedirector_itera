@@ -101,9 +101,16 @@ export function useVideoGeneration(
 
             // Get script text based on language setting
             // Vietnamese uses 'vietnamese' field, all others use 'language1' field
-            const scriptText = state.scriptLanguage === 'vietnamese'
+            const dialogueText = state.scriptLanguage === 'vietnamese'
                 ? scene.vietnamese
                 : scene.language1;
+
+            // Voice Over (narration/commentary - not spoken by characters in scene)
+            const voiceOverText = scene.voiceOverText || scene.voiceover || '';
+
+            // Dialogue (spoken by characters in scene)
+            const dialoguesFromArray = scene.dialogues?.map(d => `${d.characterName}: "${d.line}"`).join('; ') || '';
+            const finalDialogue = dialoguesFromArray || dialogueText || '';
 
             const context = scene.contextDescription || '';
             const promptName = scene.promptName || '';
@@ -127,7 +134,8 @@ You are generating a prompt to ANIMATE the provided keyframe image. The image is
 **SOURCE IMAGE CONTEXT (from user):**
 - Scene Description: "${context}"
 - Scene Intent: "${promptName}"
-- Dialogue/Script (${effectiveLanguage}): "${scriptText}"
+${voiceOverText ? `- Voice Over/Narration: "${voiceOverText}"` : ''}
+${finalDialogue ? `- Character Dialogue (${effectiveLanguage}): "${finalDialogue}"` : ''}
 - Products visible: "${productContext}"
 - Camera Angle: "${scene.cameraAngleOverride === 'custom' ? scene.customCameraAngle : (CAMERA_ANGLES.find(a => a.value === scene.cameraAngleOverride)?.label || 'Auto')}"
 - Lens Style: "${scene.lensOverride === 'custom' ? scene.customLensOverride : (LENS_OPTIONS.find(l => l.value === scene.lensOverride)?.label || 'Auto')}"
