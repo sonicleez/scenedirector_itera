@@ -365,6 +365,25 @@ export const ScriptGeneratorModal: React.FC<ScriptGeneratorModalProps> = ({
                             </div>
                         </div>
 
+                        {/* Products Section */}
+                        {products.length > 0 && (
+                            <div className="bg-gray-800/30 p-4 rounded-xl border border-orange-500/20">
+                                <label className="block text-xs font-bold text-orange-400 uppercase mb-3">📦 Sản phẩm / Đạo cụ ({selectedProductIds.length})</label>
+                                <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto">
+                                    {products.map(prod => (
+                                        <label key={prod.id} className={`flex items-center space-x-2 p-1.5 rounded-lg border cursor-pointer ${selectedProductIds.includes(prod.id) ? 'bg-orange-500/10 border-orange-500/50' : 'bg-gray-900/50 border-gray-800'}`}>
+                                            <input type="checkbox" checked={selectedProductIds.includes(prod.id)} onChange={() => toggleProduct(prod.id)} className="w-3 h-3 text-orange-500 bg-gray-700" />
+                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                {prod.masterImage && <img src={prod.masterImage} alt="" className="w-4 h-4 rounded object-cover flex-shrink-0" />}
+                                                <span className="text-[10px] text-gray-300 truncate">{prod.name || 'Unnamed'}</span>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                                <p className="text-[9px] text-gray-500 mt-2 italic">Chọn sản phẩm/đạo cụ để AI tự gán vào các cảnh phù hợp.</p>
+                            </div>
+                        )}
+
                         <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700">
                             <label className="block text-xs font-bold text-gray-400 uppercase mb-3 text-purple-400">Tư duy đạo diễn (Directorial Vision)</label>
 
