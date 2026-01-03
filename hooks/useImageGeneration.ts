@@ -12,6 +12,7 @@ import { uploadImageToSupabase, syncUserStatsToCloud } from '../utils/storageUti
 import { safeGetImageData, callGeminiVisionReasoning } from '../utils/geminiUtils';
 import { GommoAI, urlToBase64 } from '../utils/gommoAI';
 import { IMAGE_MODELS } from '../utils/appConstants';
+import { normalizePrompt, formatNormalizationLog, needsNormalization } from '../utils/promptNormalizer';
 
 // Helper function to clean VEO-specific tokens from prompt for image generation
 const cleanPromptForImageGen = (prompt: string): string => {
@@ -1010,10 +1011,38 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                 console.log(`[ImageGen] 📷 Using ${imagePartsCount} reference image(s)`);
             }
 
+            // --- 6. PROMPT NORMALIZATION (DOP Layer) ---
+            // Optimize prompt for the specific model being used
+            const modelToUse = currentState.imageModel || 'gemini-3-pro-image-preview';
+            let promptToSend = finalImagePrompt;
+
+            if (needsNormalization(modelToUse)) {
+                const normalized = normalizePrompt(finalImagePrompt, modelToUse, currentState.aspectRatio);
+                promptToSend = normalized.normalized;
+
+                // Log normalization to production chat
+                if (addProductionLog) {
+                    const logMsg = formatNormalizationLog(normalized);
+                    addProductionLog('dop', logMsg, 'prompt_optimization', 'prompt_normalization');
+                }
+
+                console.log('[ImageGen] 🔧 DOP Normalized Prompt:', {
+                    model: normalized.modelType,
+                    originalLen: normalized.original.length,
+                    normalizedLen: normalized.normalized.length,
+                    changes: normalized.changes
+                });
+            } else {
+                // Gemini - log that we're using full prompt
+                if (addProductionLog) {
+                    addProductionLog('dop', `🔵 Using full Gemini prompt (${finalImagePrompt.length} chars)`, 'info', 'prompt_ready');
+                }
+            }
+
             const { imageUrl, mediaId } = await callAIImageAPI(
-                finalImagePrompt,
+                promptToSend,
                 userApiKey,
-                currentState.imageModel || 'gemini-3-pro-image-preview',
+                modelToUse,
                 currentState.aspectRatio,
                 isHighRes ? parts : [],
                 currentState.resolution || '1K',
@@ -1021,8 +1050,8 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
             );
 
             // Calculate estimated prompt tokens (rough: ~4 chars per token)
-            const estimatedTokens = Math.ceil(finalImagePrompt.length / 4);
-            console.log(`[ImageGen] 📊 Stats: Provider=${promptProvider}, EstTokens=${estimatedTokens}, Prompt=${finalImagePrompt.length} chars`);
+            const estimatedTokens = Math.ceil(promptToSend.length / 4);
+            console.log(`[ImageGen] 📊 Stats: Provider=${promptProvider}, EstTokens=${estimatedTokens}, Prompt=${promptToSend.length} chars`);
 
             updateStateAndRecord(s => {
                 const duration = Date.now() - startTime;
