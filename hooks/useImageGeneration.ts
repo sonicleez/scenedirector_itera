@@ -1007,8 +1007,40 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
             const imagePartsCount = parts.filter((p: any) => p.inlineData).length;
             if (imagePartsCount > 14) {
                 console.warn(`[ImageGen] ⚠️ WARNING: ${imagePartsCount} reference images detected. Gemini 3 Pro supports max 14. Performance may degrade.`);
+                if (addProductionLog) {
+                    addProductionLog('dop', `⚠️ ${imagePartsCount} reference images (max 14)`, 'warning', 'ref_warning');
+                }
             } else if (imagePartsCount > 0) {
                 console.log(`[ImageGen] 📷 Using ${imagePartsCount} reference image(s)`);
+                if (addProductionLog) {
+                    addProductionLog('dop', `📷 Using ${imagePartsCount} reference image(s)`, 'info', 'ref_count');
+                }
+            }
+
+            // --- LOG REFERENCE DETAILS TO DOP CHAT ---
+            if (addProductionLog) {
+                // Log previous scene reference
+                if (currentState.scenes && currentState.scenes.length > 0) {
+                    const prevSceneWithImage = currentState.scenes
+                        .filter((s: any) => s.id !== sceneToUpdate.id && s.generatedImage)
+                        .slice(-1)[0];
+                    if (prevSceneWithImage) {
+                        addProductionLog('dop', `🔗 Continuity from Scene ${prevSceneWithImage.sceneNumber || '?'}`, 'info', 'continuity_ref');
+                    }
+                }
+
+                // Log character references
+                if (sceneToUpdate.characterIds && sceneToUpdate.characterIds.length > 0) {
+                    const charNames = sceneToUpdate.characterIds
+                        .map((cid: string) => currentState.characters.find((c: any) => c.id === cid)?.name || cid.slice(0, 6))
+                        .join(', ');
+                    addProductionLog('dop', `👤 Characters: ${charNames}`, 'info', 'char_ref');
+                }
+
+                // Log explicit reference image
+                if (sceneToUpdate.referenceImage) {
+                    addProductionLog('dop', `🖼️ Reference image attached`, 'info', 'explicit_ref');
+                }
             }
 
             // --- 6. PROMPT NORMALIZATION (DOP Layer) ---
