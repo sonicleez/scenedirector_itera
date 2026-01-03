@@ -588,9 +588,13 @@ This applies to EVERY human figure in the scene without ANY exception. If a hand
             }
 
             // --- ANTI-COLLAGE INSTRUCTION (Prevent split-frame/storyboard images) ---
-            const antiCollagePrompt = `!!! CRITICAL OUTPUT CONSTRAINT !!! Generate EXACTLY ONE single continuous scene/frame. ABSOLUTELY NO: split frames, collages, storyboards, multiple panels, side-by-side images, grid layouts, before/after comparisons, or any form of image division. The output MUST be ONE unified visual with ONE continuous composition. If the prompt implies multiple moments, choose the MOST IMPORTANT SINGLE MOMENT and render only that.`;
+            const antiCollagePrompt = `!!! SINGLE IMAGE ONLY - NO COLLAGES/GRIDS !!!`;
 
-            let finalImagePrompt = `${antiCollagePrompt} ${globalStoryPrompt} ${directorDNAPrompt} ${dopResearchPrompt} ${authoritativeStyle} ${scaleCmd} ${scaleLockInstruction} ${noDriftGuard} ${coreActionPrompt} ${groupEnvAnchor} ${timeWeatherLock} ${charPrompt} FULL SCENE VISUALS: ${cleanedContext}. STYLE DETAILS: ${metaTokens}. TECHNICAL: (STRICT CAMERA: ${cinematographyPrompt ? cinematographyPrompt : 'High Quality'}).`.trim();
+            // === PROMPT CONSTRUCTION (STYLE FIRST for Gommo compatibility) ===
+            // Many models (especially Gommo) prioritize early tokens, so STYLE goes FIRST
+            let finalImagePrompt = `${authoritativeStyle} ${antiCollagePrompt} SCENE: ${cleanedContext}. ${coreActionPrompt} ${charPrompt} ${groupEnvAnchor} ${timeWeatherLock} ${scaleCmd} ${scaleLockInstruction} ${noDriftGuard} ${globalStoryPrompt} ${directorDNAPrompt} ${dopResearchPrompt} STYLE DETAILS: ${metaTokens}. TECHNICAL: (STRICT CAMERA: ${cinematographyPrompt ? cinematographyPrompt : 'Auto'}).`.trim();
+
+            console.log('[ImageGen] 📝 Prompt Preview (first 300 chars):', finalImagePrompt.substring(0, 300));
 
             // PROP ANCHOR TEXT INJECTION (High Priority)
             if (sceneToUpdate.referenceImage && sceneToUpdate.referenceImageDescription) {
