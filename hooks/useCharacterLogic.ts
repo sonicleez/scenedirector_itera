@@ -569,14 +569,54 @@ CRITICAL: ONE SINGLE FULL-BODY IMAGE on solid white background. Face must be rec
                         reasoning: dopDecision.enhancement.reasoning
                     });
 
-                    // Show prediction to user
-                    const predictionEmoji = dopDecision.enhancement.predictedQuality >= 0.8 ? '🜢' :
-                        dopDecision.enhancement.predictedQuality >= 0.6 ? '🜡' : '🔴';
+                    // Show prediction in chat
+                    const predictionEmoji = dopDecision.enhancement.predictedQuality >= 0.8 ? '🟢' :
+                        dopDecision.enhancement.predictedQuality >= 0.6 ? '🟡' : '🔴';
                     const predictionMsg = `${predictionEmoji} Dự đoán: ${Math.round(dopDecision.enhancement.predictedQuality * 100)}% chất lượng`;
                     updateCharacter(charId, { generationStatus: predictionMsg });
 
-                    if (setAgentState && dopDecision.warnings.length > 0) {
-                        setAgentState('dop', 'working', dopDecision.warnings[0], 'warning');
+                    if (setAgentState) {
+                        setAgentState('dop', 'working', predictionMsg, 'prediction');
+                    }
+
+                    // Show similar prompts found
+                    if (dopDecision.enhancement.similarPrompts.length > 0 && setAgentState) {
+                        const similarCount = dopDecision.enhancement.similarPrompts.length;
+                        const bestSimilar = dopDecision.enhancement.similarPrompts[0];
+                        setAgentState('dop', 'working',
+                            `📚 Tìm thấy ${similarCount} prompts tương tự (${Math.round(bestSimilar.similarity * 100)}% match)`,
+                            'similar_found'
+                        );
+                    }
+
+                    // Show added keywords
+                    if (dopDecision.enhancement.addedKeywords.length > 0 && setAgentState) {
+                        setAgentState('dop', 'working',
+                            `🎯 Thêm keywords đã học: ${dopDecision.enhancement.addedKeywords.slice(0, 3).join(', ')}`,
+                            'keywords_added'
+                        );
+                    }
+
+                    // Show reasoning
+                    if (dopDecision.enhancement.reasoning && setAgentState) {
+                        setAgentState('dop', 'working',
+                            `💡 ${dopDecision.enhancement.reasoning.substring(0, 100)}`,
+                            'reasoning'
+                        );
+                    }
+
+                    // Show warnings
+                    if (dopDecision.warnings.length > 0 && setAgentState) {
+                        for (const warning of dopDecision.warnings) {
+                            setAgentState('dop', 'working', warning, 'warning');
+                        }
+                    }
+
+                    // Show suggestions
+                    if (dopDecision.suggestions.length > 0 && setAgentState) {
+                        for (const suggestion of dopDecision.suggestions) {
+                            setAgentState('dop', 'working', suggestion, 'suggestion');
+                        }
                     }
                 } catch (e) {
                     console.warn('[CharacterGen] DOP Intelligence failed:', e);
