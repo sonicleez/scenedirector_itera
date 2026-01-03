@@ -12,7 +12,7 @@ import { uploadImageToSupabase, syncUserStatsToCloud } from '../utils/storageUti
 import { safeGetImageData, callGeminiVisionReasoning } from '../utils/geminiUtils';
 import { GommoAI, urlToBase64 } from '../utils/gommoAI';
 import { IMAGE_MODELS } from '../utils/appConstants';
-import { normalizePrompt, formatNormalizationLog, needsNormalization } from '../utils/promptNormalizer';
+import { normalizePrompt, normalizePromptAsync, formatNormalizationLog, needsNormalization, containsVietnamese } from '../utils/promptNormalizer';
 
 // Helper function to clean VEO-specific tokens from prompt for image generation
 const cleanPromptForImageGen = (prompt: string): string => {
@@ -1013,29 +1013,57 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
 
             // --- 6. PROMPT NORMALIZATION (DOP Layer) ---
             // Optimize prompt for the specific model being used
+            // Includes auto-translation from Vietnamese to English for non-Gemini models
             const modelToUse = currentState.imageModel || 'gemini-3-pro-image-preview';
             let promptToSend = finalImagePrompt;
 
             if (needsNormalization(modelToUse)) {
-                const normalized = normalizePrompt(finalImagePrompt, modelToUse, currentState.aspectRatio);
-                promptToSend = normalized.normalized;
+                // Check if Vietnamese is present - use async version for translation
+                const hasVietnamese = containsVietnamese(finalImagePrompt);
 
-                // Log normalization to production chat
-                if (addProductionLog) {
-                    const logMsg = formatNormalizationLog(normalized);
-                    addProductionLog('dop', logMsg, 'prompt_optimization', 'prompt_normalization');
+                if (hasVietnamese && userApiKey) {
+                    // Use AI-powered translation and optimization
+                    if (addProductionLog) {
+                        addProductionLog('dop', `🌐 Detecting Vietnamese... Translating and optimizing for ${modelToUse.toUpperCase()}`, 'info', 'translating');
+                    }
+
+                    const normalized = await normalizePromptAsync(finalImagePrompt, modelToUse, userApiKey, currentState.aspectRatio);
+                    promptToSend = normalized.normalized;
+
+                    // Log normalization to production chat
+                    if (addProductionLog) {
+                        const logMsg = formatNormalizationLog(normalized);
+                        addProductionLog('dop', logMsg, 'prompt_optimization', 'prompt_normalized');
+                    }
+
+                    console.log('[ImageGen] 🌐 DOP Translated & Normalized:', {
+                        model: normalized.modelType,
+                        translated: normalized.translated,
+                        originalLen: normalized.original.length,
+                        normalizedLen: normalized.normalized.length,
+                        changes: normalized.changes
+                    });
+                } else {
+                    // No Vietnamese - use sync version (faster)
+                    const normalized = normalizePrompt(finalImagePrompt, modelToUse, currentState.aspectRatio);
+                    promptToSend = normalized.normalized;
+
+                    if (addProductionLog) {
+                        const logMsg = formatNormalizationLog(normalized);
+                        addProductionLog('dop', logMsg, 'prompt_optimization', 'prompt_normalized');
+                    }
+
+                    console.log('[ImageGen] 🔧 DOP Normalized:', {
+                        model: normalized.modelType,
+                        originalLen: normalized.original.length,
+                        normalizedLen: normalized.normalized.length,
+                        changes: normalized.changes
+                    });
                 }
-
-                console.log('[ImageGen] 🔧 DOP Normalized Prompt:', {
-                    model: normalized.modelType,
-                    originalLen: normalized.original.length,
-                    normalizedLen: normalized.normalized.length,
-                    changes: normalized.changes
-                });
             } else {
                 // Gemini - log that we're using full prompt
                 if (addProductionLog) {
-                    addProductionLog('dop', `🔵 Using full Gemini prompt (${finalImagePrompt.length} chars)`, 'info', 'prompt_ready');
+                    addProductionLog('dop', `🔵 Using full Gemini prompt (${finalImagePrompt.length} chars) - Vietnamese supported natively`, 'info', 'prompt_ready');
                 }
             }
 

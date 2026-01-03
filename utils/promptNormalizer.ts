@@ -4,6 +4,8 @@
  * Called by DOP before sending to API
  */
 
+import { GoogleGenAI } from "@google/genai";
+
 export type ModelType =
     | 'gemini'
     | 'imagen'
@@ -29,6 +31,11 @@ export function detectModelType(modelId: string): ModelType {
     return 'gemini'; // Default
 }
 
+// Check if text contains Vietnamese
+export function containsVietnamese(text: string): boolean {
+    return /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(text);
+}
+
 // Model-specific limits and preferences
 const MODEL_CONFIG: Record<ModelType, {
     maxLength: number;
@@ -37,6 +44,7 @@ const MODEL_CONFIG: Record<ModelType, {
     supportsNegative: boolean;
     format: 'verbose' | 'concise' | 'keyword' | 'danbooru';
     suffix?: string;
+    promptTemplate?: string; // Optimal prompt structure for this model
 }> = {
     gemini: {
         maxLength: 8000,
@@ -50,21 +58,24 @@ const MODEL_CONFIG: Record<ModelType, {
         language: 'en',
         styleFirst: true,
         supportsNegative: false,
-        format: 'concise'
+        format: 'concise',
+        promptTemplate: '[STYLE]. [SUBJECT] [ACTION]. [CAMERA].'
     },
     banana_pro: {
         maxLength: 1000,
         language: 'en',
         styleFirst: true,
         supportsNegative: false,
-        format: 'concise'
+        format: 'concise',
+        promptTemplate: '[STYLE], [SUBJECT], [ACTION], [ENVIRONMENT], [CAMERA], [LIGHTING]'
     },
     seedream: {
         maxLength: 800,
         language: 'multilingual',
         styleFirst: true,
         supportsNegative: false,
-        format: 'danbooru'
+        format: 'danbooru',
+        promptTemplate: 'masterpiece, best quality, [SUBJECT], [ACTION], [STYLE], [CAMERA]'
     },
     midjourney: {
         maxLength: 350,
@@ -72,21 +83,24 @@ const MODEL_CONFIG: Record<ModelType, {
         styleFirst: false,
         supportsNegative: false,
         format: 'keyword',
-        suffix: ' --v 7 --style raw'
+        suffix: ' --v 7 --style raw',
+        promptTemplate: '[SUBJECT] [ACTION], [STYLE], [CAMERA] --ar [AR] --v 7 --style raw'
     },
     kling: {
         maxLength: 600,
         language: 'en',
         styleFirst: true,
         supportsNegative: false,
-        format: 'concise'
+        format: 'concise',
+        promptTemplate: 'professional photograph, [STYLE], [SUBJECT], [ACTION], [CAMERA]'
     },
     dreamina: {
         maxLength: 500,
         language: 'en',
         styleFirst: true,
         supportsNegative: false,
-        format: 'concise'
+        format: 'concise',
+        promptTemplate: '[STYLE], [SUBJECT], [ACTION]'
     },
     z_image: {
         maxLength: 500,
@@ -110,6 +124,63 @@ export interface NormalizedPrompt {
     modelType: ModelType;
     changes: string[];
     truncated: boolean;
+    translated: boolean;
+}
+
+/**
+ * Translate and optimize prompt using Gemini
+ */
+async function translateAndOptimize(
+    prompt: string,
+    modelType: ModelType,
+    apiKey: string,
+    aspectRatio: string
+): Promise<{ optimized: string; wasTranslated: boolean }> {
+    const config = MODEL_CONFIG[modelType];
+
+    const systemPrompt = `You are an expert AI image generation prompt engineer. Your task is to translate and optimize prompts for the ${modelType.toUpperCase()} model.
+
+RULES:
+1. If the input is in Vietnamese or any non-English language, translate it to English first.
+2. Restructure the prompt to be optimal for ${modelType.toUpperCase()} model:
+   - Max length: ${config.maxLength} characters
+   - Style position: ${config.styleFirst ? 'STYLE MUST BE FIRST' : 'Natural order'}
+   - Format: ${config.format}
+   ${config.promptTemplate ? `- Template: ${config.promptTemplate}` : ''}
+3. Keep the core meaning and visual intent.
+4. Remove redundant words, meta-instructions like "MANDATORY", "CRITICAL", etc.
+5. Make it concise but descriptive.
+6. DO NOT add any explanation - output ONLY the optimized prompt.
+
+${modelType === 'midjourney' ? `For Midjourney, end with: --ar ${aspectRatio} --v 7 --style raw` : ''}
+${modelType === 'seedream' ? 'For Seedream, use comma-separated tags like: masterpiece, best quality, 1girl, detailed, etc.' : ''}
+${modelType === 'kling' ? 'For Kling, start with "professional photograph" for best quality.' : ''}`;
+
+    try {
+        const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.0-flash',
+            contents: [{
+                role: 'user',
+                parts: [{ text: `${systemPrompt}\n\nINPUT PROMPT:\n${prompt}` }]
+            }]
+        });
+
+        const optimized = response.text?.trim() || prompt;
+        const wasTranslated = containsVietnamese(prompt);
+
+        console.log('[PromptNormalizer] AI Optimized:', {
+            modelType,
+            inputLen: prompt.length,
+            outputLen: optimized.length,
+            translated: wasTranslated
+        });
+
+        return { optimized, wasTranslated };
+    } catch (err) {
+        console.error('[PromptNormalizer] Translation failed:', err);
+        return { optimized: prompt, wasTranslated: false };
+    }
 }
 
 /**
@@ -158,7 +229,7 @@ function extractComponents(prompt: string): {
 }
 
 /**
- * Normalize prompt for specific model
+ * Normalize prompt for specific model (sync version - basic formatting only)
  */
 export function normalizePrompt(
     rawPrompt: string,
@@ -207,7 +278,6 @@ export function normalizePrompt(
             ].filter(Boolean).join(', ');
 
             // Add aspect ratio for MJ
-            const arMJ = aspectRatio.replace(':', '_');
             normalized = `${keywords} --ar ${aspectRatio}${config.suffix || ''}`;
             changes.push('Converted to MJ keyword format');
             changes.push(`Added --ar ${aspectRatio} --v 7 --style raw`);
@@ -254,18 +324,9 @@ export function normalizePrompt(
         changes.push(`Truncated to ${config.maxLength} chars`);
     }
 
-    // 5. Language check (basic - could use translation API)
-    if (config.language === 'en') {
-        // Check for Vietnamese characters
-        const hasVN = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(normalized);
-        if (hasVN) {
-            changes.push('⚠️ Vietnamese detected - consider English for better results');
-        }
-    }
-
-    // 6. Style-first reorder if needed
-    if (config.styleFirst && components.style && !normalized.startsWith(components.style)) {
-        // Already handled in format switch
+    // 5. Language check
+    if (config.language === 'en' && containsVietnamese(normalized)) {
+        changes.push('⚠️ Vietnamese detected - use normalizePromptAsync for auto-translation');
     }
 
     return {
@@ -273,7 +334,61 @@ export function normalizePrompt(
         normalized,
         modelType,
         changes,
-        truncated
+        truncated,
+        translated: false
+    };
+}
+
+/**
+ * Normalize prompt with AI translation and optimization (async)
+ */
+export async function normalizePromptAsync(
+    rawPrompt: string,
+    modelId: string,
+    apiKey: string,
+    aspectRatio: string = '16:9'
+): Promise<NormalizedPrompt> {
+    const modelType = detectModelType(modelId);
+    const config = MODEL_CONFIG[modelType];
+    const changes: string[] = [];
+
+    // Check if translation is needed
+    const needsTranslation = config.language === 'en' && containsVietnamese(rawPrompt);
+
+    let normalized = rawPrompt;
+    let translated = false;
+
+    // Use AI to translate and optimize for non-Gemini models
+    if (modelType !== 'gemini' && apiKey) {
+        const result = await translateAndOptimize(rawPrompt, modelType, apiKey, aspectRatio);
+        normalized = result.optimized;
+        translated = result.wasTranslated;
+
+        if (translated) {
+            changes.push('🌐 Auto-translated from Vietnamese to English');
+        }
+        changes.push(`🤖 AI-optimized for ${modelType.toUpperCase()}`);
+    } else {
+        // Gemini or no API key - use sync version
+        const syncResult = normalizePrompt(rawPrompt, modelId, aspectRatio);
+        return syncResult;
+    }
+
+    // Truncate if still too long
+    let truncated = false;
+    if (normalized.length > config.maxLength) {
+        normalized = normalized.substring(0, config.maxLength - 3) + '...';
+        truncated = true;
+        changes.push(`Truncated to ${config.maxLength} chars`);
+    }
+
+    return {
+        original: rawPrompt,
+        normalized,
+        modelType,
+        changes,
+        truncated,
+        translated
     };
 }
 
@@ -282,9 +397,13 @@ export function normalizePrompt(
  */
 export function formatNormalizationLog(result: NormalizedPrompt): string {
     const lines = [
-        `🔧 [DOP] Prompt normalized for ${result.modelType.toUpperCase()}`,
+        `🔧 [DOP] Prompt optimized for ${result.modelType.toUpperCase()}`,
         `📏 Length: ${result.original.length} → ${result.normalized.length} chars`
     ];
+
+    if (result.translated) {
+        lines.push(`🌐 Auto-translated: Vietnamese → English`);
+    }
 
     if (result.changes.length > 0) {
         lines.push(`📝 Changes:`);
@@ -294,6 +413,12 @@ export function formatNormalizationLog(result: NormalizedPrompt): string {
     if (result.truncated) {
         lines.push(`⚠️ Prompt was truncated to fit model limit`);
     }
+
+    // Show preview of final prompt
+    const preview = result.normalized.length > 150
+        ? result.normalized.substring(0, 150) + '...'
+        : result.normalized;
+    lines.push(`\n📄 Final prompt:\n"${preview}"`);
 
     return lines.join('\n');
 }
@@ -305,3 +430,15 @@ export function needsNormalization(modelId: string): boolean {
     const modelType = detectModelType(modelId);
     return modelType !== 'gemini'; // Gemini handles verbose well
 }
+
+/**
+ * Check if async normalization should be used (has Vietnamese or non-Gemini model)
+ */
+export function shouldUseAsyncNormalization(modelId: string, prompt: string): boolean {
+    const modelType = detectModelType(modelId);
+    if (modelType === 'gemini') return false;
+    // Non-Gemini models: always use async for better optimization
+    // Plus translation if Vietnamese detected
+    return true;
+}
+
