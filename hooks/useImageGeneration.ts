@@ -587,12 +587,31 @@ This applies to EVERY human figure in the scene without ANY exception. If a hand
                 console.log('[ImageGen] 🌍 Global Story Context injected:', currentState.researchNotes.story.substring(0, 50) + '...');
             }
 
-            // --- ANTI-COLLAGE INSTRUCTION (Prevent split-frame/storyboard images) ---
-            const antiCollagePrompt = `!!! SINGLE IMAGE ONLY - NO COLLAGES/GRIDS !!!`;
+            // --- ANTI-COLLAGE INSTRUCTION ---
+            const antiCollagePromptFull = `!!! CRITICAL OUTPUT CONSTRAINT !!! Generate EXACTLY ONE single continuous scene/frame. ABSOLUTELY NO: split frames, collages, storyboards, multiple panels, side-by-side images, grid layouts, before/after comparisons, or any form of image division. The output MUST be ONE unified visual with ONE continuous composition. If the prompt implies multiple moments, choose the MOST IMPORTANT SINGLE MOMENT and render only that.`;
+            const antiCollagePromptShort = `!!! SINGLE IMAGE ONLY - NO COLLAGES/GRIDS !!!`;
 
-            // === PROMPT CONSTRUCTION (STYLE FIRST for Gommo compatibility) ===
-            // Many models (especially Gommo) prioritize early tokens, so STYLE goes FIRST
-            let finalImagePrompt = `${authoritativeStyle} ${antiCollagePrompt} SCENE: ${cleanedContext}. ${coreActionPrompt} ${charPrompt} ${groupEnvAnchor} ${timeWeatherLock} ${scaleCmd} ${scaleLockInstruction} ${noDriftGuard} ${globalStoryPrompt} ${directorDNAPrompt} ${dopResearchPrompt} STYLE DETAILS: ${metaTokens}. TECHNICAL: (STRICT CAMERA: ${cinematographyPrompt ? cinematographyPrompt : 'Auto'}).`.trim();
+            // === DETERMINE PROVIDER FOR PROMPT OPTIMIZATION ===
+            const selectedModel = IMAGE_MODELS.find(m => m.value === currentState.imageModel);
+            const promptProvider = selectedModel?.provider || 'gemini';
+
+            let finalImagePrompt: string;
+
+            if (promptProvider === 'gommo') {
+                // ═══════════════════════════════════════════════════════════════
+                // GOMMO PROMPT: Style-first, concise, prioritize early tokens
+                // Many Gommo models truncate or prioritize beginning of prompt
+                // ═══════════════════════════════════════════════════════════════
+                finalImagePrompt = `${authoritativeStyle} ${antiCollagePromptShort} SCENE: ${cleanedContext}. ${coreActionPrompt} ${charPrompt} ${groupEnvAnchor} ${timeWeatherLock} ${scaleCmd} ${globalStoryPrompt} ${directorDNAPrompt} STYLE: ${metaTokens}. CAMERA: ${cinematographyPrompt || 'Auto'}.`.trim();
+                console.log('[ImageGen] 🟡 GOMMO prompt (style-first, concise)');
+            } else {
+                // ═══════════════════════════════════════════════════════════════
+                // GEMINI PROMPT: Original order, verbose anti-collage, full context
+                // Gemini handles long prompts well with full instruction set
+                // ═══════════════════════════════════════════════════════════════
+                finalImagePrompt = `${antiCollagePromptFull} ${globalStoryPrompt} ${directorDNAPrompt} ${dopResearchPrompt} ${authoritativeStyle} ${scaleCmd} ${scaleLockInstruction} ${noDriftGuard} ${coreActionPrompt} ${groupEnvAnchor} ${timeWeatherLock} ${charPrompt} FULL SCENE VISUALS: ${cleanedContext}. STYLE DETAILS: ${metaTokens}. TECHNICAL: (STRICT CAMERA: ${cinematographyPrompt ? cinematographyPrompt : 'High Quality'}).`.trim();
+                console.log('[ImageGen] 🔵 GEMINI prompt (full verbose)');
+            }
 
             console.log('[ImageGen] 📝 Prompt Preview (first 300 chars):', finalImagePrompt.substring(0, 300));
 
