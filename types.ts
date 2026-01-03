@@ -49,6 +49,9 @@ export interface Character {
   bodyWorkflowId?: string;
   workflowStatus?: 'pending' | 'active' | 'succeeded' | 'failed';
 
+  // Model preference for Lora generation (Gemini or Gommo)
+  preferredModel?: string; // 'gemini-3-pro-image-preview' | 'google_nano_banana_pro'
+
   // Separate Histories for different views
   masterEditHistory?: { id: string; image: string; prompt: string }[];
   faceEditHistory?: { id: string; image: string; prompt: string }[];

@@ -142,6 +142,17 @@ export const IMAGE_MODELS = [
     { value: 'google_nano_banana_pro', label: '🟡 Nano Banana Pro [Gommo Proxy]', provider: 'gommo', description: 'Via Gommo API' },
 ];
 
+// CHARACTER_MODELS - Models for character/lora generation
+// Used in CharacterDetailModal for Face ID and body sheet generation
+export const CHARACTER_MODELS = [
+    // Nano Banana Pro - Best for Lora training (supports Face ID)
+    { value: 'gemini-3-pro-image-preview', label: '🔵 Nano Banana Pro [Gemini]', provider: 'gemini', supportsLora: true },
+    { value: 'google_nano_banana_pro', label: '🟡 Nano Banana Pro [Gommo]', provider: 'gommo', supportsLora: true },
+    // Future models can be added here
+    // { value: 'seed_dream', label: '🟣 Seed Dream [Gommo]', provider: 'gommo', supportsLora: false },
+    // { value: 'z_image', label: '🟣 Z-Image [Gommo]', provider: 'gommo', supportsLora: false },
+];
+
 export const SCRIPT_MODELS = [
     { value: 'gemini-3-pro-high', label: 'Gemini 3 Pro (High)' },
     { value: 'gemini-3-pro-low', label: 'Gemini 3 Pro (Low)' },

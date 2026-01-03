@@ -107,6 +107,19 @@ export const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
                     {/* Combined Analyze + Generate Buttons */}
                     {character.masterImage && !character.isAnalyzing && (
                         <div className="mt-4 space-y-2">
+                            {/* Model Selector for Lora Generation */}
+                            <div className="mb-3">
+                                <label className="block text-xs font-medium text-gray-400 mb-1">Model tạo Lora:</label>
+                                <select
+                                    value={character.preferredModel || 'gemini-3-pro-image-preview'}
+                                    onChange={(e) => updateCharacter(character.id, { preferredModel: e.target.value })}
+                                    className="w-full bg-brand-dark/80 border border-gray-600 rounded px-3 py-2 text-sm text-brand-cream focus:outline-none focus:border-brand-orange"
+                                >
+                                    <option value="gemini-3-pro-image-preview">🔵 Nano Banana Pro [Gemini]</option>
+                                    <option value="google_nano_banana_pro">🟡 Nano Banana Pro [Gommo]</option>
+                                </select>
+                            </div>
+
                             <button
                                 onClick={() => onAnalyze(character.id, character.masterImage!)}
                                 className="w-full px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-sm font-bold rounded-lg transition-all flex items-center justify-center space-x-2 shadow-lg shadow-purple-900/40"
