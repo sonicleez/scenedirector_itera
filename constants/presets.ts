@@ -223,7 +223,10 @@ export const IMAGE_ROLES = [
 ];
 
 export const IMAGE_MODELS = [
-    { value: 'gemini-3-pro-image-preview', label: 'Google Nano Banana Pro (High Quality)' },
+    // Gemini Direct (requires Gemini API key)
+    { value: 'gemini-3-pro-image-preview', label: '🔵 Nano Banana Pro [Gemini]', provider: 'gemini' },
+    // Gommo Proxy (requires Gommo credentials)
+    { value: 'google_nano_banana_pro', label: '🟡 Nano Banana Pro [Gommo]', provider: 'gommo' },
 ];
 
 export const SCRIPT_MODELS = [
