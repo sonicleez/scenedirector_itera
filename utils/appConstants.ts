@@ -138,30 +138,51 @@ export const IMAGE_MODELS = [
     // ═══════════════════════════════════════════════════════════════
     // GEMINI DIRECT (requires Gemini API key)
     // ═══════════════════════════════════════════════════════════════
-    { value: 'gemini-3-pro-image-preview', label: '🔵 Nano Banana Pro [Gemini Direct]', provider: 'gemini', description: 'Via Google AI Studio API', supportsEdit: true },
+    { value: 'gemini-3-pro-image-preview', label: '🔵 Nano Banana Pro [Gemini Direct]', provider: 'gemini', description: 'Via Google AI Studio API', supportsEdit: true, supportsSubject: true },
 
     // ═══════════════════════════════════════════════════════════════
-    // GOMMO PROXY (requires Gommo credentials)
+    // GOMMO PROXY (requires Gommo credentials) - Actual API model IDs
     // ═══════════════════════════════════════════════════════════════
-    { value: 'google_nano_banana_pro', label: '🟡 Nano Banana Pro [Gommo]', provider: 'gommo', description: 'Google Imagen via Gommo', supportsEdit: true },
-    { value: 'midjourney', label: '🟡 Midjourney [Gommo]', provider: 'gommo', description: 'Midjourney style generation', supportsEdit: true },
-    { value: 'flux_schnell', label: '🟡 Flux Schnell [Gommo]', provider: 'gommo', description: 'Fast Flux generation', supportsEdit: true },
-    { value: 'flux_pro', label: '🟡 Flux Pro [Gommo]', provider: 'gommo', description: 'High quality Flux', supportsEdit: true },
-    { value: 'stable_diffusion_xl', label: '🟡 SDXL [Gommo]', provider: 'gommo', description: 'Stable Diffusion XL', supportsEdit: true },
-    { value: 'dalle_3', label: '🟡 DALL-E 3 [Gommo]', provider: 'gommo', description: 'OpenAI DALL-E 3', supportsEdit: true },
-    { value: 'ideogram', label: '🟡 Ideogram [Gommo]', provider: 'gommo', description: 'Text-in-image specialist', supportsEdit: false },
-    { value: 'leonardo', label: '🟡 Leonardo [Gommo]', provider: 'gommo', description: 'Leonardo AI', supportsEdit: true },
+    // Google Imagen via Gommo
+    { value: 'google_image_gen_banana_pro', label: '🟡 Nano Banana Pro [Gommo]', provider: 'gommo', description: 'Google - 1k/2k/4k - 300 credits', supportsEdit: true, supportsSubject: true },
+    { value: 'google_image_gen_banana_pro_cheap', label: '🟡 Nano Banana Pro Cheap [Gommo]', provider: 'gommo', description: 'Google - Budget - 150 credits', supportsEdit: true, supportsSubject: true },
+    { value: 'google_image_gen_banana_pro_reason', label: '🟡 Nano Banana Pro Reason [Gommo]', provider: 'gommo', description: 'Google + AI Reasoning - 150 credits', supportsEdit: true, supportsSubject: true },
+    { value: 'google_image_gen_banana', label: '🟡 Nano Banana [Gommo]', provider: 'gommo', description: 'Google - Best for Edit - 150 credits', supportsEdit: true, supportsSubject: true },
+    { value: 'google_image_gen_4_5', label: '🟡 Imagen 4.5 [Gommo]', provider: 'gommo', description: 'Google - Smart & Fast - FREE tier', supportsEdit: true, supportsSubject: true },
+    { value: 'google_image_gen_3_5', label: '🟡 Imagen 4 [Gommo]', provider: 'gommo', description: 'Google - Best Quality - 50 credits', supportsEdit: true, supportsSubject: true },
+    { value: 'google_image_gen_3_1', label: '🟡 Imagen 3 [Gommo]', provider: 'gommo', description: 'Google - 50 credits', supportsEdit: true, supportsSubject: true },
+
+    // ByteDance Seedream
+    { value: 'seedream_4_5', label: '🟡 Seedream 4.5 [Gommo]', provider: 'gommo', description: 'ByteDance - 2k/4k - 250 credits', supportsEdit: true, supportsSubject: true },
+    { value: 'seedream_4_0', label: '🟡 Seedream 4.0 [Gommo]', provider: 'gommo', description: 'ByteDance - Best for Edit - FREE tier', supportsEdit: true, supportsSubject: true },
+
+    // Kling AI
+    { value: 'o1', label: '🟡 IMAGE O1 [Kling]', provider: 'gommo', description: 'Kling - High consistency - 150 credits', supportsEdit: true, supportsSubject: true },
+    { value: 'kling_colors_2_1', label: '🟡 COLORS 2.1 [Kling]', provider: 'gommo', description: 'Kling - 100 credits', supportsEdit: true, supportsSubject: false },
+    { value: 'kling_colors_2_0', label: '🟡 COLORS 2.0 [Kling]', provider: 'gommo', description: 'Kling - Style/Scene - 100 credits', supportsEdit: true, supportsSubject: true },
+    { value: 'kling_colors_1_5', label: '🟡 COLORS 1.5 [Kling]', provider: 'gommo', description: 'Kling - Face support - 100 credits', supportsEdit: true, supportsSubject: false },
+
+    // Other providers
+    { value: 'midjourney_7_0', label: '🟡 Midjourney 7.0 [Gommo]', provider: 'gommo', description: '4 images/request - 400 credits', supportsEdit: false, supportsSubject: false },
+    { value: 'z_image', label: '🟡 Z-Image [Alibaba]', provider: 'gommo', description: 'Alibaba - Fast & Cheap - 100 credits', supportsEdit: true, supportsSubject: false },
+    { value: 'dreamina_3_1', label: '🟡 Dreamina 3.1 [Gommo]', provider: 'gommo', description: 'ByteDance - 150 credits', supportsEdit: true, supportsSubject: false },
+    { value: 'hailuo_image_1', label: '🟡 Image-01 [Hailuo]', provider: 'gommo', description: 'Hailuo - 50 credits', supportsEdit: true, supportsSubject: true },
 ];
 
 // CHARACTER_MODELS - Models for character/lora generation
 // Used in CharacterDetailModal for Face ID and body sheet generation
+// Only models with supportsSubject: true are suitable
 export const CHARACTER_MODELS = [
-    // Nano Banana Pro - Best for Lora training (supports Face ID)
+    // Gemini Direct
     { value: 'gemini-3-pro-image-preview', label: '🔵 Nano Banana Pro [Gemini]', provider: 'gemini', supportsLora: true },
-    { value: 'google_nano_banana_pro', label: '🟡 Nano Banana Pro [Gommo]', provider: 'gommo', supportsLora: true },
-    // Future models can be added here
-    // { value: 'seed_dream', label: '🟣 Seed Dream [Gommo]', provider: 'gommo', supportsLora: false },
-    // { value: 'z_image', label: '🟣 Z-Image [Gommo]', provider: 'gommo', supportsLora: false },
+
+    // Gommo - Models that support subjects (withSubject: true)
+    { value: 'google_image_gen_banana_pro', label: '🟡 Nano Banana Pro [Gommo]', provider: 'gommo', supportsLora: true },
+    { value: 'google_image_gen_banana_pro_reason', label: '🟡 Nano Banana Pro Reason [Gommo]', provider: 'gommo', supportsLora: true },
+    { value: 'seedream_4_5', label: '🟡 Seedream 4.5 [Gommo]', provider: 'gommo', supportsLora: true },
+    { value: 'seedream_4_0', label: '🟡 Seedream 4.0 [Gommo] - FREE', provider: 'gommo', supportsLora: true },
+    { value: 'o1', label: '🟡 IMAGE O1 [Kling]', provider: 'gommo', supportsLora: true },
+    { value: 'google_image_gen_4_5', label: '🟡 Imagen 4.5 [Gommo] - FREE', provider: 'gommo', supportsLora: true },
 ];
 
 // EDIT_MODELS - Models that support image editing (mask, upscale, expand)
