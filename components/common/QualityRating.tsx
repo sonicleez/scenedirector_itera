@@ -70,29 +70,29 @@ export function QualityRating({
         );
     }
 
-    // No dopRecordId - can't rate
-    if (!dopRecordId) {
-        return null;
-    }
+    // Always show rating buttons (disabled if no dopRecordId)
+    const isDisabled = isRating || !dopRecordId;
 
     return (
         <div className={`flex items-center gap-1 ${className}`}>
-            <span className="text-gray-500 text-xs mr-1">Đánh giá:</span>
+            <span className="text-gray-500 text-xs mr-1">
+                {dopRecordId ? 'Đánh giá:' : '⏳ Chờ...'}
+            </span>
             <button
                 onClick={() => handleRate('good')}
-                disabled={isRating}
+                disabled={isDisabled}
                 className={`${buttonSize} rounded hover:bg-green-500/20 text-gray-400 hover:text-green-500 
                     transition-colors disabled:opacity-50`}
-                title="Ảnh tốt - DOP sẽ học pattern này"
+                title={dopRecordId ? "Ảnh tốt - DOP sẽ học pattern này" : "Đang chờ record ID..."}
             >
                 <ThumbsUp size={iconSize} />
             </button>
             <button
                 onClick={() => handleRate('bad')}
-                disabled={isRating}
+                disabled={isDisabled}
                 className={`${buttonSize} rounded hover:bg-red-500/20 text-gray-400 hover:text-red-400 
                     transition-colors disabled:opacity-50`}
-                title="Ảnh chưa tốt - DOP sẽ tránh pattern này"
+                title={dopRecordId ? "Ảnh chưa tốt - DOP sẽ tránh pattern này" : "Đang chờ record ID..."}
             >
                 <ThumbsDown size={iconSize} />
             </button>
