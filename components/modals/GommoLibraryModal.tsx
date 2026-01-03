@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, FolderOpen, Image, RefreshCw, Download, Edit3, Plus, Grid, List } from 'lucide-react';
-import { GommoAI, GommoSpace, GommoGenerationGroup } from '../../utils/gommoAI';
+import { X, FolderOpen, Image, RefreshCw, Download, Edit3, Plus, Grid, List, ArrowLeft } from 'lucide-react';
+import { GommoAI, GommoSpace, GommoGenerationGroup, GommoImageItem } from '../../utils/gommoAI';
 
 interface GommoLibraryModalProps {
     isOpen: boolean;
@@ -21,8 +21,10 @@ export const GommoLibraryModal: React.FC<GommoLibraryModalProps> = ({
     const [error, setError] = useState<string | null>(null);
     const [spaces, setSpaces] = useState<GommoSpace[]>([]);
     const [groups, setGroups] = useState<GommoGenerationGroup[]>([]);
-    const [activeTab, setActiveTab] = useState<'spaces' | 'groups'>('groups');
+    const [images, setImages] = useState<GommoImageItem[]>([]);
+    const [activeTab, setActiveTab] = useState<'spaces' | 'groups' | 'images'>('images');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [selectedGroup, setSelectedGroup] = useState<GommoGenerationGroup | null>(null);
 
     // Load data when modal opens
     useEffect(() => {
@@ -43,17 +45,37 @@ export const GommoLibraryModal: React.FC<GommoLibraryModalProps> = ({
         try {
             const client = new GommoAI(gommoDomain, gommoAccessToken);
 
-            const [spacesData, groupsData] = await Promise.all([
+            const [spacesData, groupsData, imagesData] = await Promise.all([
                 client.listSpaces(),
-                client.listGenerationGroups('IMAGE')
+                client.listGenerationGroups('IMAGE'),
+                client.listImages() // Load all recent images
             ]);
 
             setSpaces(spacesData);
             setGroups(groupsData);
-            console.log('[GommoLibrary] Loaded:', { spaces: spacesData.length, groups: groupsData.length });
+            setImages(imagesData);
+            console.log('[GommoLibrary] Loaded:', { spaces: spacesData.length, groups: groupsData.length, images: imagesData.length });
         } catch (err: any) {
             console.error('[GommoLibrary] Error:', err);
             setError(err.message || 'Không thể tải thư viện Gommo');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const loadImagesFromGroup = async (group: GommoGenerationGroup) => {
+        if (!gommoDomain || !gommoAccessToken) return;
+
+        setLoading(true);
+        setSelectedGroup(group);
+        setActiveTab('images');
+
+        try {
+            const client = new GommoAI(gommoDomain, gommoAccessToken);
+            const imagesData = await client.listImages(group.id_base);
+            setImages(imagesData);
+        } catch (err) {
+            console.error('[GommoLibrary] Load group images error:', err);
         } finally {
             setLoading(false);
         }
@@ -120,6 +142,18 @@ export const GommoLibraryModal: React.FC<GommoLibraryModalProps> = ({
                 {/* Tab Navigation */}
                 <div className="flex border-b border-white/10 px-6">
                     <button
+                        onClick={() => { setActiveTab('images'); setSelectedGroup(null); loadLibrary(); }}
+                        className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'images'
+                            ? 'border-yellow-500 text-yellow-400'
+                            : 'border-transparent text-gray-400 hover:text-white'
+                            }`}
+                    >
+                        <div className="flex items-center gap-2">
+                            <Image className="w-4 h-4" />
+                            <span>All Images ({images.length})</span>
+                        </div>
+                    </button>
+                    <button
                         onClick={() => setActiveTab('groups')}
                         className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'groups'
                             ? 'border-yellow-500 text-yellow-400'
@@ -127,8 +161,8 @@ export const GommoLibraryModal: React.FC<GommoLibraryModalProps> = ({
                             }`}
                     >
                         <div className="flex items-center gap-2">
-                            <Image className="w-4 h-4" />
-                            <span>Generation Groups ({groups.length})</span>
+                            <FolderOpen className="w-4 h-4" />
+                            <span>Groups ({groups.length})</span>
                         </div>
                     </button>
                     <button
@@ -171,6 +205,61 @@ export const GommoLibraryModal: React.FC<GommoLibraryModalProps> = ({
                     {/* Empty State */}
                     {!loading && !error && (
                         <>
+                            {/* Images Grid */}
+                            {activeTab === 'images' && (
+                                <>
+                                    {selectedGroup && (
+                                        <div className="flex items-center gap-2 mb-4 p-3 bg-white/5 rounded-lg">
+                                            <button
+                                                onClick={() => { setSelectedGroup(null); loadLibrary(); }}
+                                                className="p-1 hover:bg-white/10 rounded"
+                                            >
+                                                <ArrowLeft className="w-4 h-4 text-gray-400" />
+                                            </button>
+                                            <span className="text-white font-medium">{selectedGroup.name}</span>
+                                        </div>
+                                    )}
+
+                                    {images.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center h-full text-center">
+                                            <Image className="w-16 h-16 text-gray-600 mb-4" />
+                                            <p className="text-gray-400 text-lg">Chưa có ảnh nào</p>
+                                            <p className="text-gray-500 text-sm mt-2">Tạo ảnh bằng Gommo để thấy chúng ở đây</p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                            {images.map((img) => (
+                                                <div
+                                                    key={img.id_base}
+                                                    className="group relative aspect-square bg-slate-800 rounded-xl overflow-hidden border border-white/10 hover:border-yellow-500 cursor-pointer transition-all hover:scale-[1.02]"
+                                                    onClick={() => {
+                                                        onSelectImage(img.url);
+                                                        onClose();
+                                                    }}
+                                                >
+                                                    <img
+                                                        src={img.url}
+                                                        alt={img.prompt || 'Gommo image'}
+                                                        className="w-full h-full object-cover"
+                                                        loading="lazy"
+                                                    />
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <div className="absolute bottom-2 left-2 right-2">
+                                                            <p className="text-white text-xs line-clamp-2">{img.prompt || 'No prompt'}</p>
+                                                        </div>
+                                                        <div className="absolute top-2 right-2 flex gap-1">
+                                                            <button className="p-1.5 bg-yellow-600 hover:bg-yellow-500 rounded-lg text-white">
+                                                                <Edit3 className="w-3 h-3" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            )}
+
                             {activeTab === 'groups' && groups.length === 0 && (
                                 <div className="flex flex-col items-center justify-center h-full text-center">
                                     <Image className="w-16 h-16 text-gray-600 mb-4" />

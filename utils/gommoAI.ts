@@ -86,6 +86,18 @@ export interface GommoGenerationGroup {
     type: 'IMAGE' | 'VIDEO';
     created_at: number;
     updated_at: number;
+    // Images in the group (may be populated from API)
+    images?: GommoImageItem[];
+}
+
+/**
+ * Gommo Image Item (individual image in a generation group)
+ */
+export interface GommoImageItem {
+    id_base: string;
+    url: string;
+    prompt?: string;
+    created_at?: number;
 }
 
 const GOMMO_ENDPOINTS = {
@@ -95,6 +107,7 @@ const GOMMO_ENDPOINTS = {
     listModels: 'https://api.gommo.net/ai/models',
     // Library Management
     generationGroups: 'https://api.gommo.net/ai/generationGroups',
+    listImages: 'https://api.gommo.net/ai/images', // List images from a group
     listSpaces: 'https://api.gommo.net/api/apps/go-mmo/ai_spaces/getAll',
     createSpace: 'https://api.gommo.net/api/apps/go-mmo/ai_spaces/create',
 };
@@ -251,6 +264,29 @@ export class GommoAI {
         );
         console.log(`[Gommo AI] Found ${result.data?.length || 0} ${type} generation groups`);
         return result.data || [];
+    }
+
+    /**
+     * List images from a generation group or all images
+     * @param groupId - Optional group ID to filter
+     * @param limit - Maximum number of images to return
+     */
+    async listImages(groupId?: string, limit: number = 50): Promise<GommoImageItem[]> {
+        try {
+            const result = await this.request<{ data: GommoImageItem[]; runtime: number }>(
+                GOMMO_ENDPOINTS.listImages,
+                {
+                    group_id: groupId,
+                    limit,
+                    project_id: 'default'
+                }
+            );
+            console.log(`[Gommo AI] Found ${result.data?.length || 0} images`);
+            return result.data || [];
+        } catch (err) {
+            console.error('[Gommo AI] listImages error:', err);
+            return [];
+        }
     }
 
     /**
