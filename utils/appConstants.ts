@@ -135,15 +135,22 @@ export const IMAGE_PROVIDERS = [
 // User can select any model regardless of imageProvider setting
 // The hook will automatically use the correct provider based on model.provider
 export const IMAGE_MODELS = [
-    // Gemini Direct (requires Gemini API key) - Full edit support
+    // ═══════════════════════════════════════════════════════════════
+    // GEMINI DIRECT (requires Gemini API key)
+    // ═══════════════════════════════════════════════════════════════
     { value: 'gemini-3-pro-image-preview', label: '🔵 Nano Banana Pro [Gemini Direct]', provider: 'gemini', description: 'Via Google AI Studio API', supportsEdit: true },
 
-    // Gommo Proxy (requires Gommo credentials) - Supports editImage
-    { value: 'google_nano_banana_pro', label: '🟡 Nano Banana Pro [Gommo Proxy]', provider: 'gommo', description: 'Via Gommo API', supportsEdit: true },
-
-    // TODO: Add more Gommo models when list is available
-    // { value: 'midjourney', label: '🟡 Midjourney [Gommo]', provider: 'gommo', supportsEdit: true },
-    // { value: 'flux', label: '🟡 Flux [Gommo]', provider: 'gommo', supportsEdit: true },
+    // ═══════════════════════════════════════════════════════════════
+    // GOMMO PROXY (requires Gommo credentials)
+    // ═══════════════════════════════════════════════════════════════
+    { value: 'google_nano_banana_pro', label: '🟡 Nano Banana Pro [Gommo]', provider: 'gommo', description: 'Google Imagen via Gommo', supportsEdit: true },
+    { value: 'midjourney', label: '🟡 Midjourney [Gommo]', provider: 'gommo', description: 'Midjourney style generation', supportsEdit: true },
+    { value: 'flux_schnell', label: '🟡 Flux Schnell [Gommo]', provider: 'gommo', description: 'Fast Flux generation', supportsEdit: true },
+    { value: 'flux_pro', label: '🟡 Flux Pro [Gommo]', provider: 'gommo', description: 'High quality Flux', supportsEdit: true },
+    { value: 'stable_diffusion_xl', label: '🟡 SDXL [Gommo]', provider: 'gommo', description: 'Stable Diffusion XL', supportsEdit: true },
+    { value: 'dalle_3', label: '🟡 DALL-E 3 [Gommo]', provider: 'gommo', description: 'OpenAI DALL-E 3', supportsEdit: true },
+    { value: 'ideogram', label: '🟡 Ideogram [Gommo]', provider: 'gommo', description: 'Text-in-image specialist', supportsEdit: false },
+    { value: 'leonardo', label: '🟡 Leonardo [Gommo]', provider: 'gommo', description: 'Leonardo AI', supportsEdit: true },
 ];
 
 // CHARACTER_MODELS - Models for character/lora generation
