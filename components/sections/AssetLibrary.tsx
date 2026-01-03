@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Image as ImageIcon, Search, Trash2, CheckCircle2, Copy, Replace, Layers, X, Clock, Filter, Wand2 } from 'lucide-react';
+import { Image as ImageIcon, Search, Trash2, CheckCircle2, Copy, Replace, Layers, X, Clock, Filter, Wand2, FolderOpen } from 'lucide-react';
 import { ProjectState, GalleryAsset, Scene, Character, Product } from '../../types';
 
 interface AssetLibraryProps {
@@ -18,6 +18,9 @@ interface AssetLibraryProps {
     onReplaceProductView: (productId: string, image: string, view: string) => void;
     onDeleteAsset: (assetId: string) => void;
     onClose: () => void;
+    // Gommo Library integration
+    onOpenGommoLibrary?: () => void;
+    hasGommoCredentials?: boolean;
 }
 
 export const AssetLibrary: React.FC<AssetLibraryProps> = ({
@@ -30,7 +33,9 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
     onReplaceCharacterView,
     onReplaceProductView,
     onDeleteAsset,
-    onClose
+    onClose,
+    onOpenGommoLibrary,
+    hasGommoCredentials
 }) => {
     const [filter, setFilter] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState('');
@@ -79,9 +84,21 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
                         <p className="text-[10px] text-gray-500 font-bold">{assets.length} hình ảnh trong phiên</p>
                     </div>
                 </div>
-                <button onClick={onClose} className="p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400">
-                    <X size={20} />
-                </button>
+                <div className="flex items-center gap-2">
+                    {/* Gommo Library Button */}
+                    {hasGommoCredentials && onOpenGommoLibrary && (
+                        <button
+                            onClick={onOpenGommoLibrary}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 rounded-lg text-white text-xs font-bold transition-all shadow-lg shadow-orange-900/20"
+                        >
+                            <FolderOpen size={14} />
+                            <span>Gommo</span>
+                        </button>
+                    )}
+                    <button onClick={onClose} className="p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400">
+                        <X size={20} />
+                    </button>
+                </div>
             </div>
 
             {/* Usage Stats (Persistent) */}
