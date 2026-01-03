@@ -43,6 +43,7 @@ export interface Character {
   isAnalyzing?: boolean;
   isGenerating?: boolean;
   generationStartTime?: number; // Timestamp for live timer
+  generationStatus?: string; // DOP status message (normalizing, polling, etc.)
   generatedImage?: string | null;
 
   // Google Labs Workflow Polling (for async Face/Body generation)

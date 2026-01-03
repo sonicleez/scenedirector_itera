@@ -477,7 +477,11 @@ ${charStyle.promptInjection.negative}
         }
     ) => {
         const { prompt, style, customStyle, aspectRatio, model } = params;
-        updateCharacter(charId, { isGenerating: true, generationStartTime: Date.now() });
+        updateCharacter(charId, {
+            isGenerating: true,
+            generationStartTime: Date.now(),
+            generationStatus: '🚀 Starting generation...'
+        });
 
         try {
             const styleConfig = CHARACTER_STYLES.find(s => s.value === style);
@@ -547,9 +551,25 @@ CRITICAL: ONE SINGLE FULL-BODY IMAGE on solid white background. Face must be rec
             let promptToSend = fullPrompt;
             if (needsNormalization(model)) {
                 console.log('[CharacterGen] 🔧 Normalizing prompt for model:', model);
+
+                // DOP Status: Normalizing
+                updateCharacter(charId, { generationStatus: `🔧 Optimizing prompt for ${model}...` });
+                if (setAgentState) {
+                    setAgentState('dop', 'working', `🔧 Optimizing prompt for ${model}...`, 'normalizing');
+                }
+
                 try {
                     const normalized = await normalizePromptAsync(fullPrompt, model, apiKey, aspectRatio);
                     promptToSend = normalized.normalized;
+
+                    // DOP Status: Normalized
+                    const translateMsg = normalized.translated ? '🌐 Translated VI→EN. ' : '';
+                    const statusMsg = `${translateMsg}✅ Prompt optimized (${normalized.normalized.length} chars)`;
+                    updateCharacter(charId, { generationStatus: statusMsg });
+                    if (setAgentState) {
+                        setAgentState('dop', 'working', statusMsg, 'prompt_ready');
+                    }
+
                     console.log('[CharacterGen] ✅ Normalized:', {
                         model: normalized.modelType,
                         translated: normalized.translated,
@@ -559,7 +579,23 @@ CRITICAL: ONE SINGLE FULL-BODY IMAGE on solid white background. Face must be rec
                     });
                 } catch (normErr) {
                     console.warn('[CharacterGen] Normalization failed, using original prompt:', normErr);
+                    updateCharacter(charId, { generationStatus: '⚠️ Using original prompt' });
+                    if (setAgentState) {
+                        setAgentState('dop', 'working', '⚠️ Normalization skipped, using original', 'fallback');
+                    }
                 }
+            } else {
+                // Gemini - no normalization needed
+                updateCharacter(charId, { generationStatus: '🔵 Gemini mode - full prompt' });
+                if (setAgentState) {
+                    setAgentState('dop', 'working', `🔵 Gemini mode - using full prompt`, 'prompt_ready');
+                }
+            }
+
+            // DOP Status: Generating
+            updateCharacter(charId, { generationStatus: `🎨 Generating with ${model}...` });
+            if (setAgentState) {
+                setAgentState('dop', 'working', `🎨 Generating with ${model}...`, 'generating');
             }
 
             // Use callCharacterImageAPI for proper Gemini/Gommo routing

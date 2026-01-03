@@ -51,6 +51,7 @@ export const CharacterGeneratorModal: React.FC<CharacterGeneratorModalProps> = (
     const character = charId ? characters.find(c => c.id === charId) : null;
     const isGenerating = character?.isGenerating || false;
     const generationStartTime = character?.generationStartTime;
+    const generationStatus = character?.generationStatus || '';
     const generatedImage = character?.generatedImage || null;
 
     useEffect(() => {
@@ -175,9 +176,15 @@ export const CharacterGeneratorModal: React.FC<CharacterGeneratorModalProps> = (
 
                 <div className="w-full aspect-square bg-gray-950 rounded-lg border-2 border-dashed border-gray-700 flex items-center justify-center overflow-hidden relative">
                     {isGenerating ? (
-                        <div className="flex flex-col items-center space-y-2">
+                        <div className="flex flex-col items-center space-y-3 p-4">
                             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-500"></div>
-                            <span className="text-green-500 text-sm animate-pulse">AI đang vẽ...</span>
+
+                            {/* Status from DOP */}
+                            <span className="text-green-500 text-sm text-center px-2">
+                                {generationStatus || 'AI đang vẽ...'}
+                            </span>
+
+                            {/* Live Timer */}
                             {generationStartTime && (
                                 <div className="bg-black/60 px-3 py-1 rounded-full border border-green-500/50 text-green-400 flex items-center gap-1">
                                     ⏱ <LiveTimer startTime={generationStartTime} />
