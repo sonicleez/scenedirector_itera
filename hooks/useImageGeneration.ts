@@ -13,7 +13,7 @@ import { safeGetImageData, callGeminiVisionReasoning } from '../utils/geminiUtil
 import { GommoAI, urlToBase64 } from '../utils/gommoAI';
 import { IMAGE_MODELS } from '../utils/appConstants';
 import { normalizePrompt, normalizePromptAsync, formatNormalizationLog, needsNormalization, containsVietnamese } from '../utils/promptNormalizer';
-
+import { recordPrompt, approvePrompt } from '../utils/dopLearning';
 // Helper function to clean VEO-specific tokens from prompt for image generation
 const cleanPromptForImageGen = (prompt: string): string => {
     return prompt
@@ -1067,6 +1067,25 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                 }
             }
 
+            // Record prompt in DOP Learning System BEFORE generating
+            let dopRecordId: string | null = null;
+            if (userId && userApiKey) {
+                try {
+                    dopRecordId = await recordPrompt(
+                        userId,
+                        finalImagePrompt,
+                        promptToSend,
+                        modelToUse,
+                        'scene',
+                        currentState.aspectRatio,
+                        userApiKey
+                    );
+                    console.log('[ImageGen] 📝 DOP recorded:', dopRecordId);
+                } catch (e) {
+                    console.warn('[ImageGen] DOP recording failed:', e);
+                }
+            }
+
             const { imageUrl, mediaId } = await callAIImageAPI(
                 promptToSend,
                 userApiKey,
@@ -1080,6 +1099,20 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
             // Calculate estimated prompt tokens (rough: ~4 chars per token)
             const estimatedTokens = Math.ceil(promptToSend.length / 4);
             console.log(`[ImageGen] 📊 Stats: Provider=${promptProvider}, EstTokens=${estimatedTokens}, Prompt=${promptToSend.length} chars`);
+
+            // Auto-approve in DOP Learning if generation succeeded
+            if (dopRecordId && imageUrl) {
+                try {
+                    // For scenes, auto-approve with base quality (can be updated later)
+                    await approvePrompt(dopRecordId, {
+                        overall: 0.8, // Assume good quality if generation succeeded
+                        match: 0.8
+                    });
+                    console.log('[ImageGen] ✅ DOP approved:', dopRecordId);
+                } catch (e) {
+                    console.warn('[ImageGen] DOP approval failed:', e);
+                }
+            }
 
             updateStateAndRecord(s => {
                 const duration = Date.now() - startTime;
@@ -1115,7 +1148,8 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                         generatedByModel: currentState.imageModel, // Track which model generated this
                         mediaId: fromManual ? sc.mediaId : (mediaId || sc.mediaId),
                         isGenerating: false,
-                        error: null
+                        error: null,
+                        dopRecordId: dopRecordId // Store for later quality rating
                     } : sc),
                     usageStats: updatedStats
                 };

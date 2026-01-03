@@ -153,6 +153,9 @@ export interface Scene {
   // UI state
   isGenerating: boolean;
   error: string | null;
+
+  // DOP Learning System
+  dopRecordId?: string; // ID for quality rating and learning
 }
 
 // Script Preset System
