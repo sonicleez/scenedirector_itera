@@ -271,7 +271,7 @@ export class GommoAI {
      * @param groupId - Optional group ID to filter
      * @param limit - Maximum number of images to return
      */
-    async listImages(groupId?: string, limit: number = 50): Promise<GommoImageItem[]> {
+    async listImages(groupId?: string, limit: number = 300): Promise<GommoImageItem[]> {
         try {
             const result = await this.request<{ data: GommoImageItem[]; runtime: number }>(
                 GOMMO_ENDPOINTS.listImages,
