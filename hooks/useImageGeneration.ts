@@ -10,6 +10,8 @@ import { DIRECTOR_PRESETS, DirectorCategory } from '../constants/directors';
 import { getPresetById } from '../utils/scriptPresets';
 import { uploadImageToSupabase, syncUserStatsToCloud } from '../utils/storageUtils';
 import { safeGetImageData, callGeminiVisionReasoning } from '../utils/geminiUtils';
+import { GommoAI, urlToBase64 } from '../utils/gommoAI';
+import { IMAGE_MODELS } from '../utils/appConstants';
 
 // Helper function to clean VEO-specific tokens from prompt for image generation
 const cleanPromptForImageGen = (prompt: string): string => {
@@ -19,6 +21,12 @@ const cleanPromptForImageGen = (prompt: string): string => {
         .replace(/Emotion:.*?(\.|$)/gi, '') // Remove Emotion descriptions
         .replace(/\s+/g, ' ') // Collapse whitespace
         .trim();
+};
+
+// Helper: Determine which provider to use based on model ID
+const getProviderFromModel = (modelId: string): 'gemini' | 'gommo' => {
+    const model = IMAGE_MODELS.find(m => m.value === modelId);
+    return (model?.provider as 'gemini' | 'gommo') || 'gemini';
 };
 
 export function useImageGeneration(

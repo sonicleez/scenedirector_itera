@@ -131,9 +131,15 @@ export const IMAGE_PROVIDERS = [
     { value: 'gommo', label: 'Gommo AI', description: 'Proxy API - requires Gommo credentials' },
 ];
 
+// IMAGE_MODELS - All available models with provider info
+// User can select any model regardless of imageProvider setting
+// The hook will automatically use the correct provider based on model.provider
 export const IMAGE_MODELS = [
-    { value: 'gemini-3-pro-image-preview', label: 'Google Nano Banana Pro (Gemini)', provider: 'gemini' },
-    { value: 'google_nano_banana_pro', label: 'Google Nano Banana Pro (Gommo)', provider: 'gommo' },
+    // Gemini Direct (requires Gemini API key)
+    { value: 'gemini-3-pro-image-preview', label: '🔵 Nano Banana Pro [Gemini Direct]', provider: 'gemini', description: 'Via Google AI Studio API' },
+
+    // Gommo Proxy (requires Gommo credentials)
+    { value: 'google_nano_banana_pro', label: '🟡 Nano Banana Pro [Gommo Proxy]', provider: 'gommo', description: 'Via Gommo API' },
 ];
 
 export const SCRIPT_MODELS = [
