@@ -181,15 +181,22 @@ export const StyleSettingsSection: React.FC<StyleSettingsSectionProps> = ({
                     <div className="grid grid-cols-3 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-2">Độ phân giải (Resolution)</label>
-                            <select
-                                value={resolution || '1K'}
-                                onChange={(e) => onResolutionChange(e.target.value)}
-                                className="w-full bg-gray-700 text-white px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 border border-gray-600 appearance-none"
-                            >
-                                <option value="1K">1K (Standard) - Gemini</option>
-                                <option value="2K">2K (High Res) - Google Pro Only</option>
-                                <option value="4K">4K (Ultra) - Google Pro Only</option>
-                            </select>
+                            {(() => {
+                                const selectedModel = IMAGE_MODELS.find(m => m.value === imageModel);
+                                const isGommo = selectedModel?.provider === 'gommo';
+                                const providerLabel = isGommo ? '🟡 Gommo' : '🔵 Gemini';
+                                return (
+                                    <select
+                                        value={resolution || '1K'}
+                                        onChange={(e) => onResolutionChange(e.target.value)}
+                                        className="w-full bg-gray-700 text-white px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 border border-gray-600 appearance-none"
+                                    >
+                                        <option value="1K">1K (Standard) - {providerLabel}</option>
+                                        <option value="2K">2K (High Res) - {providerLabel}</option>
+                                        <option value="4K">4K (Ultra) - {providerLabel}</option>
+                                    </select>
+                                );
+                            })()}
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-2">Tỷ lệ ảnh (Aspect Ratio)</label>
