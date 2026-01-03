@@ -988,6 +988,9 @@ const App: React.FC = () => {
                                 }}
                                 hasGommoCredentials={!!(state.gommoDomain && state.gommoAccessToken)}
                                 onOpenGommoLibrary={() => setGommoLibraryOpen(true)}
+                                onUploadForEdit={(base64) => {
+                                    openEditor('upload-' + Date.now(), base64, 'scene');
+                                }}
                             />
                         )}
                     </div>

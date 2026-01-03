@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Image as ImageIcon, Search, Trash2, CheckCircle2, Copy, Replace, Layers, X, Clock, Filter, Wand2, FolderOpen } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Image as ImageIcon, Search, Trash2, CheckCircle2, Copy, Replace, Layers, X, Clock, Filter, Wand2, FolderOpen, Upload } from 'lucide-react';
 import { ProjectState, GalleryAsset, Scene, Character, Product } from '../../types';
 
 interface AssetLibraryProps {
@@ -21,6 +21,8 @@ interface AssetLibraryProps {
     // Gommo Library integration
     onOpenGommoLibrary?: () => void;
     hasGommoCredentials?: boolean;
+    // Image upload for editing
+    onUploadForEdit?: (base64: string) => void;
 }
 
 export const AssetLibrary: React.FC<AssetLibraryProps> = ({
@@ -35,8 +37,10 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
     onDeleteAsset,
     onClose,
     onOpenGommoLibrary,
-    hasGommoCredentials
+    hasGommoCredentials,
+    onUploadForEdit
 }) => {
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [filter, setFilter] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedAsset, setSelectedAsset] = useState<GalleryAsset | null>(null);
@@ -85,6 +89,36 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    {/* Upload Image Button */}
+                    {onUploadForEdit && (
+                        <>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        const reader = new FileReader();
+                                        reader.onloadend = () => {
+                                            onUploadForEdit(reader.result as string);
+                                        };
+                                        reader.readAsDataURL(file);
+                                    }
+                                    e.target.value = ''; // Reset for re-upload
+                                }}
+                            />
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 rounded-lg text-white text-xs font-bold transition-all shadow-lg shadow-blue-900/20"
+                                title="Tải ảnh lên để chỉnh sửa"
+                            >
+                                <Upload size={14} />
+                                <span>Upload</span>
+                            </button>
+                        </>
+                    )}
                     {/* Gommo Library Button */}
                     {hasGommoCredentials && onOpenGommoLibrary && (
                         <button
