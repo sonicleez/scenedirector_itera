@@ -3,7 +3,8 @@ import { GoogleGenAI } from "@google/genai";
 import Modal from '../Modal';
 import { supabase } from '../../utils/supabaseClient';
 import { PRIMARY_GRADIENT, PRIMARY_GRADIENT_HOVER } from '../../constants/presets';
-import { User, Key, Calendar, ShieldCheck, CreditCard, LogOut, BarChart3, Image, FileText, Layers, Package } from 'lucide-react';
+import { User, Key, Calendar, ShieldCheck, CreditCard, LogOut, BarChart3, Image, FileText, Layers, Package, Zap } from 'lucide-react';
+import { GommoAI } from '../../utils/gommoAI';
 
 export interface UserProfileModalProps {
     isOpen: boolean;
@@ -14,6 +15,10 @@ export interface UserProfileModalProps {
     setApiKey: (key: string) => void;
     subscriptionExpired: boolean;
     onSignOut: () => void;
+    // Gommo AI
+    gommoDomain?: string;
+    gommoAccessToken?: string;
+    setGommoCredentials?: (domain: string, token: string) => void;
     usageStats?: {
         '1K'?: number;
         '2K'?: number;
@@ -40,11 +45,21 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     setApiKey,
     subscriptionExpired,
     onSignOut,
-    usageStats
+    usageStats,
+    gommoDomain = '',
+    gommoAccessToken = '',
+    setGommoCredentials
 }) => {
     const [checkStatus, setCheckStatus] = useState<'idle' | 'checking' | 'success' | 'error'>('idle');
     const [statusMsg, setStatusMsg] = useState('');
     const [localApiKey, setLocalApiKey] = useState(apiKey);
+
+    // Gommo state
+    const [localGommoDomain, setLocalGommoDomain] = useState(gommoDomain);
+    const [localGommoToken, setLocalGommoToken] = useState(gommoAccessToken);
+    const [gommoStatus, setGommoStatus] = useState<'idle' | 'checking' | 'success' | 'error'>('idle');
+    const [gommoMsg, setGommoMsg] = useState('');
+    const [gommoCredits, setGommoCredits] = useState<number | null>(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -103,6 +118,37 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             if (msg.includes('403')) msg = "Lỗi 403: Quyền bị từ chối.";
             else if (msg.includes('400')) msg = "Lỗi 400: API Key không hợp lệ.";
             setStatusMsg(msg);
+        }
+    };
+
+    const handleGommoVerify = async () => {
+        const domain = localGommoDomain.trim();
+        const token = localGommoToken.trim();
+
+        if (!domain || !token) {
+            setGommoStatus('error');
+            setGommoMsg('Vui lòng nhập Domain và Access Token.');
+            return;
+        }
+
+        setGommoStatus('checking');
+        try {
+            const client = new GommoAI(domain, token);
+            const info = await client.getAccountInfo();
+
+            // Save credentials
+            if (setGommoCredentials) {
+                setGommoCredentials(domain, token);
+            }
+
+            // Show credits
+            setGommoCredits(info.balancesInfo.credits_ai || 0);
+            setGommoStatus('success');
+            setGommoMsg(`✅ Xác thực thành công! Xin chào ${info.userInfo.name || info.userInfo.username}`);
+
+        } catch (error: any) {
+            setGommoStatus('error');
+            setGommoMsg(error.message || 'Không thể kết nối Gommo API');
         }
     };
 
@@ -263,6 +309,57 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                                 'bg-red-900/20 border-red-800/50 text-red-300'
                             }`}>
                             <span>{statusMsg}</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Gommo AI Section */}
+                <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                        <Zap className="text-yellow-400" size={18} />
+                        <h3 className="text-sm font-bold text-gray-200 uppercase tracking-wide">Gommo AI (Proxy)</h3>
+                    </div>
+                    <p className="text-xs text-gray-500">Cung cấp Domain và Access Token từ Gommo để sử dụng API ảnh.</p>
+
+                    <div className="space-y-2">
+                        <input
+                            type="text"
+                            value={localGommoDomain}
+                            onChange={(e) => setLocalGommoDomain(e.target.value)}
+                            placeholder="Domain (vd: mydomain.com)"
+                            className="w-full px-3 py-2 bg-gray-900/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-yellow-500/50 transition-all text-sm"
+                        />
+                        <div className="relative">
+                            <input
+                                type="password"
+                                value={localGommoToken}
+                                onChange={(e) => setLocalGommoToken(e.target.value)}
+                                placeholder="Access Token"
+                                className="w-full px-3 py-2.5 bg-gray-900/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-yellow-500/50 transition-all text-sm"
+                            />
+                            <button
+                                onClick={handleGommoVerify}
+                                disabled={gommoStatus === 'checking'}
+                                className={`absolute right-1.5 top-1.5 bottom-1.5 px-3 rounded-md font-bold text-[10px] uppercase tracking-wider transition-all ${gommoStatus === 'checking' ? 'bg-gray-700 text-gray-500' : 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:shadow-lg shadow-yellow-500/20 active:scale-95'}`}
+                            >
+                                {gommoStatus === 'checking' ? '...' : 'Verify'}
+                            </button>
+                        </div>
+                    </div>
+
+                    {gommoStatus !== 'idle' && (
+                        <div className={`text-[11px] p-2.5 rounded-lg border flex items-start animate-fade-in ${gommoStatus === 'checking' ? 'bg-blue-900/20 border-blue-800/50 text-blue-300' :
+                            gommoStatus === 'success' ? 'bg-green-900/20 border-green-800/50 text-green-300' :
+                                'bg-red-900/20 border-red-800/50 text-red-300'
+                            }`}>
+                            <span>{gommoMsg}</span>
+                        </div>
+                    )}
+
+                    {gommoCredits !== null && (
+                        <div className="flex items-center justify-between bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-2">
+                            <span className="text-xs text-yellow-300">💰 Credits Available:</span>
+                            <span className="font-bold text-yellow-400">{gommoCredits.toLocaleString()}</span>
                         </div>
                     )}
                 </div>

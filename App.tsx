@@ -983,6 +983,19 @@ const App: React.FC = () => {
                         subscriptionExpired={subscriptionExpired}
                         onSignOut={handleSignOut}
                         usageStats={state.usageStats}
+                        gommoDomain={state.gommoDomain || ''}
+                        gommoAccessToken={state.gommoAccessToken || ''}
+                        setGommoCredentials={(domain, token) => {
+                            updateStateAndRecord(s => ({
+                                ...s,
+                                gommoDomain: domain,
+                                gommoAccessToken: token,
+                                imageProvider: 'gommo' // Auto-switch to Gommo when credentials saved
+                            }));
+                            // Save to localStorage
+                            localStorage.setItem('gommoDomain', domain);
+                            localStorage.setItem('gommoAccessToken', token);
+                        }}
                     />
 
                     <ScriptGeneratorModal

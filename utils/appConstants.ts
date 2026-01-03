@@ -126,8 +126,14 @@ export const TRANSITION_TYPES = [
     { value: 'j-cut', label: 'J-Cut', hint: 'Audio precedes visual' },
 ];
 
+export const IMAGE_PROVIDERS = [
+    { value: 'gemini', label: 'Gemini (Google AI Studio)', description: 'Direct API - requires Gemini API key' },
+    { value: 'gommo', label: 'Gommo AI', description: 'Proxy API - requires Gommo credentials' },
+];
+
 export const IMAGE_MODELS = [
-    { value: 'gemini-3-pro-image-preview', label: 'Google Nano Banana Pro (High Quality)' },
+    { value: 'gemini-3-pro-image-preview', label: 'Google Nano Banana Pro (Gemini)', provider: 'gemini' },
+    { value: 'google_nano_banana_pro', label: 'Google Nano Banana Pro (Gommo)', provider: 'gommo' },
 ];
 
 export const SCRIPT_MODELS = [

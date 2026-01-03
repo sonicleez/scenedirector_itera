@@ -227,6 +227,13 @@ export interface ProjectState {
   stylePrompt: string;
   imageModel: string; // Selected Image Gen Model
   genyuToken?: string; // Token for Genyu API access
+
+  // Gommo AI Provider (Alternative to Gemini)
+  imageProvider?: 'gemini' | 'gommo'; // Which provider to use for image gen
+  gommoDomain?: string; // Gommo API domain
+  gommoAccessToken?: string; // Gommo API access token
+  gommoCredits?: number; // Cached credit balance
+
   aspectRatio: string; // "16:9" | "9:16" | "1:1" | "4:3" | "3:4"
 
   resolution: string;
