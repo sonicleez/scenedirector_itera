@@ -103,6 +103,7 @@ export const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
                         aspect="auto"
                         subLabel="Upload hoặc Tạo AI"
                         isProcessing={character.isAnalyzing}
+                        processingStartTime={character.generationStartTime}
                     />
                     {/* Combined Analyze + Generate Buttons */}
                     {character.masterImage && !character.isAnalyzing && (

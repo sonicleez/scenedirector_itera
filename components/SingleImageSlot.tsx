@@ -1,4 +1,15 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+
+// LiveTimer component for realtime generation timer
+const LiveTimer: React.FC<{ startTime: number }> = ({ startTime }) => {
+    const [elapsed, setElapsed] = useState(0);
+    useEffect(() => {
+        const interval = setInterval(() => setElapsed(Date.now() - startTime), 100);
+        return () => clearInterval(interval);
+    }, [startTime]);
+    const seconds = (elapsed / 1000).toFixed(1);
+    return <span className="font-mono text-xs">{seconds}s</span>;
+};
 
 interface SingleImageSlotProps {
     label: string;
@@ -10,9 +21,10 @@ interface SingleImageSlotProps {
     aspect?: 'square' | 'portrait' | 'auto'; // Added 'auto'
     subLabel?: React.ReactNode;
     isProcessing?: boolean;
+    processingStartTime?: number; // For LiveTimer
 }
 
-const SingleImageSlot: React.FC<SingleImageSlotProps> = ({ label, image, onUpload, onDelete, onEdit, onGenerate, aspect = 'square', subLabel, isProcessing }) => {
+const SingleImageSlot: React.FC<SingleImageSlotProps> = ({ label, image, onUpload, onDelete, onEdit, onGenerate, aspect = 'square', subLabel, isProcessing, processingStartTime }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,10 +61,15 @@ const SingleImageSlot: React.FC<SingleImageSlotProps> = ({ label, image, onUploa
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
 
                 {isProcessing ? (
-                    <div className="absolute inset-0 bg-black/60 z-10 flex items-center justify-center flex-col h-full">
+                    <div className="absolute inset-0 bg-black/60 z-10 flex items-center justify-center flex-col h-full space-y-2">
                         {/* h-full needed if aspect auto */}
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-orange mb-2"></div>
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-orange"></div>
                         <span className="text-[10px] text-brand-orange">AI Creating...</span>
+                        {processingStartTime && (
+                            <div className="bg-black/50 px-2 py-0.5 rounded-full border border-brand-orange/50 text-brand-orange">
+                                ⏱ <LiveTimer startTime={processingStartTime} />
+                            </div>
+                        )}
                     </div>
                 ) : image ? (
                     <>

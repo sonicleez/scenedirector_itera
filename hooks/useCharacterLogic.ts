@@ -76,7 +76,7 @@ export function useCharacterLogic(
     const analyzeCharacterImage = useCallback(async (id: string, image: string) => {
         const rawApiKey = userApiKey || (process.env as any).API_KEY;
         const apiKey = typeof rawApiKey === 'string' ? rawApiKey.trim() : rawApiKey;
-        updateCharacter(id, { isAnalyzing: true });
+        updateCharacter(id, { isAnalyzing: true, generationStartTime: Date.now() });
 
         if (!apiKey) {
             updateCharacter(id, { isAnalyzing: false });
@@ -164,7 +164,7 @@ export function useCharacterLogic(
             return;
         }
 
-        updateCharacter(id, { isAnalyzing: true });
+        updateCharacter(id, { isAnalyzing: true, generationStartTime: Date.now() });
 
         try {
             const ai = new GoogleGenAI({ apiKey });
@@ -405,7 +405,7 @@ ${charStyle.promptInjection.negative}
         const char = state.characters.find(c => c.id === id);
         if (!char || !char.masterImage) return;
 
-        updateCharacter(id, { isAnalyzing: true });
+        updateCharacter(id, { isAnalyzing: true, generationStartTime: Date.now() });
 
         try {
             const rawApiKey = userApiKey || (process.env as any).API_KEY;
@@ -476,7 +476,7 @@ ${charStyle.promptInjection.negative}
         }
     ) => {
         const { prompt, style, customStyle, aspectRatio, model } = params;
-        updateCharacter(charId, { isGenerating: true });
+        updateCharacter(charId, { isGenerating: true, generationStartTime: Date.now() });
 
         try {
             const styleConfig = CHARACTER_STYLES.find(s => s.value === style);
@@ -562,7 +562,7 @@ CRITICAL: ONE SINGLE FULL-BODY IMAGE on solid white background. Face must be rec
                     }
                 }
 
-                updateCharacter(charId, { generatedImage: finalUrl, isGenerating: false });
+                updateCharacter(charId, { generatedImage: finalUrl, isGenerating: false, generationStartTime: undefined });
                 if (addToGallery) addToGallery(finalUrl, 'character', prompt, charId);
 
                 // Sync usage stats to Supabase
@@ -583,7 +583,7 @@ CRITICAL: ONE SINGLE FULL-BODY IMAGE on solid white background. Face must be rec
 
         } catch (err: any) {
             console.error("Background Gen Error:", err);
-            updateCharacter(charId, { isGenerating: false });
+            updateCharacter(charId, { isGenerating: false, generationStartTime: undefined });
             alert(`❌ Lỗi tạo ảnh: ${err.message}`);
         }
     }, [userApiKey, updateCharacter, userId, state.gommoDomain, state.gommoAccessToken]);

@@ -4,6 +4,17 @@ import Modal from '../Modal';
 import { Character } from '../../types';
 import { IMAGE_MODELS, CHARACTER_STYLES, PRIMARY_GRADIENT, PRIMARY_GRADIENT_HOVER } from '../../constants/presets';
 
+// LiveTimer component for realtime generation timer
+const LiveTimer: React.FC<{ startTime: number }> = ({ startTime }) => {
+    const [elapsed, setElapsed] = useState(0);
+    useEffect(() => {
+        const interval = setInterval(() => setElapsed(Date.now() - startTime), 100);
+        return () => clearInterval(interval);
+    }, [startTime]);
+    const seconds = (elapsed / 1000).toFixed(1);
+    return <span className="font-mono text-xs">{seconds}s</span>;
+};
+
 export interface CharacterGeneratorModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -38,6 +49,7 @@ export const CharacterGeneratorModal: React.FC<CharacterGeneratorModalProps> = (
 
     const character = charId ? characters.find(c => c.id === charId) : null;
     const isGenerating = character?.isGenerating || false;
+    const generationStartTime = character?.generationStartTime;
     const generatedImage = character?.generatedImage || null;
 
     useEffect(() => {
@@ -164,9 +176,14 @@ export const CharacterGeneratorModal: React.FC<CharacterGeneratorModalProps> = (
 
                 <div className="w-full aspect-square bg-gray-950 rounded-lg border-2 border-dashed border-gray-700 flex items-center justify-center overflow-hidden relative">
                     {isGenerating ? (
-                        <div className="flex flex-col items-center">
-                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-500 mb-2"></div>
+                        <div className="flex flex-col items-center space-y-2">
+                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-500"></div>
                             <span className="text-green-500 text-sm animate-pulse">AI đang vẽ...</span>
+                            {generationStartTime && (
+                                <div className="bg-black/60 px-3 py-1 rounded-full border border-green-500/50 text-green-400 flex items-center gap-1">
+                                    ⏱ <LiveTimer startTime={generationStartTime} />
+                                </div>
+                            )}
                         </div>
                     ) : generatedImage ? (
                         <img src={generatedImage} alt="Generated Character" className="w-full h-full object-contain" />
