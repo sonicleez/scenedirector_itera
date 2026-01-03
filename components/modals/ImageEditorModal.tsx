@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import Modal from '../Modal';
 import { IMAGE_MODELS, PRIMARY_GRADIENT, PRIMARY_GRADIENT_HOVER } from '../../constants/presets';
+import { ModelSelector } from '../common/ModelSelector';
 
 export interface ImageEditorModalProps {
     isOpen: boolean;
@@ -77,15 +78,13 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ isOpen, onCl
             <div className="flex flex-col space-y-4">
                 <div className="flex justify-end items-center space-x-2">
                     <span className="text-xs text-gray-400">Model:</span>
-                    <select
+                    <ModelSelector
+                        models={IMAGE_MODELS}
                         value={selectedModel}
-                        onChange={(e) => setSelectedModel(e.target.value)}
-                        className="bg-gray-800 border border-gray-600 rounded text-xs text-white p-1 focus:outline-none focus:border-green-500"
-                    >
-                        {IMAGE_MODELS.map(m => (
-                            <option key={m.value} value={m.value}>{m.label}</option>
-                        ))}
-                    </select>
+                        onChange={setSelectedModel}
+                        size="sm"
+                        className="w-64"
+                    />
                 </div>
                 <div className="w-full aspect-square bg-black/50 rounded flex items-center justify-center overflow-hidden">
                     <img src={image} alt="Target" className="max-w-full max-h-full object-contain" />

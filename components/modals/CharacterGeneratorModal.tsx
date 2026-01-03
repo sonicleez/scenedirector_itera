@@ -3,6 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 import Modal from '../Modal';
 import { Character } from '../../types';
 import { IMAGE_MODELS, CHARACTER_STYLES, PRIMARY_GRADIENT, PRIMARY_GRADIENT_HOVER } from '../../constants/presets';
+import { ModelSelector } from '../common/ModelSelector';
 
 // LiveTimer component for realtime generation timer
 const LiveTimer: React.FC<{ startTime: number }> = ({ startTime }) => {
@@ -89,15 +90,13 @@ export const CharacterGeneratorModal: React.FC<CharacterGeneratorModalProps> = (
             <div className="space-y-4">
                 <div className="flex justify-end items-center space-x-2">
                     <span className="text-xs text-gray-400">Model:</span>
-                    <select
+                    <ModelSelector
+                        models={IMAGE_MODELS}
                         value={selectedModel}
-                        onChange={(e) => setSelectedModel(e.target.value)}
-                        className="bg-gray-800 border border-gray-600 rounded text-xs text-white p-1 focus:outline-none focus:border-green-500"
-                    >
-                        {IMAGE_MODELS.map(m => (
-                            <option key={m.value} value={m.value}>{m.label}</option>
-                        ))}
-                    </select>
+                        onChange={setSelectedModel}
+                        size="sm"
+                        className="w-64"
+                    />
                 </div>
 
                 <div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { SectionTitle } from '../common/SectionTitle';
 import { GLOBAL_STYLES, IMAGE_MODELS, ASPECT_RATIOS, CAMERA_MODELS, LENS_OPTIONS } from '../../constants/presets';
+import { ModelSelector } from '../common/ModelSelector';
 
 interface StyleSettingsSectionProps {
     stylePrompt: string;
@@ -165,15 +166,12 @@ export const StyleSettingsSection: React.FC<StyleSettingsSectionProps> = ({
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-2">Model Images</label>
-                            <select
+                            <ModelSelector
+                                models={IMAGE_MODELS}
                                 value={imageModel}
-                                onChange={onImageModelChange}
-                                className="w-full bg-gray-700 text-white px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 border border-gray-600 appearance-none"
-                            >
-                                {IMAGE_MODELS.map(model => (
-                                    <option key={model.value} value={model.value}>{model.label}</option>
-                                ))}
-                            </select>
+                                onChange={(val) => onImageModelChange({ target: { value: val } } as any)}
+                                size="md"
+                            />
                         </div>
                     </div>
 
