@@ -1092,9 +1092,11 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
             const modelToUse = currentState.imageModel || 'gemini-3-pro-image-preview';
             let promptToSend = finalImagePrompt;
 
-            // TIMING: Log prep phase duration
+            // TIMING: Log prep phase duration with breakdown
             const prepTime = Date.now() - startTime;
-            console.log(`[ImageGen] ⏱️ PREP completed in ${prepTime}ms (${parts.filter((p: any) => p.inlineData).length} refs loaded)`);
+            const refCount = parts.filter((p: any) => p.inlineData).length;
+            console.log(`[ImageGen] ⏱️ PREP completed in ${prepTime}ms (${refCount} refs loaded)`);
+            console.log(`[ImageGen] ⏱️ Breakdown: If PREP > 5000ms, check console for '[ImageCache] 📥' fetches`);
 
             // --- DOP LEARNING: Apply suggested keywords from successful patterns ---
             // This runs in parallel and doesn't block (fire and forget with timeout)
@@ -1234,18 +1236,17 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
             const estimatedTokens = Math.ceil(promptToSend.length / 4);
             console.log(`[ImageGen] 📊 Stats: Provider=${promptProvider}, EstTokens=${estimatedTokens}, Prompt=${promptToSend.length} chars`);
 
-            // Auto-approve in DOP Learning if generation succeeded
+            // Auto-approve in DOP Learning if generation succeeded (NON-BLOCKING)
             if (dopRecordId && imageUrl) {
-                try {
-                    // For scenes, auto-approve with base quality (can be updated later)
-                    await approvePrompt(dopRecordId, {
-                        overall: 0.8, // Assume good quality if generation succeeded
-                        match: 0.8
-                    });
-                    console.log('[ImageGen] ✅ DOP approved:', dopRecordId);
-                } catch (e) {
-                    console.warn('[ImageGen] DOP approval failed:', e);
-                }
+                // Fire and forget - don't block on DOP approval
+                approvePrompt(dopRecordId, {
+                    overall: 0.8, // Assume good quality if generation succeeded
+                    match: 0.8
+                }).then(() => {
+                    console.log('[ImageGen] ✅ DOP approved (async):', dopRecordId);
+                }).catch(e => {
+                    console.warn('[ImageGen] DOP approval failed (async):', e);
+                });
             }
 
             updateStateAndRecord(s => {

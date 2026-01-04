@@ -346,29 +346,42 @@ Do NOT say "hoàn hảo" (perfect) unless faces are IDENTICAL.`;
             });
 
             const text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            console.log('[DOP Vision] Raw response:', text.substring(0, 200));
+
             const jsonMatch = text.match(/\{[\s\S]*\}/);
 
             try {
-                const result = JSON.parse(text);
+                // Use extracted JSON match, not raw text
+                const jsonToParse = jsonMatch ? jsonMatch[0] : text;
+                const result = JSON.parse(jsonToParse);
                 console.log('[DOP Vision] Validation result:', result);
 
                 // Quick Classification
                 const { decision } = classifyErrors(result.errors || []);
 
                 return {
-                    isValid: result.isValid ?? true,
+                    isValid: result.isValid ?? false, // Default to FALSE (strict)
                     errors: result.errors || [],
                     correctionPrompt: result.correctionPrompt,
                     decision // Return classification decision
                 };
             } catch (e) {
-                console.error('JSON Parse Error', e);
+                console.error('[DOP Vision] JSON Parse Error:', e, 'Raw text:', text.substring(0, 300));
+                // FAIL-CLOSE: If can't parse, assume faces don't match → trigger retry
+                return {
+                    isValid: false,
+                    errors: [{ type: 'character', description: 'Could not validate - assuming mismatch' }],
+                    decision: 'retry' as const
+                };
             }
-
-            return { isValid: true, errors: [], decision: 'skip' };
         } catch (error) {
             console.error('[DOP Vision] Error:', error);
-            return { isValid: true, errors: [], decision: 'skip' }; // Fail-open: don't block on errors
+            // FAIL-CLOSE: Don't silently approve on errors
+            return {
+                isValid: false,
+                errors: [{ type: 'character', description: 'Validation failed - assuming mismatch' }],
+                decision: 'retry' as const
+            };
         }
     }, [state.characters, state.products, classifyErrors]);
 
