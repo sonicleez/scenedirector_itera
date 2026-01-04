@@ -2,19 +2,34 @@
  * Quality Rating Component
  * 
  * Allows user to rate generated images for DOP learning.
- * Shows 👍👎 buttons that update the learning database.
+ * Shows 👍 for approval and 👎 with rejection reasons dropdown.
  */
 
-import React, { useState } from 'react';
-import { ThumbsUp, ThumbsDown } from 'lucide-react';
-import { approvePrompt } from '../../utils/dopLearning';
+import React, { useState, useRef, useEffect } from 'react';
+import { ThumbsUp, ThumbsDown, AlertTriangle, X } from 'lucide-react';
+import { approvePrompt, rejectPrompt, RejectReason } from '../../utils/dopLearning';
 
 interface QualityRatingProps {
     dopRecordId?: string;
-    onRate?: (rating: 'good' | 'bad') => void;
+    onRate?: (rating: 'good' | 'bad', reasons?: RejectReason[]) => void;
     size?: 'sm' | 'md';
     className?: string;
 }
+
+// Rejection reasons with Vietnamese labels
+const REJECTION_OPTIONS: { value: RejectReason; label: string; emoji: string }[] = [
+    { value: 'raccord_error', label: 'Sai Raccord/Continuity', emoji: '🔗' },
+    { value: 'character_mismatch', label: 'Nhân vật không khớp', emoji: '👤' },
+    { value: 'wrong_outfit', label: 'Sai trang phục', emoji: '👔' },
+    { value: 'wrong_pose', label: 'Sai tư thế', emoji: '🧍' },
+    { value: 'wrong_angle', label: 'Sai góc camera', emoji: '📷' },
+    { value: 'wrong_lighting', label: 'Sai ánh sáng', emoji: '💡' },
+    { value: 'wrong_background', label: 'Sai background', emoji: '🏞️' },
+    { value: 'quality_issue', label: 'Chất lượng kém', emoji: '📉' },
+    { value: 'prompt_ignored', label: 'AI bỏ qua prompt', emoji: '🚫' },
+    { value: 'nsfw_content', label: 'NSFW/Không phù hợp', emoji: '⚠️' },
+    { value: 'other', label: 'Lý do khác', emoji: '❓' },
+];
 
 export function QualityRating({
     dopRecordId,
@@ -24,30 +39,72 @@ export function QualityRating({
 }: QualityRatingProps) {
     const [rated, setRated] = useState<'good' | 'bad' | null>(null);
     const [isRating, setIsRating] = useState(false);
+    const [showRejectMenu, setShowRejectMenu] = useState(false);
+    const [selectedReasons, setSelectedReasons] = useState<RejectReason[]>([]);
+    const menuRef = useRef<HTMLDivElement>(null);
 
-    const handleRate = async (rating: 'good' | 'bad') => {
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+                setShowRejectMenu(false);
+            }
+        };
+        if (showRejectMenu) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showRejectMenu]);
+
+    const handleApprove = async () => {
         if (rated || isRating) return;
-
         setIsRating(true);
 
         try {
-            // Update in DOP Learning System
             if (dopRecordId) {
-                const qualityScore = rating === 'good' ? 0.95 : 0.3;
                 await approvePrompt(dopRecordId, {
-                    overall: qualityScore,
-                    match: qualityScore
+                    overall: 0.95,
+                    match: 0.95
                 });
-                console.log('[QualityRating] Rated:', dopRecordId, rating, qualityScore);
+                console.log('[QualityRating] Approved:', dopRecordId);
             }
-
-            setRated(rating);
-            onRate?.(rating);
+            setRated('good');
+            onRate?.('good');
         } catch (e) {
-            console.error('[QualityRating] Failed:', e);
+            console.error('[QualityRating] Approve failed:', e);
         } finally {
             setIsRating(false);
         }
+    };
+
+    const handleReject = async () => {
+        if (selectedReasons.length === 0) {
+            alert('Vui lòng chọn ít nhất 1 lý do!');
+            return;
+        }
+
+        setIsRating(true);
+        try {
+            if (dopRecordId) {
+                await rejectPrompt(dopRecordId, selectedReasons);
+                console.log('[QualityRating] Rejected:', dopRecordId, selectedReasons);
+            }
+            setRated('bad');
+            setShowRejectMenu(false);
+            onRate?.('bad', selectedReasons);
+        } catch (e) {
+            console.error('[QualityRating] Reject failed:', e);
+        } finally {
+            setIsRating(false);
+        }
+    };
+
+    const toggleReason = (reason: RejectReason) => {
+        setSelectedReasons(prev =>
+            prev.includes(reason)
+                ? prev.filter(r => r !== reason)
+                : [...prev, reason]
+        );
     };
 
     const iconSize = size === 'sm' ? 14 : 18;
@@ -63,39 +120,103 @@ export function QualityRating({
                     </span>
                 ) : (
                     <span className="text-red-400 text-xs flex items-center gap-0.5">
-                        <ThumbsDown size={iconSize} fill="currentColor" /> Đã đánh giá
+                        <ThumbsDown size={iconSize} fill="currentColor" /> Đã báo lỗi ({selectedReasons.length})
                     </span>
                 )}
             </div>
         );
     }
 
-    // Always show rating buttons (disabled if no dopRecordId)
     const isDisabled = isRating || !dopRecordId;
 
     return (
-        <div className={`flex items-center gap-1 ${className}`}>
+        <div className={`relative flex items-center gap-1 ${className}`} ref={menuRef}>
             <span className="text-gray-500 text-xs mr-1">
-                {dopRecordId ? 'Đánh giá:' : '⏳ Chờ...'}
+                {dopRecordId ? 'Đánh giá:' : '⏳'}
             </span>
+
+            {/* Approve button */}
             <button
-                onClick={() => handleRate('good')}
+                onClick={handleApprove}
                 disabled={isDisabled}
                 className={`${buttonSize} rounded hover:bg-green-500/20 text-gray-400 hover:text-green-500 
                     transition-colors disabled:opacity-50`}
-                title={dopRecordId ? "Ảnh tốt - DOP sẽ học pattern này" : "Đang chờ record ID..."}
+                title="Ảnh tốt - DOP sẽ học pattern này"
             >
                 <ThumbsUp size={iconSize} />
             </button>
+
+            {/* Reject button - opens menu */}
             <button
-                onClick={() => handleRate('bad')}
+                onClick={() => setShowRejectMenu(!showRejectMenu)}
                 disabled={isDisabled}
                 className={`${buttonSize} rounded hover:bg-red-500/20 text-gray-400 hover:text-red-400 
-                    transition-colors disabled:opacity-50`}
-                title={dopRecordId ? "Ảnh chưa tốt - DOP sẽ tránh pattern này" : "Đang chờ record ID..."}
+                    transition-colors disabled:opacity-50 ${showRejectMenu ? 'bg-red-500/20 text-red-400' : ''}`}
+                title="Báo lỗi - Chọn lý do"
             >
                 <ThumbsDown size={iconSize} />
             </button>
+
+            {/* Rejection reasons dropdown */}
+            {showRejectMenu && (
+                <div
+                    className="absolute bottom-full left-0 mb-2 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 min-w-64"
+                    onClick={e => e.stopPropagation()}
+                >
+                    <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700">
+                        <span className="text-sm font-semibold text-white flex items-center gap-1">
+                            <AlertTriangle size={14} className="text-red-400" />
+                            Chọn lý do lỗi
+                        </span>
+                        <button
+                            onClick={() => setShowRejectMenu(false)}
+                            className="text-gray-500 hover:text-white"
+                        >
+                            <X size={14} />
+                        </button>
+                    </div>
+
+                    <div className="max-h-64 overflow-y-auto p-2">
+                        {REJECTION_OPTIONS.map(opt => (
+                            <label
+                                key={opt.value}
+                                className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:bg-gray-800
+                                    ${selectedReasons.includes(opt.value) ? 'bg-red-900/30 text-red-300' : 'text-gray-300'}`}
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={selectedReasons.includes(opt.value)}
+                                    onChange={() => toggleReason(opt.value)}
+                                    className="accent-red-500"
+                                />
+                                <span className="text-sm">
+                                    {opt.emoji} {opt.label}
+                                </span>
+                            </label>
+                        ))}
+                    </div>
+
+                    <div className="px-3 py-2 border-t border-gray-700 flex gap-2">
+                        <button
+                            onClick={handleReject}
+                            disabled={selectedReasons.length === 0 || isRating}
+                            className="flex-1 px-3 py-1.5 bg-red-600 hover:bg-red-500 disabled:bg-gray-700 
+                                text-white text-sm rounded font-medium transition-colors disabled:opacity-50"
+                        >
+                            {isRating ? '⏳ Đang gửi...' : `Báo lỗi (${selectedReasons.length})`}
+                        </button>
+                        <button
+                            onClick={() => {
+                                setSelectedReasons([]);
+                                setShowRejectMenu(false);
+                            }}
+                            className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded"
+                        >
+                            Hủy
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
