@@ -505,16 +505,36 @@ export async function getUserAPIKeys(userId: string): Promise<any[]> {
  */
 export async function setUserAPIKey(userId: string, keyType: string, keyValue: string): Promise<boolean> {
     try {
+        // Save to user_api_keys table
         const { error } = await supabase
             .from('user_api_keys')
             .upsert({
                 user_id: userId,
-                provider: keyType, // Use 'provider' column
-                encrypted_key: keyValue, // Use 'encrypted_key' column
+                provider: keyType,
+                encrypted_key: keyValue,
                 is_active: true
             }, { onConflict: 'user_id,provider' });
 
         if (error) throw error;
+
+        // For Gommo, also save to gommo_credentials table (app reads from there)
+        if (keyType === 'gommo') {
+            const { error: gommoError } = await supabase
+                .from('gommo_credentials')
+                .upsert({
+                    user_id: userId,
+                    domain: 'aivideoauto.com', // Hardcoded domain
+                    access_token: keyValue,
+                    credits_ai: 0 // Will be updated when user verifies
+                }, { onConflict: 'user_id' });
+
+            if (gommoError) {
+                console.warn('[Admin] Gommo credentials save failed:', gommoError);
+            } else {
+                console.log(`[Admin] Saved Gommo token to gommo_credentials for user ${userId}`);
+            }
+        }
+
         console.log(`[Admin] Set ${keyType} key for user ${userId}`);
         return true;
     } catch (e) {
