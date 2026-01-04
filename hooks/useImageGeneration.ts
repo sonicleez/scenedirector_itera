@@ -992,8 +992,8 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
             }
 
             // 5f. IDENTITY & OUTFIT REINFORCEMENT - Re-enabled (Sandwich Pattern)
-            // Sending face/body TWICE (start + end) to reinforce identity
-            // This increases token cost ~30% but prevents character drift
+            // Sending face TWICE (start + end) to reinforce identity
+            // OPTIMIZED: Only reinforce FACE (most important), skip Body for speed
             for (const char of selectedChars) {
                 if (char.faceImage) {
                     const imgData = await safeGetImageData(char.faceImage);
@@ -1004,16 +1004,8 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                         console.log(`[ImageGen] 🔄 Sandwich: Reinforced FACE for ${char.name}`);
                     }
                 }
-
-                if (char.bodyImage || char.masterImage) {
-                    const imgData = await safeGetImageData(char.bodyImage || char.masterImage || '');
-                    if (imgData) {
-                        const refLabel = `FINAL_OUTFIT_ANCHOR: ${char.name.toUpperCase()}`;
-                        parts.push({ text: `[${refLabel}]: !!! FINAL OUTFIT CHECK !!! Character MUST BE CLOTHED according to this reference. No nakedness.` });
-                        parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
-                        console.log(`[ImageGen] 🔄 Sandwich: Reinforced BODY/OUTFIT for ${char.name}`);
-                    }
-                }
+                // DISABLED for speed: Body/Outfit sandwich
+                // Face is more important for identity, outfit is already locked from first reference
             }
 
             // (Base Image moved to start)
