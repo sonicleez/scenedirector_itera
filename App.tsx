@@ -58,6 +58,8 @@ import { useProductLogic } from './hooks/useProductLogic';
 import { useSceneLogic } from './hooks/useSceneLogic';
 import { useDOPLogic } from './hooks/useDOPLogic';
 import { useVideoGeneration } from './hooks/useVideoGeneration';
+import { useLocationLogic } from './hooks/useLocationLogic'; // NEW
+
 import { useAuth } from './hooks/useAuth';
 import { useProjectSync } from './hooks/useProjectSync';
 import { useSequenceExpansion } from './hooks/useSequenceExpansion'; // [New Hook]
@@ -160,6 +162,14 @@ const App: React.FC = () => {
         handleProductMasterImageUpload,
         handleGenerateProductFromPrompt
     } = useProductLogic(state, updateStateAndRecord, userApiKey, setProfileModalOpen, session?.user.id, addToGallery, setAgentState);
+
+    const {
+        addLocation,
+        updateLocation,
+        deleteLocation,
+        handleGenerateLocationConcept,
+        isGenerating: isGeneratingLocation
+    } = useLocationLogic(state, updateStateAndRecord, userApiKey, setProfileModalOpen, session?.user.id);
 
 
     const {
@@ -1207,7 +1217,7 @@ const App: React.FC = () => {
                     <ManualScriptModal
                         isOpen={isManualScriptModalOpen}
                         onClose={() => setManualScriptModalOpen(false)}
-                        onImport={(scenes, groups, newChars, styleId, directorId, sceneCharacterMap, researchNotes) => {
+                        onImport={(scenes, groups, newChars, styleId, directorId, sceneCharacterMap, researchNotes, detectedLocations) => {
                             // 1. Initialize mapping for name check (lowercase) -> Character ID
                             const charNameMap = new Map<string, string>();
 
@@ -1256,15 +1266,46 @@ const App: React.FC = () => {
                                 }
                             });
 
-                            // 5. Update State in one go (including researchNotes)
+                            // 5. Process Locations (NEW)
+                            const newlyDetectedLocations = (detectedLocations || []).map(dl => ({
+                                id: dl.id || generateId(),
+                                name: dl.name,
+                                description: dl.description,
+                                keywords: dl.keywords || [],
+                                conceptPrompt: dl.conceptPrompt,
+                                isInterior: dl.isInterior,
+                                timeOfDay: dl.timeOfDay,
+                                mood: dl.mood
+                            }));
+
+                            // 6. Auto-link groups to locations (NEW)
+                            // Based on detectedChapterIds if available, otherwise name matching
+                            const finalGroups = updatedGroups.map((g, idx) => {
+                                const originalGroup = groups[idx];
+                                const chapterId = (originalGroup as any).chapterId;
+
+                                // Try to find matching location
+                                const matchingLoc = newlyDetectedLocations.find(loc => {
+                                    const dl = (detectedLocations || []).find(d => d.id === loc.id);
+                                    return dl?.chapterIds?.includes(chapterId) || loc.name.toLowerCase() === g.name.toLowerCase();
+                                });
+
+                                if (matchingLoc) {
+                                    return { ...g, locationId: matchingLoc.id };
+                                }
+                                return g;
+                            });
+
+                            // 7. Update State in one go
                             updateStateAndRecord(s => ({
                                 ...s,
-                                sceneGroups: [...(s.sceneGroups || []), ...updatedGroups],
+                                sceneGroups: [...(s.sceneGroups || []), ...finalGroups],
                                 scenes: [...s.scenes, ...updatedScenes],
+                                locations: [...(s.locations || []), ...newlyDetectedLocations], // NEW: Add locations to library
                                 globalCharacterStyleId: styleId || s.globalCharacterStyleId,
                                 activeDirectorId: directorId || s.activeDirectorId,
                                 characters: [...s.characters, ...createdCharacters],
-                                researchNotes: researchNotes || s.researchNotes  // NEW: Save research notes
+                                researchNotes: researchNotes || s.researchNotes
                             }));
                         }}
                         existingCharacters={state.characters}
@@ -1316,30 +1357,10 @@ const App: React.FC = () => {
                                 <LocationLibraryPanel
                                     locations={state.locations || []}
                                     sceneGroups={state.sceneGroups || []}
-                                    onAddLocation={(location) => {
-                                        updateStateAndRecord(s => ({
-                                            ...s,
-                                            locations: [...(s.locations || []), location]
-                                        }));
-                                    }}
-                                    onUpdateLocation={(id, updates) => {
-                                        updateStateAndRecord(s => ({
-                                            ...s,
-                                            locations: (s.locations || []).map(loc =>
-                                                loc.id === id ? { ...loc, ...updates } : loc
-                                            )
-                                        }));
-                                    }}
-                                    onDeleteLocation={(id) => {
-                                        updateStateAndRecord(s => ({
-                                            ...s,
-                                            locations: (s.locations || []).filter(loc => loc.id !== id),
-                                            // Also unlink any groups using this location
-                                            sceneGroups: (s.sceneGroups || []).map(g =>
-                                                g.locationId === id ? { ...g, locationId: undefined } : g
-                                            )
-                                        }));
-                                    }}
+                                    onAddLocation={addLocation}
+                                    onUpdateLocation={updateLocation}
+                                    onDeleteLocation={deleteLocation}
+                                    onGenerateConcept={handleGenerateLocationConcept}
                                     onClose={() => setLocationLibraryOpen(false)}
                                 />
                             </div>

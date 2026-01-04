@@ -99,7 +99,7 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
     const { presets, isLoading: presetsLoading, savePreset, deletePreset } = useResearchPresets(userId);
 
     // Analysis hook
-    const { isAnalyzing, analysisResult, analysisError, analyzeScript, generateSceneMap, setAnalysisResult } = useScriptAnalysis(userApiKey);
+    const { isAnalyzing, analysisStage, analysisResult, analysisError, analyzeScript, generateSceneMap, setAnalysisResult } = useScriptAnalysis(userApiKey);
 
     // Track if user manually went back (to prevent auto-restore)
     const userWentBack = React.useRef(false);
@@ -281,7 +281,41 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 px-8 py-6 overflow-y-auto custom-scrollbar">
+                <div className="flex-1 px-8 py-6 overflow-y-auto custom-scrollbar relative">
+                    {/* Detailed Loading Overlay (NEW) */}
+                    {isAnalyzing && (
+                        <div className="absolute inset-0 bg-zinc-900/80 backdrop-blur-md z-40 flex flex-col items-center justify-center p-8 text-center animate-fade-in">
+                            <div className="w-16 h-16 border-4 border-violet-500/20 border-t-violet-500 rounded-full animate-spin mb-6" />
+                            <h3 className="text-xl font-bold text-white mb-2">Đang phân tích kịch bản</h3>
+                            <div className="text-zinc-400 text-sm max-w-sm mb-6 h-10">
+                                {(() => {
+                                    switch (analysisStage) {
+                                        case 'preparing': return 'Đang chuẩn bị bối cảnh và phân tích độ dài kịch bản...';
+                                        case 'connecting': return 'Đang kết nối với hệ thống Gemini 3 Deep Thinking...';
+                                        case 'thinking': return 'AI đang phân tích từng câu nói để tìm bối cảnh, nhân vật và góc máy...';
+                                        case 'post-processing': return 'Đang xử lý dữ liệu AI và xây dựng cấu trúc Storyboard...';
+                                        case 'finalizing': return 'Đang hoàn tất các bước cuối cùng...';
+                                        default: return 'Đang xử lý...';
+                                    }
+                                })()}
+                            </div>
+
+                            {/* Simple Progress Indicator */}
+                            <div className="w-64 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all duration-500"
+                                    style={{
+                                        width: analysisStage === 'preparing' ? '10%' :
+                                            analysisStage === 'connecting' ? '30%' :
+                                                analysisStage === 'thinking' ? '70%' :
+                                                    analysisStage === 'post-processing' ? '90%' :
+                                                        analysisStage === 'finalizing' ? '98%' : '0%'
+                                    }}
+                                />
+                            </div>
+                            <p className="text-[10px] text-zinc-500 mt-4 uppercase tracking-widest">Giai đoạn: {analysisStage}</p>
+                        </div>
+                    )}
                     {!analysisResult ? (
                         // Step 1: Input Script - Premium 2-Column Layout
                         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full">

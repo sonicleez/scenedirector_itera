@@ -79,8 +79,11 @@ const WPM_SLOW = 120;
 const WPM_MEDIUM = 150;
 const WPM_FAST = 180;
 
+export type AnalysisStage = 'idle' | 'preparing' | 'connecting' | 'thinking' | 'post-processing' | 'finalizing';
+
 export function useScriptAnalysis(userApiKey: string | null) {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [analysisStage, setAnalysisStage] = useState<AnalysisStage>('idle');
     const [analysisResult, setAnalysisResult] = useState<ScriptAnalysisResult | null>(null);
     const [analysisError, setAnalysisError] = useState<string | null>(null);
 
@@ -102,6 +105,7 @@ export function useScriptAnalysis(userApiKey: string | null) {
         }
 
         setIsAnalyzing(true);
+        setAnalysisStage('preparing');
         setAnalysisError(null);
 
         try {
@@ -325,6 +329,7 @@ RESPOND WITH JSON ONLY:
   ]
 }`;
 
+            setAnalysisStage('connecting');
             const response = await ai.models.generateContent({
                 model: modelName,
                 contents: prompt,
@@ -338,10 +343,12 @@ RESPOND WITH JSON ONLY:
                 }
             });
 
+            setAnalysisStage('thinking');
             const text = response.text || '';
             const jsonMatch = text.match(/\{[\s\S]*\}/);
             if (!jsonMatch) throw new Error('No JSON in response');
 
+            setAnalysisStage('post-processing');
             const parsed = JSON.parse(jsonMatch[0]);
 
             // Validate scene count - warn if too low
@@ -380,6 +387,7 @@ RESPOND WITH JSON ONLY:
                     result.locations.map(l => l.name).join(', '));
             }
 
+            setAnalysisStage('finalizing');
             setAnalysisResult(result);
             console.log('[ScriptAnalysis] ✅ Analysis complete:', result);
             return result;
@@ -390,6 +398,7 @@ RESPOND WITH JSON ONLY:
             return null;
         } finally {
             setIsAnalyzing(false);
+            setAnalysisStage('idle');
         }
     }, [userApiKey]);
 
@@ -569,6 +578,7 @@ RESPOND WITH JSON ONLY:
 
     return {
         isAnalyzing,
+        analysisStage,
         analysisResult,
         analysisError,
         analyzeScript,

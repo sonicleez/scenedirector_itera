@@ -99,10 +99,14 @@ export interface Location {
   id: string;
   name: string;
   description: string;
-  conceptImage?: string | null; // Master concept art for this location
-  keywords: string[]; // For auto-detect: ["casino", "roulette", "interior"]
+  conceptImage?: string | null;
+  conceptPrompt?: string; // Prompt used to generate visual concept
+  keywords: string[];
+  isInterior?: boolean;
+  timeOfDay?: string;
+  mood?: string;
   createdAt: string;
-  usageCount?: number; // Number of groups using this location
+  usageCount?: number;
 }
 
 
