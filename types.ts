@@ -107,6 +107,11 @@ export interface Location {
   mood?: string;
   createdAt: string;
   usageCount?: number;
+  dopRecordId?: string; // For tracking concept generation
+  isGenerating?: boolean;
+  error?: string | null;
+  rating?: 'good' | 'bad' | null;
+  editHistory?: any[];
 }
 
 

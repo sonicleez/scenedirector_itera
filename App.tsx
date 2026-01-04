@@ -168,6 +168,8 @@ const App: React.FC = () => {
         updateLocation,
         deleteLocation,
         handleGenerateLocationConcept,
+        handleGenerateAllConcepts,
+        assignGroupsToLocation,
         isGenerating: isGeneratingLocation
     } = useLocationLogic(state, updateStateAndRecord, userApiKey, setProfileModalOpen, session?.user.id);
 
@@ -284,6 +286,7 @@ const App: React.FC = () => {
         updateCharacter,
         updateScene,
         updateProduct,
+        updateLocation,
         addToGallery
     });
 
@@ -1255,14 +1258,21 @@ const App: React.FC = () => {
                                 return { ...scene, characterIds: resolvedIds };
                             });
 
-                            // 4. Update groups to have IDs
-                            const updatedGroups = groups.map(g => ({ ...g, id: generateId() }));
+                            // 4. Update groups to have IDs (Keep original ID for linking, but wrap in ProjectState structure)
+                            const updatedGroups = groups.map(g => ({
+                                ...g,
+                                // We keep g.id if it exists (it's the chapterId from analysis)
+                                id: g.id || generateId()
+                            }));
 
                             // Link scenes to groups
                             updatedScenes.forEach((scene, idx) => {
-                                const matchingGroup = updatedGroups.find(g => g.name === groups[Math.floor(idx / (scenes.length / groups.length))]?.name);
-                                if (matchingGroup) {
-                                    (scene as any).groupId = matchingGroup.id;
+                                const originalGroupForThisScene = groups[Math.floor(idx / Math.max(1, scenes.length / groups.length))];
+                                if (originalGroupForThisScene) {
+                                    const matchingGroup = updatedGroups.find(ug => ug.id === originalGroupForThisScene.id);
+                                    if (matchingGroup) {
+                                        (scene as any).groupId = matchingGroup.id;
+                                    }
                                 }
                             });
 
@@ -1275,19 +1285,21 @@ const App: React.FC = () => {
                                 conceptPrompt: dl.conceptPrompt,
                                 isInterior: dl.isInterior,
                                 timeOfDay: dl.timeOfDay,
-                                mood: dl.mood
+                                mood: dl.mood,
+                                createdAt: new Date().toISOString(),
+                                usageCount: 0
                             }));
 
                             // 6. Auto-link groups to locations (NEW)
-                            // Based on detectedChapterIds if available, otherwise name matching
+                            // We use chapterId matching from analysis
                             const finalGroups = updatedGroups.map((g, idx) => {
-                                const originalGroup = groups[idx];
-                                const chapterId = (originalGroup as any).chapterId;
+                                const chapterId = groups[idx].id; // The unique ID from analysis
 
-                                // Try to find matching location
+                                // Try to find matching location that contains this chapterId
                                 const matchingLoc = newlyDetectedLocations.find(loc => {
-                                    const dl = (detectedLocations || []).find(d => d.id === loc.id);
-                                    return dl?.chapterIds?.includes(chapterId) || loc.name.toLowerCase() === g.name.toLowerCase();
+                                    const originalAnalysisLoc = (detectedLocations || []).find(d => d.name === loc.name);
+                                    return originalAnalysisLoc?.chapterIds?.includes(chapterId) ||
+                                        loc.name.toLowerCase() === g.name.toLowerCase();
                                 });
 
                                 if (matchingLoc) {
@@ -1357,10 +1369,14 @@ const App: React.FC = () => {
                                 <LocationLibraryPanel
                                     locations={state.locations || []}
                                     sceneGroups={state.sceneGroups || []}
+                                    isGenerating={isGeneratingLocation}
                                     onAddLocation={addLocation}
                                     onUpdateLocation={updateLocation}
                                     onDeleteLocation={deleteLocation}
                                     onGenerateConcept={handleGenerateLocationConcept}
+                                    onGenerateAll={handleGenerateAllConcepts}
+                                    onAssignGroups={assignGroupsToLocation}
+                                    onEditImage={(id, url) => openEditor(id, url, 'location')}
                                     onClose={() => setLocationLibraryOpen(false)}
                                 />
                             </div>

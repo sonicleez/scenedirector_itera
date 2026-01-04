@@ -6,6 +6,7 @@ interface UseEditorLogicProps {
     updateCharacter: (id: string, updates: any) => void;
     updateScene: (id: string, updates: any) => void;
     updateProduct: (id: string, updates: any) => void;
+    updateLocation: (id: string, updates: any) => void;
     addToGallery: (image: string, type: string, prompt?: string, sourceId?: string) => void;
 }
 
@@ -14,6 +15,7 @@ export const useEditorLogic = ({
     updateCharacter,
     updateScene,
     updateProduct,
+    updateLocation,
     addToGallery
 }: UseEditorLogicProps) => {
     const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -38,6 +40,8 @@ export const useEditorLogic = ({
                 else if (key === 'side') editorHistory = char.sideEditHistory;
                 else if (key === 'back') editorHistory = char.backEditHistory;
             }
+        } else if (type === 'location') {
+            editorHistory = state.locations?.find(l => l.id === id)?.editHistory;
         } else if (type === 'product') {
             const prod = state.products.find(p => p.id === id);
             if (prod) {
@@ -74,6 +78,7 @@ export const useEditorLogic = ({
         else if (type === 'side' || viewKey === 'side') updateCharacter(id, { sideImage: newImage, sideEditHistory: history });
         else if (type === 'back' || viewKey === 'back') updateCharacter(id, { backImage: newImage, backEditHistory: history });
         else if (type === 'scene') updateScene(id, { generatedImage: newImage, editHistory: history });
+        else if (type === 'location') updateLocation(id, { conceptImage: newImage, editHistory: history });
         else if (type === 'product') {
             const product = state.products.find(p => p.id === id);
             if (product) {

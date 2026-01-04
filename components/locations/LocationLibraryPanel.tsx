@@ -7,31 +7,41 @@
 import React, { useState, useRef } from 'react';
 import { Location, SceneGroup } from '../../types';
 import { createLocationFromGroup, countLocationUsage, extractLocationKeywords } from '../../utils/locationLibrary';
+import { QualityRating } from '../common/QualityRating';
 import styles from './LocationLibraryPanel.module.css';
 
 interface LocationLibraryPanelProps {
     locations: Location[];
     sceneGroups: SceneGroup[];
+    isGenerating?: string | null;
     onAddLocation: (location: Location) => void;
     onUpdateLocation: (locationId: string, updates: Partial<Location>) => void;
     onDeleteLocation: (locationId: string) => void;
     onGenerateConcept?: (locationId: string) => void;
+    onGenerateAll?: () => void;
+    onAssignGroups?: (locationId: string, groupIds: string[]) => void;
+    onEditImage?: (locationId: string, imageUrl: string) => void;
     onClose?: () => void;
 }
 
 export const LocationLibraryPanel: React.FC<LocationLibraryPanelProps> = ({
     locations,
     sceneGroups,
+    isGenerating,
     onAddLocation,
     onUpdateLocation,
     onDeleteLocation,
     onGenerateConcept,
+    onGenerateAll,
+    onAssignGroups,
+    onEditImage,
     onClose
 }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [newName, setNewName] = useState('');
     const [newDescription, setNewDescription] = useState('');
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [assigningId, setAssigningId] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploadingLocationId, setUploadingLocationId] = useState<string | null>(null);
 
@@ -76,10 +86,25 @@ export const LocationLibraryPanel: React.FC<LocationLibraryPanelProps> = ({
     return (
         <div className={styles.panel}>
             <div className={styles.header}>
-                <h2>📍 Location Library</h2>
-                <p className={styles.subtitle}>
-                    Shared concept art across multiple scene groups
-                </p>
+                <div className={styles.headerText}>
+                    <h2>📍 Location Library</h2>
+                    <p className={styles.subtitle}>
+                        Shared concept art across multiple scene groups
+                    </p>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginRight: '32px' }}>
+                    {onGenerateAll && locations.some(l => !l.conceptImage) && (
+                        <button
+                            className={styles.generateAllBtn}
+                            onClick={onGenerateAll}
+                            disabled={Boolean(isGenerating)}
+                        >
+                            {isGenerating ? '⌛ Processing...' : '✨ Generate All Missing'}
+                        </button>
+                    )}
+                </div>
+
                 {onClose && (
                     <button className={styles.closeBtn} onClick={onClose}>✕</button>
                 )}
@@ -152,16 +177,24 @@ export const LocationLibraryPanel: React.FC<LocationLibraryPanelProps> = ({
                                         className={styles.conceptImage}
                                         onClick={() => triggerUpload(location.id)}
                                     >
+                                        {(isGenerating === location.id) && (
+                                            <div className={styles.loadingOverlay}>
+                                                <div className={styles.spinner} />
+                                            </div>
+                                        )}
                                         {location.conceptImage ? (
                                             <img src={location.conceptImage} alt={location.name} />
                                         ) : (
                                             <div className={styles.noImage}>
                                                 <span>🖼️</span>
-                                                <span>Click to upload</span>
+                                                <span>{isGenerating === location.id ? 'Generating...' : 'No image'}</span>
                                             </div>
                                         )}
                                         <div className={styles.imageOverlay}>
-                                            <span>📤 Upload</span>
+                                            <span onClick={(e) => {
+                                                e.stopPropagation();
+                                                triggerUpload(location.id);
+                                            }}>📤 Upload</span>
                                             {onGenerateConcept && (
                                                 <span
                                                     onClick={(e) => {
@@ -169,7 +202,17 @@ export const LocationLibraryPanel: React.FC<LocationLibraryPanelProps> = ({
                                                         onGenerateConcept(location.id);
                                                     }}
                                                 >
-                                                    ✨ Generate
+                                                    ✨ {location.conceptImage ? 'Regen' : 'Generate'}
+                                                </span>
+                                            )}
+                                            {location.conceptImage && onEditImage && (
+                                                <span
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onEditImage(location.id, location.conceptImage!);
+                                                    }}
+                                                >
+                                                    🎨 Edit
                                                 </span>
                                             )}
                                         </div>
@@ -200,7 +243,16 @@ export const LocationLibraryPanel: React.FC<LocationLibraryPanelProps> = ({
                                             </>
                                         ) : (
                                             <>
-                                                <h3 className={styles.locationName}>{location.name}</h3>
+                                                <h3 className={styles.locationName}>
+                                                    {location.name}
+                                                    {location.conceptImage && (
+                                                        <QualityRating
+                                                            dopRecordId={location.dopRecordId}
+                                                            onRate={(rating) => onUpdateLocation(location.id, { rating })}
+                                                            className="ml-2 inline-flex"
+                                                        />
+                                                    )}
+                                                </h3>
                                                 {location.description && (
                                                     <p className={styles.locationDesc}>{location.description}</p>
                                                 )}
@@ -212,11 +264,50 @@ export const LocationLibraryPanel: React.FC<LocationLibraryPanelProps> = ({
                                                     ))}
                                                 </div>
 
-                                                {/* Usage */}
+                                                {/* Usage & Assignment */}
                                                 <div className={styles.usage}>
-                                                    <span className={styles.usageIcon}>🔗</span>
-                                                    <span>{usageCount} group{usageCount !== 1 ? 's' : ''} using</span>
+                                                    <div className={styles.usageCount}>
+                                                        <span>🔗</span>
+                                                        <span>{usageCount} group{usageCount !== 1 ? 's' : ''}</span>
+                                                    </div>
+
+                                                    <button
+                                                        className={styles.assignBtn}
+                                                        onClick={() => setAssigningId(assigningId === location.id ? null : location.id)}
+                                                    >
+                                                        {assigningId === location.id ? 'Close' : '🔗 Assign Groups'}
+                                                    </button>
                                                 </div>
+
+                                                {assigningId === location.id && onAssignGroups && (
+                                                    <div className={styles.groupSelector}>
+                                                        <h4>Assign to Groups</h4>
+                                                        <div className={styles.groupOptions}>
+                                                            {sceneGroups.map(group => (
+                                                                <label key={group.id} className={styles.groupOption}>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={group.locationId === location.id}
+                                                                        onChange={(e) => {
+                                                                            const currentAssigned = sceneGroups
+                                                                                .filter(g => g.locationId === location.id)
+                                                                                .map(g => g.id);
+
+                                                                            let newAssigned;
+                                                                            if (e.target.checked) {
+                                                                                newAssigned = [...currentAssigned, group.id];
+                                                                            } else {
+                                                                                newAssigned = currentAssigned.filter(id => id !== group.id);
+                                                                            }
+                                                                            onAssignGroups(location.id, newAssigned);
+                                                                        }}
+                                                                    />
+                                                                    <span>{group.name}</span>
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </>
                                         )}
                                     </div>

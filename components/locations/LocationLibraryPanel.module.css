@@ -13,6 +13,38 @@
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.headerText {
+  flex: 1;
+}
+
+.generateAllBtn {
+  background: rgba(139, 92, 246, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  color: #a78bfa;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.generateAllBtn:hover:not(:disabled) {
+  background: rgba(139, 92, 246, 0.3);
+  transform: translateY(-1px);
+}
+
+.generateAllBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .header h2 {
@@ -83,7 +115,8 @@
   border: 1px solid rgba(99, 102, 241, 0.3);
 }
 
-.input, .textarea {
+.input,
+.textarea {
   width: 100%;
   padding: 10px 12px;
   background: rgba(0, 0, 0, 0.3);
@@ -95,7 +128,8 @@
   box-sizing: border-box;
 }
 
-.input:focus, .textarea:focus {
+.input:focus,
+.textarea:focus {
   outline: none;
   border-color: rgba(99, 102, 241, 0.5);
 }
@@ -110,7 +144,8 @@
   gap: 10px;
 }
 
-.saveBtn, .cancelBtn {
+.saveBtn,
+.cancelBtn {
   flex: 1;
   padding: 10px;
   border-radius: 8px;
@@ -252,6 +287,32 @@
   background: rgba(99, 102, 241, 0.8);
 }
 
+.loadingOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Location Info */
 .locationInfo {
   flex: 1;
@@ -290,17 +351,78 @@
 .usage {
   display: flex;
   align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.usageCount {
+  display: flex;
+  align-items: center;
   gap: 4px;
   font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.5);
 }
 
-.usageIcon {
-  font-size: 0.9rem;
+.assignBtn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.assignBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.groupSelector {
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.groupSelector h4 {
+  margin: 0 0 8px 0;
+  font-size: 0.85rem;
+  color: #fff;
+}
+
+.groupOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.groupOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.groupOption:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.groupOption input {
+  cursor: pointer;
 }
 
 /* Edit inputs */
-.editInput, .editTextarea {
+.editInput,
+.editTextarea {
   width: 100%;
   padding: 6px 10px;
   background: rgba(0, 0, 0, 0.3);
@@ -312,7 +434,8 @@
   box-sizing: border-box;
 }
 
-.editInput:focus, .editTextarea:focus {
+.editInput:focus,
+.editTextarea:focus {
   outline: none;
   border-color: rgba(99, 102, 241, 0.6);
 }
