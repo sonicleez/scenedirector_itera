@@ -15,6 +15,7 @@ import { IMAGE_MODELS } from '../utils/appConstants';
 import { normalizePrompt, normalizePromptAsync, formatNormalizationLog, needsNormalization, containsVietnamese } from '../utils/promptNormalizer';
 import { recordPrompt, approvePrompt } from '../utils/dopLearning';
 import { incrementGlobalStats, recordGeneratedImage } from '../utils/userGlobalStats';
+import { validateRaccord, formatValidationResult, RaccordValidationResult } from '../utils/dopRaccordValidator';
 // Helper function to clean VEO-specific tokens from prompt for image generation
 const cleanPromptForImageGen = (prompt: string): string => {
     return prompt
@@ -45,7 +46,7 @@ export function useImageGeneration(
     isOutfitLockMode?: boolean,
     addToGallery?: (image: string, type: string, prompt?: string, sourceId?: string) => void,
     isDOPEnabled?: boolean,
-    validateRaccordWithVision?: (currentImage: string, prevImage: string, currentScene: Scene, prevScene: Scene, apiKey: string) => Promise<{ isValid: boolean; errors: { type: string; description: string }[]; correctionPrompt?: string }>,
+    validateRaccordWithVision?: (currentImage: string, prevImage: string, currentScene: Scene, prevScene: Scene, apiKey: string) => Promise<{ isValid: boolean; errors: { type: string; description: string }[]; correctionPrompt?: string; decision?: 'retry' | 'skip' | 'try_once' }>,
     makeRetryDecision?: (failedImage: string, referenceImage: string, originalPrompt: string, errors: { type: string; description: string }[], apiKey: string) => Promise<{ action: 'retry' | 'skip' | 'try_once'; reason: string; enhancedPrompt?: string; confidence: number }>
 ) {
 
@@ -1468,10 +1469,10 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                 const updatedScene = updatedState.scenes.find(s => s.id === scene.id);
                 const currentImage = updatedScene?.generatedImage;
 
-                // DOP Vision Validation - DISABLED for speed (like original code)
-                // User can still rate images manually via 👍/👎 buttons
-                // To re-enable: change 'false &&' back to 'isDOPEnabled &&'
-                if (false && isDOPEnabled && validateRaccordWithVision && currentImage && userApiKey) {
+                // DOP Vision Validation - Re-enabled for raccord checking
+                // Validates visual continuity with previous scene
+                // User toggle: isDOPEnabled from state
+                if (isDOPEnabled && validateRaccordWithVision && currentImage && userApiKey) {
                     const currentSceneIndex = updatedState.scenes.findIndex(s => s.id === scene.id);
                     const prevScene = currentSceneIndex > 0 ? updatedState.scenes[currentSceneIndex - 1] : null;
 
