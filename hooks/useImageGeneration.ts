@@ -1128,6 +1128,7 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
             // Record prompt in DOP Learning System - NON-BLOCKING (fire and forget)
             // This was causing 10-20s delay because generateEmbedding calls Gemini API
             let dopRecordId: string | null = null;
+            const capturedSceneId = sceneId; // Capture for async callback
             if (userId && userApiKey) {
                 // Fire and forget - don't await, don't block image generation
                 recordPrompt(
@@ -1141,17 +1142,24 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                 ).then(id => {
                     if (id) {
                         console.log('[ImageGen] ✅ DOP recorded (async):', id);
-                        // Store for later use in rating
+                        // Store globally for fallback
                         (window as any).__lastDopRecordId = id;
+
+                        // Update scene with dopRecordId so rating buttons work
+                        updateStateAndRecord(s => ({
+                            ...s,
+                            scenes: s.scenes.map(sc => sc.id === capturedSceneId ? {
+                                ...sc,
+                                dopRecordId: id
+                            } : sc)
+                        }));
+                        console.log('[ImageGen] 📊 Scene updated with dopRecordId for rating');
                     }
                 }).catch(e => {
                     console.error('[ImageGen] ❌ DOP recording failed (async):', e);
                 });
 
                 console.log('[ImageGen] 🔄 DOP recording started (non-blocking)');
-                if (addProductionLog) {
-                    addProductionLog('dop', `🔄 Recording to DOP Learning (async)...`, 'info', 'recording');
-                }
             } else {
                 console.warn('[ImageGen] ⚠️ DOP skipped - missing userId:', !!userId, 'or apiKey:', !!userApiKey);
             }
