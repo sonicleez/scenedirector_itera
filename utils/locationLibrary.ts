@@ -175,4 +175,77 @@ export function autoDetectLocation(
     };
 }
 
+/**
+ * Auto-link scene groups to locations based on LocationAnalysis chapterIds
+ * 
+ * @param groups - Existing scene groups
+ * @param locations - Newly created Location entities with chapterIds from analysis
+ * @returns Updated groups with locationId set
+ */
+export function autoLinkGroupsToLocations(
+    groups: SceneGroup[],
+    locations: Location[],
+    analysisLocations: { id: string; chapterIds: string[] }[]
+): SceneGroup[] {
+    // Build a map: chapterId -> locationId
+    const chapterToLocationMap: Record<string, string> = {};
+
+    for (const loc of analysisLocations) {
+        for (const chapterId of loc.chapterIds) {
+            chapterToLocationMap[chapterId] = loc.id;
+        }
+    }
+
+    // Update each group with the appropriate locationId
+    const updatedGroups = groups.map(group => {
+        const locationId = chapterToLocationMap[group.id];
+
+        if (locationId) {
+            // Verify the location exists
+            const locationExists = locations.some(l => l.id === locationId);
+            if (locationExists) {
+                console.log(`[LocationLibrary] 🔗 Linked group "${group.name}" to location: ${locationId}`);
+                return { ...group, locationId };
+            }
+        }
+
+        return group;
+    });
+
+    const linkedCount = updatedGroups.filter(g => g.locationId).length;
+    console.log(`[LocationLibrary] Auto-linked ${linkedCount} groups to locations`);
+
+    return updatedGroups;
+}
+
+/**
+ * Get a summary of location-group linkages
+ */
+export function getLocationLinkageSummary(
+    groups: SceneGroup[],
+    locations: Location[]
+): { locationId: string; locationName: string; groupCount: number; groupNames: string[] }[] {
+    const summary: Map<string, { locationName: string; groupNames: string[] }> = new Map();
+
+    for (const group of groups) {
+        if (group.locationId) {
+            const location = locations.find(l => l.id === group.locationId);
+            if (location) {
+                if (!summary.has(group.locationId)) {
+                    summary.set(group.locationId, { locationName: location.name, groupNames: [] });
+                }
+                summary.get(group.locationId)!.groupNames.push(group.name);
+            }
+        }
+    }
+
+    return Array.from(summary.entries()).map(([locationId, data]) => ({
+        locationId,
+        locationName: data.locationName,
+        groupCount: data.groupNames.length,
+        groupNames: data.groupNames
+    }));
+}
+
 console.log('[Location Library] Module loaded');
+
