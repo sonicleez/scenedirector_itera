@@ -1076,17 +1076,27 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
             }
 
             if (shouldNormalize) {
-                // SPEED OPTIMIZATION: Always use sync normalization (no AI translation)
-                // Original code didn't have async translation, and it adds 20-40s per image
-                // Skip Vietnamese detection - just normalize the prompt structure
-                const normalized = normalizePrompt(finalImagePrompt, modelToUse, currentState.aspectRatio);
-                promptToSend = normalized.normalized;
+                // Check if Vietnamese is actually present
+                const hasVietnamese = containsVietnamese(finalImagePrompt);
 
-                console.log('[ImageGen] 🔧 Fast normalize (sync):', {
-                    model: normalized.modelType,
-                    originalLen: normalized.original.length,
-                    normalizedLen: normalized.normalized.length
-                });
+                if (hasVietnamese) {
+                    // Vietnamese detected + model doesn't support it → need translation
+                    // Use async AI translation for proper Vietnamese → English
+                    if (userApiKey) {
+                        console.log('[ImageGen] 🌐 Vietnamese detected, translating for', modelToUse);
+                        const normalized = await normalizePromptAsync(finalImagePrompt, modelToUse, userApiKey, currentState.aspectRatio);
+                        promptToSend = normalized.normalized;
+                        console.log('[ImageGen] ✅ Translated:', normalized.normalized.substring(0, 100) + '...');
+                    } else {
+                        // No API key, use sync fallback (basic, may not translate well)
+                        const normalized = normalizePrompt(finalImagePrompt, modelToUse, currentState.aspectRatio);
+                        promptToSend = normalized.normalized;
+                    }
+                } else {
+                    // No Vietnamese - prompt is already English, skip translation
+                    console.log('[ImageGen] 🔵 Prompt already English, skip translation');
+                    // promptToSend is already set to finalImagePrompt
+                }
             } else {
                 // Gemini native - Vietnamese supported, use full prompt
                 console.log('[ImageGen] 🔵 Gemini prompt ready:', finalImagePrompt.length, 'chars');
