@@ -696,46 +696,30 @@ CRITICAL: ONE SINGLE FULL-BODY IMAGE on solid white background. Face must be rec
                 setAgentState('dop', 'working', `🎨 Generating with ${model}...`, 'generating');
             }
 
-            // Record prompt in DOP Learning System
+            // Record prompt in DOP Learning System - NON-BLOCKING
             let dopRecordId: string | null = null;
             if (userId && apiKey) {
-                try {
-                    if (setAgentState) {
-                        setAgentState('dop', 'working', `📝 Recording to DOP Learning...`, 'recording');
+                // Fire and forget - don't block character generation
+                recordPrompt(
+                    userId,
+                    prompt,
+                    promptToSend,
+                    model,
+                    'character',
+                    aspectRatio,
+                    apiKey
+                ).then(id => {
+                    if (id) {
+                        console.log('[CharacterGen] ✅ DOP recorded (async):', id);
+                        (window as any).__lastDopRecordId = id;
                     }
+                }).catch(e => {
+                    console.error('[CharacterGen] ❌ DOP recording failed (async):', e);
+                });
 
-                    dopRecordId = await recordPrompt(
-                        userId,
-                        prompt,
-                        promptToSend,
-                        model,
-                        'character',
-                        aspectRatio,
-                        apiKey
-                    );
-
-                    if (dopRecordId) {
-                        console.log('[CharacterGen] ✅ DOP recorded:', dopRecordId);
-                        if (setAgentState) {
-                            setAgentState('dop', 'working', `✅ Đã lưu vào DOP Learning`, 'recorded');
-                        }
-                    } else {
-                        console.warn('[CharacterGen] ⚠️ DOP recording returned null - check Supabase tables');
-                        if (setAgentState) {
-                            setAgentState('dop', 'working', `⚠️ DOP: Không thể ghi (kiểm tra bảng Supabase)`, 'record_failed');
-                        }
-                    }
-                } catch (dopError) {
-                    console.error('[CharacterGen] ❌ DOP recording error:', dopError);
-                    if (setAgentState) {
-                        setAgentState('dop', 'working', `❌ DOP error: ${(dopError as Error).message?.slice(0, 50)}`, 'record_error');
-                    }
-                }
+                console.log('[CharacterGen] 🔄 DOP recording started (non-blocking)');
             } else {
                 console.warn('[CharacterGen] ⚠️ DOP skipped - missing userId or apiKey');
-                if (setAgentState && !userId) {
-                    setAgentState('dop', 'working', `⚠️ DOP: Chưa đăng nhập Supabase`, 'no_user');
-                }
             }
 
             // Use callCharacterImageAPI for proper Gemini/Gommo routing
