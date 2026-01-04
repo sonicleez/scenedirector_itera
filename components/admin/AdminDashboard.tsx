@@ -2,11 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
     Users, Activity, Key, Database, TrendingUp, Image,
     MessageSquare, RefreshCw, ArrowLeft, Clock, Zap,
-    Shield, AlertTriangle, CheckCircle2, XCircle
+    Shield, AlertTriangle, CheckCircle2, XCircle, Trash2,
+    UserCog, Eye, Edit, Crown, KeyRound
 } from 'lucide-react';
 import {
     getAdminUsers, getAdminStats, getRecentActivity, getDOPModelStats,
-    subscribeToActivity, AdminUser, AdminStats
+    subscribeToActivity, subscribeToUserActivity, getActiveSessions,
+    setUserRole, deleteUser, getFullUserDetails,
+    AdminUser, AdminStats
 } from '../../utils/adminAPI';
 
 interface AdminDashboardProps {
@@ -15,13 +18,16 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isAdmin }) => {
-    const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'activity' | 'dop'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'activity' | 'dop' | 'live'>('overview');
     const [stats, setStats] = useState<AdminStats | null>(null);
     const [users, setUsers] = useState<AdminUser[]>([]);
     const [activity, setActivity] = useState<any[]>([]);
     const [dopStats, setDopStats] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [realtimeEvents, setRealtimeEvents] = useState<any[]>([]);
+    const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+    const [activeSessions, setActiveSessions] = useState<any[]>([]);
+    const [actionLoading, setActionLoading] = useState<string | null>(null);
 
     // Load data
     const loadData = useCallback(async () => {
@@ -53,10 +59,49 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isAdmin
             getRecentActivity(50).then(setActivity);
         });
 
+        // Subscribe to all user activity
+        const userActivitySub = subscribeToUserActivity((payload) => {
+            setRealtimeEvents(prev => [{
+                ...payload.new,
+                event_type: payload.event_type,
+                timestamp: new Date().toISOString()
+            }, ...prev].slice(0, 20));
+        });
+
+        // Poll active sessions every 10 seconds
+        const sessionInterval = setInterval(() => {
+            getActiveSessions().then(setActiveSessions);
+        }, 10000);
+        getActiveSessions().then(setActiveSessions);
+
         return () => {
             subscription.unsubscribe();
+            userActivitySub.unsubscribe();
+            clearInterval(sessionInterval);
         };
     }, [loadData]);
+
+    // Admin actions
+    const handleSetAdmin = async (userId: string, isCurrentlyAdmin: boolean) => {
+        if (!confirm(isCurrentlyAdmin ? 'Remove admin role?' : 'Grant admin role?')) return;
+        setActionLoading(userId);
+        const success = await setUserRole(userId, isCurrentlyAdmin ? 'user' : 'admin');
+        if (success) loadData();
+        setActionLoading(null);
+    };
+
+    const handleDeleteUser = async (userId: string, email: string) => {
+        if (!confirm(`Delete user ${email}? This action cannot be undone.`)) return;
+        setActionLoading(userId);
+        const success = await deleteUser(userId);
+        if (success) loadData();
+        setActionLoading(null);
+    };
+
+    const handleViewUser = async (user: AdminUser) => {
+        setSelectedUser(user);
+        // Could load more details here
+    };
 
     if (!isAdmin) {
         return (
@@ -111,6 +156,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isAdmin
                     {[
                         { id: 'overview', label: 'Overview', icon: TrendingUp },
                         { id: 'users', label: 'Users', icon: Users },
+                        { id: 'live', label: `Live (${activeSessions.length})`, icon: Eye },
                         { id: 'activity', label: 'Activity', icon: Activity },
                         { id: 'dop', label: 'DOP Learning', icon: Database }
                     ].map(tab => (
@@ -118,8 +164,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isAdmin
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as any)}
                             className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${activeTab === tab.id
-                                    ? 'border-purple-500 text-purple-400'
-                                    : 'border-transparent text-gray-500 hover:text-gray-300'
+                                ? 'border-purple-500 text-purple-400'
+                                : 'border-transparent text-gray-500 hover:text-gray-300'
                                 }`}
                         >
                             <tab.icon className="w-4 h-4" />
@@ -199,45 +245,164 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isAdmin
                         <table className="w-full">
                             <thead className="bg-gray-800">
                                 <tr>
-                                    <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Email</th>
-                                    <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Total Images</th>
+                                    <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">User</th>
+                                    <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Role</th>
+                                    <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Images</th>
                                     <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Scenes</th>
                                     <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Characters</th>
                                     <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Provider</th>
                                     <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Last Activity</th>
+                                    <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">
-                                {users.map(user => (
-                                    <tr key={user.id} className="hover:bg-gray-800/50">
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold">
-                                                    {user.email?.[0]?.toUpperCase() || '?'}
+                                {users.map(user => {
+                                    const isUserAdmin = user.email?.includes('admin') || false; // TODO: get from role
+                                    const isOnline = activeSessions.some(s => s.user_id === user.id);
+                                    return (
+                                        <tr key={user.id} className="hover:bg-gray-800/50">
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="relative">
+                                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold">
+                                                            {user.email?.[0]?.toUpperCase() || '?'}
+                                                        </div>
+                                                        {isOnline && (
+                                                            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900"></div>
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-white block">{user.email}</span>
+                                                        {user.display_name && <span className="text-gray-500 text-xs">{user.display_name}</span>}
+                                                    </div>
                                                 </div>
-                                                <span className="text-white">{user.email}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3 text-white font-mono">{user.total_images}</td>
-                                        <td className="px-4 py-3 text-cyan-400 font-mono">{user.scenes_generated}</td>
-                                        <td className="px-4 py-3 text-pink-400 font-mono">{user.characters_generated}</td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex gap-2">
-                                                <span className="px-2 py-0.5 bg-blue-900/50 text-blue-400 text-xs rounded">
-                                                    G: {user.gemini_images}
-                                                </span>
-                                                <span className="px-2 py-0.5 bg-yellow-900/50 text-yellow-400 text-xs rounded">
-                                                    Go: {user.gommo_images}
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3 text-gray-500 text-sm">
-                                            {user.last_activity ? new Date(user.last_activity).toLocaleString('vi-VN') : 'Never'}
-                                        </td>
-                                    </tr>
-                                ))}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {isUserAdmin ? (
+                                                    <span className="px-2 py-1 bg-purple-900/50 text-purple-400 text-xs rounded flex items-center gap-1 w-fit">
+                                                        <Crown className="w-3 h-3" /> Admin
+                                                    </span>
+                                                ) : (
+                                                    <span className="px-2 py-1 bg-gray-700 text-gray-400 text-xs rounded">User</span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 text-white font-mono">{user.total_images}</td>
+                                            <td className="px-4 py-3 text-cyan-400 font-mono">{user.scenes_generated}</td>
+                                            <td className="px-4 py-3 text-pink-400 font-mono">{user.characters_generated}</td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex gap-1">
+                                                    <span className="px-2 py-0.5 bg-blue-900/50 text-blue-400 text-xs rounded">
+                                                        G:{user.gemini_images}
+                                                    </span>
+                                                    <span className="px-2 py-0.5 bg-yellow-900/50 text-yellow-400 text-xs rounded">
+                                                        Go:{user.gommo_images}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-500 text-sm">
+                                                {user.last_activity ? new Date(user.last_activity).toLocaleString('vi-VN') : 'Never'}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex gap-1">
+                                                    <button
+                                                        onClick={() => handleViewUser(user)}
+                                                        className="p-1.5 hover:bg-gray-700 rounded text-gray-400 hover:text-white"
+                                                        title="View Details"
+                                                    >
+                                                        <Eye className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleSetAdmin(user.id, isUserAdmin)}
+                                                        className={`p-1.5 rounded ${isUserAdmin ? 'hover:bg-purple-900/50 text-purple-400' : 'hover:bg-gray-700 text-gray-400 hover:text-purple-400'}`}
+                                                        title={isUserAdmin ? 'Remove Admin' : 'Make Admin'}
+                                                        disabled={actionLoading === user.id}
+                                                    >
+                                                        <Crown className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteUser(user.id, user.email)}
+                                                        className="p-1.5 hover:bg-red-900/50 rounded text-gray-400 hover:text-red-400"
+                                                        title="Delete User"
+                                                        disabled={actionLoading === user.id}
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
+                    </div>
+                )}
+
+                {/* Live Sessions Tab */}
+                {activeTab === 'live' && (
+                    <div className="space-y-6">
+                        <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                                <Eye className="w-5 h-5 text-green-500" />
+                                Active Users (Last 5 minutes)
+                                <span className="ml-2 px-2 py-0.5 bg-green-900/50 text-green-400 text-sm rounded">{activeSessions.length}</span>
+                            </h3>
+                            {activeSessions.length === 0 ? (
+                                <p className="text-gray-500">No active users right now</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {activeSessions.map((session, i) => (
+                                        <div key={i} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
+                                            <div className="flex items-center gap-3">
+                                                <div className="relative">
+                                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-cyan-500 flex items-center justify-center text-white font-bold">
+                                                        {session.user_id?.slice(0, 2).toUpperCase()}
+                                                    </div>
+                                                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900 animate-pulse"></div>
+                                                </div>
+                                                <div>
+                                                    <p className="text-white font-mono text-sm">{session.user_id?.slice(0, 16)}...</p>
+                                                    <p className="text-gray-500 text-xs">{session.actions?.length || 0} actions</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-gray-400 text-sm">Last: {new Date(session.last_activity).toLocaleTimeString('vi-VN')}</p>
+                                                <div className="flex gap-1 mt-1">
+                                                    {session.actions?.slice(0, 3).map((action: any, j: number) => (
+                                                        <span key={j} className="px-2 py-0.5 bg-gray-700 text-gray-300 text-xs rounded">
+                                                            {action.mode}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Realtime Event Stream */}
+                        <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                                <Activity className="w-5 h-5 text-purple-500" />
+                                Live Event Stream
+                            </h3>
+                            <div className="space-y-2 max-h-96 overflow-y-auto">
+                                {realtimeEvents.map((event, i) => (
+                                    <div key={i} className="flex items-center gap-3 p-2 bg-gray-800/50 rounded text-sm">
+                                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                                        <span className="text-gray-500">{new Date(event.timestamp || event.created_at).toLocaleTimeString('vi-VN')}</span>
+                                        <span className={`px-2 py-0.5 rounded text-xs ${event.event_type === 'image_generated' ? 'bg-purple-900/50 text-purple-400' : 'bg-cyan-900/50 text-cyan-400'
+                                            }`}>
+                                            {event.event_type || event.generation_type}
+                                        </span>
+                                        <span className="text-gray-400 truncate">{event.model_id || event.model_type}</span>
+                                    </div>
+                                ))}
+                                {realtimeEvents.length === 0 && (
+                                    <p className="text-gray-500">Waiting for events...</p>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 )}
 
@@ -263,8 +428,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isAdmin
                                         </td>
                                         <td className="px-4 py-3">
                                             <span className={`px-2 py-0.5 rounded text-xs ${item.generation_type === 'scene' ? 'bg-cyan-900/50 text-cyan-400' :
-                                                    item.generation_type === 'character' ? 'bg-pink-900/50 text-pink-400' :
-                                                        'bg-gray-700 text-gray-400'
+                                                item.generation_type === 'character' ? 'bg-pink-900/50 text-pink-400' :
+                                                    'bg-gray-700 text-gray-400'
                                                 }`}>
                                                 {item.generation_type}
                                             </span>
@@ -306,8 +471,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isAdmin
                                         <tr key={i} className="hover:bg-gray-800/50">
                                             <td className="px-4 py-3">
                                                 <span className={`px-2 py-1 rounded text-sm font-mono ${model.model_type === 'gemini' ? 'bg-blue-900/50 text-blue-400' :
-                                                        model.model_type === 'imagen' ? 'bg-green-900/50 text-green-400' :
-                                                            'bg-yellow-900/50 text-yellow-400'
+                                                    model.model_type === 'imagen' ? 'bg-green-900/50 text-green-400' :
+                                                        'bg-yellow-900/50 text-yellow-400'
                                                     }`}>
                                                     {model.model_type}
                                                 </span>

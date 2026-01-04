@@ -60,7 +60,7 @@ export async function isUserAdmin(): Promise<boolean> {
         if (!user) return false;
 
         // Check if user email is in admin list or has admin role
-        const adminEmails = ['admin@example.com', 'dangle@renoschuyler.com']; // Add your admin emails
+        const adminEmails = ['admin@example.com', 'dangle@renoschuyler.com', 'xvirion@gmail.com']; // Admin emails
         if (adminEmails.includes(user.email || '')) return true;
 
         // Or check profiles table for role
@@ -316,4 +316,250 @@ export function subscribeToDOPRecords(callback: (payload: any) => void) {
         .subscribe();
 }
 
-console.log('[Admin API] Module loaded');
+// ============== ADMIN CRUD FUNCTIONS ==============
+
+/**
+ * Update user role (admin/user)
+ */
+export async function setUserRole(userId: string, role: 'admin' | 'user'): Promise<boolean> {
+    try {
+        const { error } = await supabase
+            .from('profiles')
+            .update({ role })
+            .eq('id', userId);
+
+        if (error) throw error;
+        console.log(`[Admin] Set user ${userId} role to ${role}`);
+        return true;
+    } catch (e) {
+        console.error('[Admin] Failed to set role:', e);
+        return false;
+    }
+}
+
+/**
+ * Delete user (soft delete - just marks as deleted)
+ */
+export async function deleteUser(userId: string): Promise<boolean> {
+    try {
+        // Soft delete - update status
+        const { error } = await supabase
+            .from('profiles')
+            .update({
+                deleted_at: new Date().toISOString(),
+                email: null // Remove email for privacy
+            })
+            .eq('id', userId);
+
+        if (error) throw error;
+        console.log(`[Admin] Deleted user ${userId}`);
+        return true;
+    } catch (e) {
+        console.error('[Admin] Failed to delete user:', e);
+        return false;
+    }
+}
+
+/**
+ * Update user profile
+ */
+export async function updateUser(userId: string, data: {
+    display_name?: string;
+    email?: string;
+    role?: string;
+}): Promise<boolean> {
+    try {
+        const { error } = await supabase
+            .from('profiles')
+            .update(data)
+            .eq('id', userId);
+
+        if (error) throw error;
+        console.log(`[Admin] Updated user ${userId}:`, data);
+        return true;
+    } catch (e) {
+        console.error('[Admin] Failed to update user:', e);
+        return false;
+    }
+}
+
+/**
+ * Get user's API keys
+ */
+export async function getUserAPIKeys(userId: string): Promise<any[]> {
+    try {
+        const { data, error } = await supabase
+            .from('user_api_keys')
+            .select('*')
+            .eq('user_id', userId);
+
+        if (error) throw error;
+        return data || [];
+    } catch (e) {
+        console.error('[Admin] Failed to get user keys:', e);
+        return [];
+    }
+}
+
+/**
+ * Set API key for user
+ */
+export async function setUserAPIKey(userId: string, keyType: string, keyValue: string): Promise<boolean> {
+    try {
+        // Encrypt/preview key
+        const keyPreview = keyValue.substring(0, 8) + '...' + keyValue.substring(keyValue.length - 4);
+
+        const { error } = await supabase
+            .from('user_api_keys')
+            .upsert({
+                user_id: userId,
+                key_type: keyType,
+                key_value: keyValue, // In production, encrypt this!
+                key_preview: keyPreview,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id,key_type' });
+
+        if (error) throw error;
+        console.log(`[Admin] Set ${keyType} key for user ${userId}`);
+        return true;
+    } catch (e) {
+        console.error('[Admin] Failed to set key:', e);
+        return false;
+    }
+}
+
+/**
+ * Delete API key for user
+ */
+export async function deleteUserAPIKey(userId: string, keyType: string): Promise<boolean> {
+    try {
+        const { error } = await supabase
+            .from('user_api_keys')
+            .delete()
+            .eq('user_id', userId)
+            .eq('key_type', keyType);
+
+        if (error) throw error;
+        console.log(`[Admin] Deleted ${keyType} key for user ${userId}`);
+        return true;
+    } catch (e) {
+        console.error('[Admin] Failed to delete key:', e);
+        return false;
+    }
+}
+
+/**
+ * Get realtime user sessions (who's online)
+ */
+export async function getActiveSessions(): Promise<any[]> {
+    try {
+        // Get recent activity in last 5 minutes
+        const { data, error } = await supabase
+            .from('dop_prompt_records')
+            .select('user_id, created_at, mode, model_type')
+            .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString())
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Group by user
+        const sessions: Record<string, any> = {};
+        (data || []).forEach(record => {
+            if (!sessions[record.user_id]) {
+                sessions[record.user_id] = {
+                    user_id: record.user_id,
+                    last_activity: record.created_at,
+                    actions: []
+                };
+            }
+            sessions[record.user_id].actions.push({
+                mode: record.mode,
+                model: record.model_type,
+                time: record.created_at
+            });
+        });
+
+        return Object.values(sessions);
+    } catch (e) {
+        console.error('[Admin] Failed to get sessions:', e);
+        return [];
+    }
+}
+
+/**
+ * Subscribe to all user activity (realtime)
+ */
+export function subscribeToUserActivity(callback: (payload: any) => void) {
+    return supabase
+        .channel('admin-user-activity')
+        .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'dop_prompt_records'
+        }, (payload) => {
+            callback({
+                ...payload,
+                event_type: 'dop_record'
+            });
+        })
+        .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'generated_images_history'
+        }, (payload) => {
+            callback({
+                ...payload,
+                event_type: 'image_generated'
+            });
+        })
+        .subscribe();
+}
+
+/**
+ * Get all users with full details for admin
+ */
+export async function getFullUserDetails(userId: string): Promise<any> {
+    try {
+        // Get profile
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+
+        // Get global stats
+        const { data: stats } = await supabase
+            .from('user_global_stats')
+            .select('*')
+            .eq('user_id', userId)
+            .single();
+
+        // Get recent activity
+        const { data: recentActivity } = await supabase
+            .from('dop_prompt_records')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(20);
+
+        // Get image history
+        const { data: images } = await supabase
+            .from('generated_images_history')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(20);
+
+        return {
+            profile,
+            stats: stats?.stats,
+            recentActivity,
+            images
+        };
+    } catch (e) {
+        console.error('[Admin] Failed to get user details:', e);
+        return null;
+    }
+}
+
+console.log('[Admin API] Full admin module loaded');
