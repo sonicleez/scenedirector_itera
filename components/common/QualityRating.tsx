@@ -2,11 +2,11 @@
  * Quality Rating Component
  * 
  * Allows user to rate generated images for DOP learning.
- * Shows 👍 for approval and 👎 with rejection reasons dropdown.
+ * Shows 👍 for approval and 👎 with rejection reasons in glassmorphism popup.
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ThumbsUp, ThumbsDown, AlertTriangle, X } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, AlertTriangle, X, CheckCircle2 } from 'lucide-react';
 import { approvePrompt, rejectPrompt, RejectReason } from '../../utils/dopLearning';
 
 interface QualityRatingProps {
@@ -39,22 +39,8 @@ export function QualityRating({
 }: QualityRatingProps) {
     const [rated, setRated] = useState<'good' | 'bad' | null>(null);
     const [isRating, setIsRating] = useState(false);
-    const [showRejectMenu, setShowRejectMenu] = useState(false);
+    const [showRejectModal, setShowRejectModal] = useState(false);
     const [selectedReasons, setSelectedReasons] = useState<RejectReason[]>([]);
-    const menuRef = useRef<HTMLDivElement>(null);
-
-    // Close menu when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (e: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-                setShowRejectMenu(false);
-            }
-        };
-        if (showRejectMenu) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [showRejectMenu]);
 
     const handleApprove = async () => {
         if (rated || isRating) return;
@@ -79,7 +65,6 @@ export function QualityRating({
 
     const handleReject = async () => {
         if (selectedReasons.length === 0) {
-            alert('Vui lòng chọn ít nhất 1 lý do!');
             return;
         }
 
@@ -90,7 +75,7 @@ export function QualityRating({
                 console.log('[QualityRating] Rejected:', dopRecordId, selectedReasons);
             }
             setRated('bad');
-            setShowRejectMenu(false);
+            setShowRejectModal(false);
             onRate?.('bad', selectedReasons);
         } catch (e) {
             console.error('[QualityRating] Reject failed:', e);
@@ -130,94 +115,125 @@ export function QualityRating({
     const isDisabled = isRating || !dopRecordId;
 
     return (
-        <div className={`relative flex items-center gap-1 ${className}`} ref={menuRef}>
-            <span className="text-gray-500 text-xs mr-1">
-                {dopRecordId ? 'Đánh giá:' : '⏳'}
-            </span>
+        <>
+            <div className={`flex items-center gap-1 ${className}`}>
+                <span className="text-gray-500 text-xs mr-1">
+                    {dopRecordId ? 'Đánh giá:' : '⏳'}
+                </span>
 
-            {/* Approve button */}
-            <button
-                onClick={handleApprove}
-                disabled={isDisabled}
-                className={`${buttonSize} rounded hover:bg-green-500/20 text-gray-400 hover:text-green-500 
-                    transition-colors disabled:opacity-50`}
-                title="Ảnh tốt - DOP sẽ học pattern này"
-            >
-                <ThumbsUp size={iconSize} />
-            </button>
-
-            {/* Reject button - opens menu */}
-            <button
-                onClick={() => setShowRejectMenu(!showRejectMenu)}
-                disabled={isDisabled}
-                className={`${buttonSize} rounded hover:bg-red-500/20 text-gray-400 hover:text-red-400 
-                    transition-colors disabled:opacity-50 ${showRejectMenu ? 'bg-red-500/20 text-red-400' : ''}`}
-                title="Báo lỗi - Chọn lý do"
-            >
-                <ThumbsDown size={iconSize} />
-            </button>
-
-            {/* Rejection reasons dropdown */}
-            {showRejectMenu && (
-                <div
-                    className="absolute bottom-full left-0 mb-2 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 min-w-64"
-                    onClick={e => e.stopPropagation()}
+                {/* Approve button */}
+                <button
+                    onClick={handleApprove}
+                    disabled={isDisabled}
+                    className={`${buttonSize} rounded hover:bg-green-500/20 text-gray-400 hover:text-green-500 
+                        transition-colors disabled:opacity-50`}
+                    title="Ảnh tốt - DOP sẽ học pattern này"
                 >
-                    <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700">
-                        <span className="text-sm font-semibold text-white flex items-center gap-1">
-                            <AlertTriangle size={14} className="text-red-400" />
-                            Chọn lý do lỗi
-                        </span>
-                        <button
-                            onClick={() => setShowRejectMenu(false)}
-                            className="text-gray-500 hover:text-white"
-                        >
-                            <X size={14} />
-                        </button>
-                    </div>
+                    <ThumbsUp size={iconSize} />
+                </button>
 
-                    <div className="max-h-64 overflow-y-auto p-2">
-                        {REJECTION_OPTIONS.map(opt => (
-                            <label
-                                key={opt.value}
-                                className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:bg-gray-800
-                                    ${selectedReasons.includes(opt.value) ? 'bg-red-900/30 text-red-300' : 'text-gray-300'}`}
+                {/* Reject button - opens modal */}
+                <button
+                    onClick={() => setShowRejectModal(true)}
+                    disabled={isDisabled}
+                    className={`${buttonSize} rounded hover:bg-red-500/20 text-gray-400 hover:text-red-400 
+                        transition-colors disabled:opacity-50`}
+                    title="Báo lỗi - Chọn lý do"
+                >
+                    <ThumbsDown size={iconSize} />
+                </button>
+            </div>
+
+            {/* Glassmorphism Modal */}
+            {showRejectModal && (
+                <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+                    onClick={() => setShowRejectModal(false)}
+                >
+                    {/* Backdrop */}
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+
+                    {/* Modal Content */}
+                    <div
+                        className="relative w-full max-w-md bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 rounded-2xl shadow-2xl overflow-hidden"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700/50 bg-gradient-to-r from-red-900/30 to-orange-900/20">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-red-500/20 rounded-lg">
+                                    <AlertTriangle size={20} className="text-red-400" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-white">Chọn lý do lỗi</h3>
+                                    <p className="text-xs text-gray-400">DOP sẽ học để tránh lỗi này</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowRejectModal(false)}
+                                className="p-2 hover:bg-gray-700/50 rounded-lg transition-colors"
                             >
-                                <input
-                                    type="checkbox"
-                                    checked={selectedReasons.includes(opt.value)}
-                                    onChange={() => toggleReason(opt.value)}
-                                    className="accent-red-500"
-                                />
-                                <span className="text-sm">
-                                    {opt.emoji} {opt.label}
-                                </span>
-                            </label>
-                        ))}
-                    </div>
+                                <X size={18} className="text-gray-400 hover:text-white" />
+                            </button>
+                        </div>
 
-                    <div className="px-3 py-2 border-t border-gray-700 flex gap-2">
-                        <button
-                            onClick={handleReject}
-                            disabled={selectedReasons.length === 0 || isRating}
-                            className="flex-1 px-3 py-1.5 bg-red-600 hover:bg-red-500 disabled:bg-gray-700 
-                                text-white text-sm rounded font-medium transition-colors disabled:opacity-50"
-                        >
-                            {isRating ? '⏳ Đang gửi...' : `Báo lỗi (${selectedReasons.length})`}
-                        </button>
-                        <button
-                            onClick={() => {
-                                setSelectedReasons([]);
-                                setShowRejectMenu(false);
-                            }}
-                            className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded"
-                        >
-                            Hủy
-                        </button>
+                        {/* Options Grid */}
+                        <div className="p-4">
+                            <div className="grid grid-cols-2 gap-2">
+                                {REJECTION_OPTIONS.map(opt => {
+                                    const isSelected = selectedReasons.includes(opt.value);
+                                    return (
+                                        <button
+                                            key={opt.value}
+                                            onClick={() => toggleReason(opt.value)}
+                                            className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-left transition-all ${isSelected
+                                                    ? 'bg-red-500/20 border-2 border-red-500/50 text-red-300 shadow-lg shadow-red-500/10'
+                                                    : 'bg-gray-800/50 border-2 border-transparent text-gray-300 hover:bg-gray-700/50 hover:border-gray-600'
+                                                }`}
+                                        >
+                                            <span className="text-lg">{opt.emoji}</span>
+                                            <span className="text-sm font-medium flex-1">{opt.label}</span>
+                                            {isSelected && (
+                                                <CheckCircle2 size={16} className="text-red-400" />
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-5 py-4 border-t border-gray-700/50 bg-gray-900/50 flex gap-3">
+                            <button
+                                onClick={handleReject}
+                                disabled={selectedReasons.length === 0 || isRating}
+                                className={`flex-1 px-4 py-3 rounded-xl font-bold text-sm transition-all ${selectedReasons.length > 0
+                                        ? 'bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white shadow-lg shadow-red-500/25'
+                                        : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                                    }`}
+                            >
+                                {isRating ? (
+                                    <span className="flex items-center justify-center gap-2">
+                                        <span className="animate-spin">⏳</span> Đang gửi...
+                                    </span>
+                                ) : (
+                                    `Báo lỗi (${selectedReasons.length})`
+                                )}
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setSelectedReasons([]);
+                                    setShowRejectModal(false);
+                                }}
+                                className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-xl font-medium text-sm transition-colors"
+                            >
+                                Hủy
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
-        </div>
+        </>
     );
 }
 
