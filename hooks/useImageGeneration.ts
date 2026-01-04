@@ -832,8 +832,22 @@ DO NOT invent new environments or change the location. This is NOT a different p
                 }
 
                 // CONCEPT IMAGE ANCHOR: Use for ALL scenes in group (CRITICAL - not just after first)
-                if (groupObj?.conceptImage) {
-                    const imgData = await safeGetImageData(groupObj.conceptImage);
+                // Priority: Location Library > Group's own conceptImage
+                const effectiveConceptImage = (() => {
+                    // Check Location Library first
+                    if (groupObj?.locationId && currentState.locations) {
+                        const location = currentState.locations.find(l => l.id === groupObj.locationId);
+                        if (location?.conceptImage) {
+                            console.log(`[ImageGen] 📍 Using shared Location concept: ${location.name}`);
+                            return location.conceptImage;
+                        }
+                    }
+                    // Fallback to group's own concept
+                    return groupObj?.conceptImage;
+                })();
+
+                if (effectiveConceptImage) {
+                    const imgData = await safeGetImageData(effectiveConceptImage);
                     if (imgData) {
                         const refLabel = `MANDATORY_LOCATION_TEMPLATE`;
                         parts.push({ text: `[${refLabel}]: !!! CRITICAL ENVIRONMENT ANCHOR !!! This concept image defines the EXACT environment for ALL scenes in this location group. EVERY shot must exist within this space. Match: architectural style, layout, color palette, lighting, textures, and geometry. CHARACTER APPEARANCE comes from separate IDENTITY references - only use this for ENVIRONMENT. This location must be IDENTICAL across all scenes in the group.` });

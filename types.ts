@@ -79,16 +79,30 @@ export interface SceneGroup {
   continuityReferenceGroupId?: string; // ID of a previous group to reference for visual continuity
   stylePrompt?: string; // Optional: Override global style for this group
   customStyleInstruction?: string; // Optional: Custom style prompt for this group
-  conceptImage?: string | null; // AI-generated reference image for the group's location
+  conceptImage?: string | null; // AI-generated reference image for the group's location (override)
   pacing?: 'slow' | 'medium' | 'fast'; // Narrative rhythm for the group
 
-  // Time & Weather Consistency (NEW)
+  // Location Library Integration (NEW)
+  locationId?: string; // Link to shared Location - overrides local conceptImage
+
+  // Time & Weather Consistency
   timeOfDay?: 'dawn' | 'morning' | 'noon' | 'afternoon' | 'sunset' | 'dusk' | 'night' | 'custom';
   customTimeOfDay?: string; // Custom time description
   weather?: 'clear' | 'cloudy' | 'overcast' | 'rainy' | 'snowy' | 'foggy' | 'stormy' | 'custom';
   customWeather?: string; // Custom weather description
   outfitOverrides?: Record<string, string>; // Character ID -> Outfit Description
   lightingMood?: string; // e.g., "warm golden hour", "harsh midday sun", "cold blue moonlight"
+}
+
+// NEW: Location entity for shared concept art across scene groups
+export interface Location {
+  id: string;
+  name: string;
+  description: string;
+  conceptImage?: string | null; // Master concept art for this location
+  keywords: string[]; // For auto-detect: ["casino", "roulette", "interior"]
+  createdAt: string;
+  usageCount?: number; // Number of groups using this location
 }
 
 
@@ -279,6 +293,7 @@ export interface ProjectState {
   products: Product[]; // List of Products/Props
   scenes: Scene[];
   sceneGroups?: SceneGroup[]; // Optional: List of SceneGroups (Scenes Group feature)
+  locations?: Location[]; // NEW: Shared location concepts for multiple groups
   assetGallery?: GalleryAsset[]; // Session gallery
 
   // Research Notes (Session memory for Director/DOP guidance)
