@@ -164,13 +164,15 @@ export function QualityRating({
 
             {/* Anchored Popup with Smart Positioning via Portal */}
             {showRejectMenu && createPortal(
-                <div
-                    className="fixed inset-0 z-[9998]"
-                    onClick={() => setShowRejectMenu(false)}
-                >
-                    {/* Popup positioned near the rating buttons */}
+                <>
+                    {/* Backdrop - click to close */}
                     <div
-                        className="fixed z-[9999] bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-[320px] overflow-hidden"
+                        className="fixed inset-0 z-[9998] bg-transparent"
+                        onClick={() => setShowRejectMenu(false)}
+                    />
+                    {/* Popup - separate from backdrop to avoid event issues */}
+                    <div
+                        className="fixed z-[9999] bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-[320px] overflow-hidden pointer-events-auto"
                         style={{
                             // Position relative to containerRef
                             ...(containerRef.current ? (() => {
@@ -201,7 +203,6 @@ export function QualityRating({
                                 return { top: `${top}px`, left: `${left}px` };
                             })() : { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' })
                         }}
-                        onClick={e => e.stopPropagation()}
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-700 bg-gradient-to-r from-red-900/40 to-orange-900/30">
@@ -261,7 +262,7 @@ export function QualityRating({
                             </button>
                         </div>
                     </div>
-                </div>,
+                </>,
                 document.body
             )}
         </div>
