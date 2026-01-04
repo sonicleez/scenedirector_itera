@@ -4,8 +4,9 @@ import { GoogleGenAI } from "@google/genai";
 // IMAGE CACHE - Avoids re-fetching same images during generation
 // ═══════════════════════════════════════════════════════════════
 const imageCache = new Map<string, { data: string; mimeType: string }>();
-const CACHE_MAX_SIZE = 50; // Max cached images
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_MAX_SIZE = 100; // Increased from 50
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutes (was 5 min) - longer session support
+const FETCH_TIMEOUT = 15000; // 15 second timeout for slow connections
 let cacheTimestamp = Date.now();
 
 // Clear cache if too old
@@ -14,6 +15,20 @@ const checkCacheExpiry = () => {
         imageCache.clear();
         cacheTimestamp = Date.now();
         console.log('[ImageCache] 🗑️ Cache cleared (TTL expired)');
+    }
+};
+
+// Helper: Fetch with timeout
+const fetchWithTimeout = async (url: string, timeout: number): Promise<Response> => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    try {
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(id);
+        return response;
+    } catch (error) {
+        clearTimeout(id);
+        throw error;
     }
 };
 
@@ -38,7 +53,7 @@ export const safeGetImageData = async (imageStr: string): Promise<{ data: string
             result = { data, mimeType };
         } else if (imageStr.startsWith('http')) {
             const startTime = Date.now();
-            const response = await fetch(imageStr);
+            const response = await fetchWithTimeout(imageStr, FETCH_TIMEOUT);
             if (!response.ok) throw new Error('Failed to fetch image');
             const blob = await response.blob();
             const mimeType = blob.type || 'image/jpeg';
@@ -70,12 +85,40 @@ export const safeGetImageData = async (imageStr: string): Promise<{ data: string
     }
 };
 
+// Pre-warm cache with multiple images in parallel
+// Call this when loading a project to speed up first generation
+export const preWarmImageCache = async (imageUrls: string[]): Promise<number> => {
+    const startTime = Date.now();
+    const uniqueUrls = [...new Set(imageUrls.filter(Boolean))];
+
+    if (uniqueUrls.length === 0) return 0;
+
+    console.log(`[ImageCache] 🔥 Pre-warming cache with ${uniqueUrls.length} images...`);
+
+    const results = await Promise.allSettled(
+        uniqueUrls.map(url => safeGetImageData(url))
+    );
+
+    const successCount = results.filter(r => r.status === 'fulfilled' && r.value !== null).length;
+    console.log(`[ImageCache] ✅ Pre-warmed ${successCount}/${uniqueUrls.length} images in ${Date.now() - startTime}ms`);
+
+    return successCount;
+};
+
 // Export cache clear function for manual clearing
 export const clearImageCache = () => {
     imageCache.clear();
     cacheTimestamp = Date.now();
     console.log('[ImageCache] 🗑️ Cache manually cleared');
 };
+
+// Get cache stats for debugging
+export const getCacheStats = () => ({
+    size: imageCache.size,
+    maxSize: CACHE_MAX_SIZE,
+    ttlMinutes: CACHE_TTL / 60000,
+    ageMinutes: Math.round((Date.now() - cacheTimestamp) / 60000)
+});
 
 export const callGeminiAPI = async (
     apiKey: string,

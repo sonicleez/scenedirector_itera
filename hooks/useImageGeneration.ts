@@ -9,7 +9,7 @@ import {
 import { DIRECTOR_PRESETS, DirectorCategory } from '../constants/directors';
 import { getPresetById } from '../utils/scriptPresets';
 import { uploadImageToSupabase, syncUserStatsToCloud } from '../utils/storageUtils';
-import { safeGetImageData, callGeminiVisionReasoning } from '../utils/geminiUtils';
+import { safeGetImageData, callGeminiVisionReasoning, preWarmImageCache } from '../utils/geminiUtils';
 import { GommoAI, urlToBase64 } from '../utils/gommoAI';
 import { IMAGE_MODELS } from '../utils/appConstants';
 import { normalizePrompt, normalizePromptAsync, formatNormalizationLog, needsNormalization, containsVietnamese } from '../utils/promptNormalizer';
@@ -1409,6 +1409,39 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
         if (scenesToGenerate.length === 0) {
             console.log('[BatchGen] No scenes to generate (all duplicates or empty), returning');
             return; // Don't show alert if we filtered out duplicates
+        }
+
+        // PRE-WARM CACHE: Load all character/product reference images upfront
+        // This significantly speeds up first image generation
+        const currentState = stateRef.current;
+        const allRefImages: string[] = [];
+
+        // Collect character images
+        currentState.characters.forEach(char => {
+            if (char.masterImage) allRefImages.push(char.masterImage);
+            if (char.faceImage) allRefImages.push(char.faceImage);
+            if (char.bodyImage && char.bodyImage !== char.masterImage) allRefImages.push(char.bodyImage);
+        });
+
+        // Collect product images
+        currentState.products.forEach(prod => {
+            if (prod.image) allRefImages.push(prod.image);
+        });
+
+        // Collect custom style and DNA images
+        if (currentState.customStyleImage) allRefImages.push(currentState.customStyleImage);
+
+        // Collect group concept images
+        currentState.sceneGroups?.forEach(g => {
+            if (g.conceptImage) allRefImages.push(g.conceptImage);
+        });
+
+        // Pre-warm in background (don't await, just start loading)
+        if (allRefImages.length > 0) {
+            console.log(`[BatchGen] 🔥 Pre-warming cache with ${allRefImages.length} reference images...`);
+            preWarmImageCache(allRefImages).then(count => {
+                console.log(`[BatchGen] ✅ Cache pre-warmed: ${count} images ready`);
+            });
         }
 
         setIsBatchGenerating(true);
