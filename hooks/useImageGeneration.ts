@@ -1553,10 +1553,20 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                             userApiKey
                         );
 
+                        // DEBUG: Log full validation result
+                        console.log('[DOP] Validation result:', {
+                            isValid: lastValidation.isValid,
+                            errorCount: lastValidation.errors?.length || 0,
+                            errors: lastValidation.errors,
+                            decision: lastValidation.decision
+                        });
+
                         // Filter for critical errors only (character/prop issues warrant regen)
                         const criticalErrors = lastValidation.errors.filter(e =>
                             e.type === 'character' || e.type === 'prop'
                         );
+
+                        console.log('[DOP] Critical errors:', criticalErrors.length, criticalErrors);
 
                         // FIX: If validation passed OR no critical errors, clear the checking status immediately
                         if (lastValidation.isValid || criticalErrors.length === 0) {

@@ -331,11 +331,17 @@ Do NOT say "hoàn hảo" (perfect) unless faces are IDENTICAL.`;
             const currImgData = await getImageData(currentImage);
 
             if (!prevImgData || !currImgData) {
-                return { isValid: true, errors: [] };
+                console.warn('[DOP Vision] Missing image data - fail-close');
+                // FAIL-CLOSE: If can't get images, assume mismatch
+                return {
+                    isValid: false,
+                    errors: [{ type: 'character', description: 'Could not load images for comparison' }],
+                    decision: 'retry' as const
+                };
             }
 
             const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
+                model: 'gemini-2.0-flash', // Using 2.0 for better vision accuracy
                 contents: [
                     { text: 'PREVIOUS SHOT:' },
                     { inlineData: { data: prevImgData.data, mimeType: prevImgData.mimeType } },
