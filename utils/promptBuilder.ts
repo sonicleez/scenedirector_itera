@@ -98,19 +98,24 @@ PHẢI viết kịch bản và mô tả hình ảnh theo phong cách của đạ
 ]
 
 **IMPORTANT RULES (IMAGE GENERATION OPTIMIZED):**
-1. **Shot Type First**: Mọi visual_context PHẢI bắt đầu bằng SHOT TYPE rõ ràng (CLOSE UP, MEDIUM SHOT, WIDE SHOT, etc.).
-2. **Visual Description Formula**: Cấu trúc: SHOT TYPE + [CINEMATIC PURPOSE] + Subject details (inc. Costume Anchor) + Action/Pose + Environment (inc. **SET LANDMARKS** e.g. "near the fireplace", "by the kitchen counter") + Lighting + Atmosphere.
-3. **Cinematic Objective**: Mỗi cảnh PHẢI có một mục đích kể chuyện rõ ràng. Nếu có đạo cụ mới xuất hiện, PHẢI có ít nhất 1 cảnh nhân vật nhặt/lấy nó.
-4. **POV Connection**: Ưu tiên sử dụng góc máy POV (Point of View) để kết nối cái nhìn của nhân vật với các chi tiết quan trọng hoặc đạo cụ. 
-5. **Set Integrity**: Luôn giữ vững vị trí các vật thể lớn cố định trong bối cảnh (Landmarks) làm mỏ neo thị giác.
-6. **No Timestamps**: KHÔNG sử dụng mốc thời gian [00:00-00:05]. 
-7. **No SFX/Emotion**: KHÔNG thêm SFX hoặc Emotion vào visual_context.
-8. **CONTINUITY TAGS**: Sử dụng các thẻ sau:
+1. **Shot Type First & Variation**: Mọi visual_context PHẢI bắt đầu bằng SHOT TYPE rõ ràng (CLOSE UP, MEDIUM SHOT, WIDE SHOT, etc.). KHÔNG được sử dụng cùng 1 Shot Type cho 2 cảnh liên tiếp trừ khi có mục đích nghệ thuật đặc biệt. 
+2. **Spatial Rotation (Quy tắc Dịch chuyển Không gian)**: Ngay cả khi trong cùng 1 bối cảnh (Group), máy quay PHẢI di chuyển. 
+    - Cấm lặp lại góc nhìn 100% của cảnh trước.
+    - Phải thay đổi trục nhìn: Một mặt nhìn thẳng, một mặt nhìn từ trên cao (top-down), một mặt nhìn từ góc thấp (low angle), hoặc quay ngược 180 độ để thấy bối cảnh phía sau nhân vật.
+    - Sử dụng các LANDMARKS khác nhau trong cùng 1 phòng để neo vị trí máy quay.
+3. **Director DNA Dominance**: Áp dụng triệt để phong cách hình ảnh của đạo diễn. Nếu là Wes Anderson, dùng góc máy trực diện đối xứng. Nếu là Michael Bay, dùng góc thấp và máy quay năng động. Nếu là Christopher Nolan, dùng góc quay rộng và ánh sáng thực tế.
+4. **Visual Description Formula**: Cấu trúc: SHOT TYPE + [CINEMATIC PURPOSE] + Spatial View (VD: "Looking from the North-East corner", "Ceiling view looking down") + Subject details + Action/Pose + Environment (inc. **SET LANDMARKS**) + Lighting + Atmosphere.
+5. **Cinematic Objective**: Mỗi cảnh PHẢI có một mục đích kể chuyện rõ ràng. Nếu có đạo cụ mới xuất hiện, PHẢI có ít nhất 1 cảnh nhân vật nhặt/lấy nó.
+6. **POV Connection**: Ưu tiên sử dụng góc máy POV (Point of View) để kết nối cái nhìn của nhân vật với các chi tiết quan trọng hoặc đạo cụ. 
+7. **Set Integrity**: Luôn giữ vững vị trí các vật thể lớn cố định trong bối cảnh (Landmarks) làm mỏ neo thị giác.
+8. **No Timestamps**: KHÔNG sử dụng mốc thời gian [00:00-00:05]. 
+9. **No SFX/Emotion**: KHÔNG thêm SFX hoặc Emotion vào visual_context.
+10. **CONTINUITY TAGS**: Sử dụng các thẻ sau:
     - [SAME_OUTFIT]: Đảm bảo trang phục y hệt cảnh trước.
     - [SAME_LIGHTING]: Đảm bảo hướng và màu sắc ánh sáng nhất quán.
     - [SAME_LOCATION]: Đảm bảo các chi tiết bối cảnh xung quanh không thay đổi.
-9. **TRANSITION HINTS**: Mô tả ngắn gọn sự thay đổi tư thế/vị trí so với cảnh trước.
-10. **OTS & BACK VIEW (IDENTITY SINGULARITY & ANTI-GHOSTING)**: 
+11. **TRANSITION HINTS**: Mô tả ngắn gọn sự thay đổi tư thế/vị trí so với cảnh trước.
+12. **OTS & BACK VIEW (IDENTITY SINGULARITY & ANTI-GHOSTING)**: 
     - **Nguyên lý Độc bản (Singularity)**: Mỗi nhân vật (vd: Chú mèo) là DUY NHẤT. Tuyệt đối không được xuất hiện 2 lần trong 1 khung hình.
     - **Single Character Scene (Cảnh 1 nhân vật)**: Nếu cảnh chỉ có 1 nhân vật, khi dùng góc OTS:
         *   **Cấu trúc**: Nhân vật đó PHẢI là người đứng ở tiền cảnh (tiếp giáp camera, mờ). Khung hình phải nhìn xuyên qua vai họ để thấy bối cảnh/đồ vật.

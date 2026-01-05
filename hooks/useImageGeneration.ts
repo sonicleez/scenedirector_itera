@@ -16,6 +16,7 @@ import { normalizePrompt, normalizePromptAsync, formatNormalizationLog, needsNor
 import { recordPrompt, approvePrompt, getSuggestedKeywords } from '../utils/dopLearning';
 import { incrementGlobalStats, recordGeneratedImage } from '../utils/userGlobalStats';
 import { validateRaccord, formatValidationResult, RaccordValidationResult } from '../utils/dopRaccordValidator';
+import { isGridModel, splitImageGrid } from '../utils/imageUtils';
 // Helper function to clean VEO-specific tokens from prompt for image generation
 const cleanPromptForImageGen = (prompt: string): string => {
     return prompt
@@ -57,6 +58,17 @@ export function useImageGeneration(
 
     // Generation Lock: Track which scenes are currently being generated to prevent duplicates
     const generatingSceneIdsRef = useRef<Set<string>>(new Set());
+
+    // [Fix] Signal stop when the hook instance is destroyed, key changes, or project changes
+    React.useEffect(() => {
+        return () => {
+            console.log('[BatchGen] 🧹 Cleaning up generation state (key/project change)');
+            stopRef.current = true;
+            generatingSceneIdsRef.current.clear();
+            setIsBatchGenerating(false);
+            setIsStopping(false);
+        };
+    }, [userApiKey, state.projectName]);
 
     /**
      * Storyboard Mode: Find the best cascade reference image for visual consistency
@@ -1247,7 +1259,7 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
             // TIMING: Start API call
             const apiStartTime = Date.now();
 
-            const { imageUrl, mediaId } = await callAIImageAPI(
+            const { imageUrl: rawImageUrl, mediaId } = await callAIImageAPI(
                 promptToSend,
                 userApiKey,
                 modelToUse,
@@ -1256,6 +1268,23 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                 currentState.resolution || '1K',
                 { domain: currentState.gommoDomain || '', accessToken: currentState.gommoAccessToken || '' }
             );
+
+            let imageUrl = rawImageUrl;
+            let variants: string[] = [];
+
+            // [MJ FIX] Detect Midjourney grid and split into 4 images
+            if (isGridModel(modelToUse) && rawImageUrl.startsWith('data:image')) {
+                try {
+                    console.log('[ImageGen] 🧩 Midjourney grid detected, splitting...');
+                    variants = await splitImageGrid(rawImageUrl);
+                    if (variants.length === 4) {
+                        imageUrl = variants[0]; // Use first one as default
+                        console.log('[ImageGen] ✅ Grid split successful. Using variant 1.');
+                    }
+                } catch (e) {
+                    console.error('[ImageGen] ❌ Failed to split Midjourney grid:', e);
+                }
+            }
 
             // TIMING: Log API call duration
             const apiTime = Date.now() - apiStartTime;
@@ -1338,6 +1367,15 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                         mediaId: fromManual ? sc.mediaId : (mediaId || sc.mediaId),
                         isGenerating: false,
                         error: null,
+                        // Store all 4 variants in editHistory for easy swapping
+                        editHistory: variants.length > 0 ? [
+                            ... (sc.editHistory || []),
+                            ...variants.map((v, idx) => ({
+                                id: `variant_${Date.now()}_${idx}`,
+                                image: v,
+                                prompt: `Midjourney Variant ${idx + 1}: ${finalImagePrompt}`
+                            }))
+                        ] : sc.editHistory,
                         // Use local dopRecordId or fallback to global (async DOP recording updates global)
                         dopRecordId: dopRecordId || (window as any).__lastDopRecordId || sc.dopRecordId
                     } : sc),
@@ -1347,14 +1385,50 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
 
             // Add to session gallery
             if (addToGallery) {
-                addToGallery(imageUrl, fromManual ? 'end-frame' : 'scene', finalImagePrompt, sceneId);
+                if (variants.length > 0) {
+                    // Add all variants to gallery so user can pick
+                    variants.forEach((v, idx) => {
+                        addToGallery(v, fromManual ? 'end-frame' : 'scene', `[Variant ${idx + 1}] ${finalImagePrompt}`, sceneId);
+                    });
+                } else {
+                    addToGallery(imageUrl, fromManual ? 'end-frame' : 'scene', finalImagePrompt, sceneId);
+                }
             }
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Image generation failed:", error);
+
+            // [Fix] STOP batch if we hit a rate limit, fatal credential error, or auth failure
+            const errorMessage = error.message || "";
+            const errorLower = errorMessage.toLowerCase();
+
+            const isRateLimit = errorMessage.includes("429") ||
+                errorLower.includes("quota") ||
+                errorLower.includes("exhausted") ||
+                errorLower.includes("limit");
+
+            const isFatalAuth = errorLower.includes("api key") ||
+                errorLower.includes("credentials") ||
+                errorLower.includes("invalid") ||
+                errorLower.includes("not found") ||
+                errorLower.includes("permission");
+
+            const isGommoError = errorLower.includes("gommo error");
+
+            if (isRateLimit || isFatalAuth || isGommoError) {
+                console.warn("[ImageGen] 🛑 Fatal API or Auth error detected. Stopping batch generation.");
+                stopRef.current = true;
+                setIsStopping(true);
+            }
+
             updateStateAndRecord(s => ({
                 ...s,
-                scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, isGenerating: false, generationStartTime: undefined, error: (error as Error).message } : sc)
+                scenes: s.scenes.map(sc => sc.id === sceneId ? {
+                    ...sc,
+                    isGenerating: false,
+                    generationStartTime: undefined,
+                    error: isRateLimit ? "Tạm thời hết hạn mức (Rate Limit). Vui lòng thử lại sau hoặc đổi API Key." : (error as Error).message
+                } : sc)
             }));
         }
     }, [stateRef, userApiKey, updateStateAndRecord, setApiKeyModalOpen, userId]);
@@ -1860,6 +1934,7 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
             console.log('[BatchGen] Cleaned up generation lock for', scenesToGenerate.length, 'scenes');
 
             setIsBatchGenerating(false);
+            setIsStopping(false);
             setAgentState('dop', 'idle', '');
 
             if (!stopRef.current) {

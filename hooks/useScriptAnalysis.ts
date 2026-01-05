@@ -183,6 +183,12 @@ export function useScriptAnalysis(userApiKey: string | null) {
             // Build sentences array for AI with indices
             const sentencesForAI = sentences.map((text, idx) => `[${idx}] ${text.trim()}`).join('\n');
 
+            // [New] Existing Character Library - Inject to avoid duplicates
+            if (activeCharacters && activeCharacters.length > 0) {
+                const charList = activeCharacters.map(c => `- ${c.name}: ${c.description || 'No description'}`).join('\n');
+                contextInstructions += `\n[EXISTING CHARACTER LIBRARY - MANDATORY REUSE]:\n${charList}\n- CRITICAL: If the script refers to any of these characters (by name or context), you MUST reuse their exact name. Do NOT create new entries for them in the "characters" JSON array unless they are truly new characters not found in this list.\n`;
+            }
+
             const prompt = `Analyze this voice-over script for a documentary video. Return JSON only.
 
 === FULL SCRIPT (read this FIRST for character context) ===
@@ -222,9 +228,11 @@ CRITICAL - LOCATION ANCHOR RULE:
 - Example: "Interior, 1940s Monte Carlo casino, Art Deco style, crystal chandeliers, mahogany tables, warm amber lighting"
 
 VISUAL PROMPT FORMAT:
-"[SHOT TYPE]. [Location from locationAnchor]. [Subject/Characters]. [Action]. [Mood]."
+"[SHOT TYPE]. [Cinematic Purpose]. [Spatial View/Axis]. [Location from locationAnchor]. [Subject/Characters]. [Action]. [Mood]."
 - SHOT TYPES: WIDE SHOT, MEDIUM SHOT, CLOSE-UP, EXTREME CLOSE-UP, POV
-- Include locationAnchor elements in every scene
+- CRITICAL: DO NOT use the same SHOT TYPE twice in a row. Force cinematic variation (e.g., Wide -> Medium -> Close).
+- SPATIAL ROTATION: For every scene, describe the view from a DIFFERENT AXIS or angle (e.g., "Camera looking from ceiling", "Side profile view", "Low angle looking up", "Looking from behind the desk"). DO NOT repeat the same background view twice.
+- Include locationAnchor elements in every scene.
 
 CRITICAL - VOICE OVER vs DIALOGUE DETECTION:
 - VOICE OVER (voiceOverText): Narration text read by off-screen narrator. Third-person descriptions.

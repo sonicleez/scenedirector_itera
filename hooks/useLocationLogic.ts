@@ -1,5 +1,4 @@
-
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import { ProjectState, Location } from '../types';
 import { generateId } from '../utils/helpers';
 import { callCharacterImageAPI } from '../utils/geminiUtils';
@@ -14,6 +13,14 @@ export function useLocationLogic(
     userId?: string
 ) {
     const [isGenerating, setIsGenerating] = useState<string | null>(null);
+    const stopRef = useRef(false);
+
+    // [Fix] Signal stop when the hook instance is destroyed or key changes
+    useEffect(() => {
+        return () => {
+            stopRef.current = true;
+        };
+    }, [userApiKey]);
 
     const updateLocation = useCallback((id: string, updates: Partial<Location>) => {
         updateStateAndRecord(s => ({
@@ -112,7 +119,27 @@ export function useLocationLogic(
             }
         } catch (error: any) {
             console.error('[LocationLogic] Generation failed:', error);
-            updateLocation(locationId, { error: error.message || 'Generation failed' });
+
+            const errorMessage = error.message || "";
+            const errorLower = errorMessage.toLowerCase();
+
+            const isRateLimit = errorMessage.includes("429") ||
+                errorLower.includes("quota") ||
+                errorLower.includes("exhausted") ||
+                errorLower.includes("limit");
+
+            const isFatalAuth = errorLower.includes("api key") ||
+                errorLower.includes("credentials") ||
+                errorLower.includes("invalid") ||
+                errorLower.includes("not found") ||
+                errorLower.includes("permission");
+
+            if (isRateLimit || isFatalAuth) {
+                console.warn("[LocationLogic] 🛑 Fatal API or Auth error detected. Stopping bulk generation.");
+                stopRef.current = true;
+            }
+
+            updateLocation(locationId, { error: isRateLimit ? "Hết hạn mức (Rate Limit). Thử lại sau." : (errorMessage || 'Generation failed') });
         } finally {
             setIsGenerating(null);
         }
@@ -132,7 +159,9 @@ export function useLocationLogic(
         }
 
         // Process sequentially to avoid API overload
+        stopRef.current = false;
         for (const loc of missing) {
+            if (stopRef.current) break;
             await handleGenerateLocationConcept(loc.id);
         }
     }, [state.locations, userApiKey, setApiKeyModalOpen, handleGenerateLocationConcept]);

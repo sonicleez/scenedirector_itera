@@ -1,87 +1,56 @@
+
 /**
- * Image utility functions for download, conversion, and manipulation
+ * Image Utilities
+ * Helper functions for image processing, cropping, and splitting
  */
 
 /**
- * Slugify text for use in filenames
+ * Splits a 2x2 grid image (like Midjourney output) into 4 separate base64 images.
+ * @param gridBase64 - The input grid image in base64 format
+ * @returns An array of 4 base64 strings
  */
-export const slugify = (text: string): string => {
-    return text
-        .toString()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase()
-        .trim()
-        .replace(/\s+/g, '-')
-        .replace(/[^\w-]+/g, '')
-        .replace(/--+/g, '-');
-};
-
-/**
- * Download a base64 image as a file
- */
-export const downloadImage = (base64Image: string, filename: string) => {
-    if (!base64Image) return;
-    const link = document.createElement('a');
-    link.href = base64Image;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-};
-
-/**
- * Convert File to base64 string
- */
-export const fileToBase64 = (file: File): Promise<string> => {
+export async function splitImageGrid(gridBase64: string): Promise<string[]> {
     return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            if (e.target?.result) {
-                resolve(e.target.result as string);
-            } else {
-                reject(new Error('Failed to read file'));
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                reject(new Error('Could not create canvas context'));
+                return;
             }
+
+            const width = img.width / 2;
+            const height = img.height / 2;
+            canvas.width = width;
+            canvas.height = height;
+
+            const results: string[] = [];
+
+            // Define the 4 quadrants: [top-left, top-right, bottom-left, bottom-right]
+            const quadrants = [
+                { x: 0, y: 0 },
+                { x: width, y: 0 },
+                { x: 0, y: height },
+                { x: width, y: height }
+            ];
+
+            quadrants.forEach(q => {
+                ctx.clearRect(0, 0, width, height);
+                ctx.drawImage(img, q.x, q.y, width, height, 0, 0, width, height);
+                results.push(canvas.toDataURL('image/jpeg', 0.9));
+            });
+
+            resolve(results);
         };
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(file);
+        img.onerror = (err) => reject(err);
+        img.src = gridBase64;
     });
-};
+}
 
 /**
- * Convert base64 to Blob
+ * Checks if a model ID corresponds to a model that returns a grid (like Midjourney).
  */
-export const base64ToBlob = (base64: string, mimeType: string = 'image/jpeg'): Blob => {
-    const byteString = atob(base64.split(',')[1]);
-    const ab = new ArrayBuffer(byteString.length);
-    const ia = new Uint8Array(ab);
-    for (let i = 0; i < byteString.length; i++) {
-        ia[i] = byteString.charCodeAt(i);
-    }
-    return new Blob([ab], { type: mimeType });
-};
-
-/**
- * Fetch image from URL and convert to base64
- */
-export const fetchImageAsBase64 = async (url: string): Promise<string> => {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-    });
-};
-
-/**
- * Clean Google Labs token from cookie format
- */
-export const cleanToken = (token: string): string => {
-    if (!token) return "";
-    if (token.includes('session-token=')) {
-        return token.split('session-token=')[1].split(';')[0].trim();
-    }
-    return token.trim();
-};
+export function isGridModel(modelId: string): boolean {
+    return modelId.toLowerCase().includes('midjourney');
+}

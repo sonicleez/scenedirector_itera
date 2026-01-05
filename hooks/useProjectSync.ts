@@ -112,7 +112,22 @@ export function useProjectSync(userId?: string) {
                 .single();
 
             if (error) throw error;
-            return { data: data.project_data as ProjectState, error: null };
+
+            // Sanitize state: Reset all "isGenerating" flags to false on load
+            const rawData = data.project_data as ProjectState;
+            const sanitizedData: ProjectState = {
+                ...rawData,
+                scenes: (rawData.scenes || []).map(s => ({
+                    ...s,
+                    isGenerating: false,
+                    videoStatus: s.videoStatus === 'starting' || s.videoStatus === 'active' ? 'failed' : s.videoStatus
+                })),
+                characters: (rawData.characters || []).map(c => ({ ...c, isGenerating: false, isAnalyzing: false })),
+                products: (rawData.products || []).map(p => ({ ...p, isAnalyzing: false })),
+                locations: (rawData.locations || []).map(l => ({ ...l, isGenerating: false }))
+            };
+
+            return { data: sanitizedData, error: null };
         } catch (err: any) {
             const errMsg = err.message || JSON.stringify(err);
             setError(errMsg);
