@@ -50,10 +50,58 @@ export function useScriptGeneration(
                 'custom': state.customScriptLanguage || 'English'
             };
             const effectiveLanguage = languageNames[state.scriptLanguage] || 'English';
-
-            const prompt = buildScriptPrompt(idea, activePreset, activeCharacters, activeProducts, count, effectiveLanguage, state.customScriptInstruction, director);
-
             const [modelId, thinkingLevel] = (state.scriptModel || 'gemini-2.5-flash|high').split('|');
+
+            // ═══════════════════════════════════════════════════════════════
+            // STEP 1: VISUAL CLUSTERING (The "Director's Thinking" Phase)
+            // ═══════════════════════════════════════════════════════════════
+            setAgentState('director', 'thinking', 'Đang đọc hiểu và gom cụm chi tiết hình ảnh (Visual Clustering)...');
+
+            const clusteringSystemPrompt = `
+*** CRITICAL ROLE: VISUAL DIRECTOR ***
+You are NOT a text splitter. You are a CINEMATIC ADAPTER.
+Your job is to read the raw input and restructure it into merged VISUAL BLOCKS.
+
+*** ALGORITHM (THE GOLDEN RULES) ***
+1. **SCAN**: Read the input text.
+2. **MERGE**: If Sentence A is "Subject Action" and Sentence B is "Subject Adjective", MERGE THEM into one block.
+   - RAW: "He sees a mask. It is white. It has a beak."
+   - BLOCKED: "Close-up of him looking at a WHITE MASK with a LONG BEAK." (1 Scene).
+3. **NO FRAGMENTATION**: DO NOT create separate blocks for adjectives, colors, or materials.
+4. **NARRATIVE FLOW**: Only create a new block when there is a significant CHANGE in Action, Location, or Time.
+`;
+
+            const clusteringUserPrompt = `
+Analyze and REWRITE the following story concept into a list of "VISUAL SHOTS".
+Don't worry about JSON format yet. Just simple text blocks.
+
+INPUT STORY:
+"${idea}"
+
+OUTPUT FORMAT:
+- Shot 1: [Description with merged details]
+- Shot 2: [Description]
+...
+            `;
+
+            // Call Step 1
+            const visualPlan = await callGeminiText(apiKey, clusteringUserPrompt, clusteringSystemPrompt, modelId);
+            console.log("Visual Plan:", visualPlan);
+
+            // ═══════════════════════════════════════════════════════════════
+            // STEP 2: JSON SCRIPT GENERATION
+            // ═══════════════════════════════════════════════════════════════
+            setAgentState('dop', 'thinking', 'Đang cấu trúc lại theo quy tắc 5-Shot và đóng gói dữ liệu...');
+
+            // Pass the OPTIMIZED PLAN to the prompt builder instead of the raw idea
+            const optimizedIdea = `
+ORIGINAL CONCEPT: "${idea}"
+
+OPTIMIZED VISUAL PLAN (STRICTLY FOLLOW THIS STRUCTURE):
+${visualPlan}
+            `;
+
+            const prompt = buildScriptPrompt(optimizedIdea, activePreset, activeCharacters, activeProducts, count, effectiveLanguage, state.customScriptInstruction, director);
 
             const ai = new GoogleGenAI({ apiKey });
 
