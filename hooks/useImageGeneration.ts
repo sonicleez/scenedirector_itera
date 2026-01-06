@@ -562,12 +562,14 @@ OUTPUT ONLY THE PROMPT. DO NOT OUTPUT MARKDOWN OR EXPLANATION.`;
                             : sceneToUpdate.facingDirection;
 
                         if (dir && groupObj.spatialAnchors[dir]) {
-                            spatialStr += ` [CAMERA FACING ${dir}]: Background MUST show: ${groupObj.spatialAnchors[dir]}. (Ignore other walls).`;
+                            spatialStr += ` [CAMERA FACING ${dir}]: Background MUST show: ${groupObj.spatialAnchors[dir]}.`;
                         } else {
-                            spatialStr += ` [SET ANCHOR]: Maintain fixed positions of architecture/landmarks.`;
+                            // Relaxed anchor: Allow cinematic re-arrangement but keep style
+                            spatialStr += ` [SET CONSISTENCY]: Maintain cohesive architectural style and materials. Allow dynamic composition suited for the shot angle.`;
                         }
                     } else {
-                        spatialStr += ` [SET ANCHOR]: Maintain fixed positions of furniture, windows, and architectural landmarks.`;
+                        // Relaxed anchor for general scenes
+                        spatialStr += ` [SET CONSISTENCY]: Maintain defining landmarks but optimize layout for cinematic composition.`;
                     }
 
                     groupEnvAnchor = spatialStr;
