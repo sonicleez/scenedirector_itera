@@ -269,11 +269,17 @@ For every Main Shot, generate B-Rolls that are **DIFFERENT** types from this lis
   4. **OTS (Over The Shoulder):** Looking at what they see (Relational).
   5. **CREATIVE ANGLE:** Low angle, high angle, or unusual perspective.
 
+CRITICAL - SUBJECT & TEMPORAL LOCK (The Key to Logical B-Rolls):
+- **Problem:** AI often generates B-Rolls that drift into new actions.
+- **Rule:** A B-Roll happens at the **EXACT SAME MOMENT** as the Main Scene.
+- **SUBJECT LOCK:** If Main Scene is "Man looking at Mask", B-Roll MUST be "Close-up of Man's Eyes" or "Close-up of Mask details". It CANNOT be "Man walking away".
+- **ACTION LOCK:** **NO NEW ACTIONS** in B-Rolls. Only *different views* of the *current action*.
+- **Consistency:** B-Rolls are for *coverage*, not advancing the plot.
+
 ALGORITHM for B-Rolls:
-- If Main Scene is a **WIDE SHOT**, B-Roll MUST be **CU FACE** or **CU HANDS**.
-- If Main Scene is **CLOSE-UP**, B-Roll MUST be **WIDE SHOT** or **OTS**.
-- NEVER repeat the same shot type (e.g., Main Scene = Close-Up -> B-Roll CANNOT be Close-Up).
-- Use this logic to breaking up long monologues.
+- If Main Scene is **WIDE SHOT/ESTABLISHING**, B-Roll MUST be **CU DETAILS** (Face/Hands/Object) to show what is important.
+- If Main Scene is **CLOSE-UP/DETAIL**, B-Roll MUST be **WIDE SHOT** (Context) or **OTS** to show where it is happening.
+- NEVER repeat the same shot type.
 
 ${contextInstructions}
 
