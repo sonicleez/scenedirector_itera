@@ -451,10 +451,20 @@ OUTPUT ONLY THE PROMPT. DO NOT OUTPUT MARKDOWN OR EXPLANATION.`;
 
                 const charDesc = selectedChars.map(c => {
                     const override = group?.outfitOverrides?.[c.id];
+                    const visualState = sceneToUpdate.characterVisualStates?.[c.id];
+
+                    let desc = `[${c.name}: ${c.description}`;
+
                     if (override) {
-                        return `[${c.name}: ${c.description}. MANDATORY OUTFIT OVERRIDE: ${override}. IGNORE ALL PRIOR CLOTHING DETAILS.]`;
+                        desc += `. MANDATORY OUTFIT OVERRIDE: ${override}. IGNORE PRIOR CLOTHING DETAILS`;
                     }
-                    return `[${c.name}: ${c.description}]`;
+
+                    if (visualState) {
+                        desc += `. CURRENT CONDITION/STATE: ${visualState} (Apply this damage/dirt/state ON TOP of the outfit)`;
+                    }
+
+                    desc += `]`;
+                    return desc;
                 }).join(' ');
 
                 const hasAnimal = selectedChars.some(c =>
@@ -545,7 +555,24 @@ This applies to EVERY human figure in the scene without ANY exception. If a hand
             if (sceneToUpdate.groupId) {
                 const groupObj = currentState.sceneGroups?.find(g => g.id === sceneToUpdate.groupId);
                 if (groupObj) {
-                    groupEnvAnchor = `GLOBAL SETTING: ${groupObj.description.toUpperCase()}. [SET ANCHOR]: Maintain fixed positions of furniture, windows, and architectural landmarks (e.g. fireplace, counter).`;
+                    // SPATIAL ANCHORING LOGIC
+                    let spatialStr = `GLOBAL SETTING: ${groupObj.description.toUpperCase()}.`;
+
+                    if (sceneToUpdate.facingDirection && groupObj.spatialAnchors) {
+                        const dir = sceneToUpdate.facingDirection === 'custom'
+                            ? sceneToUpdate.customFacingDirection
+                            : sceneToUpdate.facingDirection;
+
+                        if (dir && groupObj.spatialAnchors[dir]) {
+                            spatialStr += ` [CAMERA FACING ${dir}]: Background MUST show: ${groupObj.spatialAnchors[dir]}. (Ignore other walls).`;
+                        } else {
+                            spatialStr += ` [SET ANCHOR]: Maintain fixed positions of architecture/landmarks.`;
+                        }
+                    } else {
+                        spatialStr += ` [SET ANCHOR]: Maintain fixed positions of furniture, windows, and architectural landmarks.`;
+                    }
+
+                    groupEnvAnchor = spatialStr;
 
                     // TIME & WEATHER CONSISTENCY LOCK
                     const timeParts: string[] = [];

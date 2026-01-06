@@ -92,6 +92,9 @@ export interface SceneGroup {
   customWeather?: string; // Custom weather description
   outfitOverrides?: Record<string, string>; // Character ID -> Outfit Description
   lightingMood?: string; // e.g., "warm golden hour", "harsh midday sun", "cold blue moonlight"
+
+  // Spatial Anchoring (Environment Mapping)
+  spatialAnchors?: Record<string, string>; // Compass mapping: "NORTH": "Window wall", "SOUTH": "Door wall"
 }
 
 // NEW: Location entity for shared concept art across scene groups
@@ -170,6 +173,11 @@ export interface Scene {
 
   // Key Frame Strategy
   isKeyFrame?: boolean; // Mark as hero shot - becomes reference anchor for nearby scenes
+
+  // Advanced Continuity (Accumulative State & Spatial)
+  characterVisualStates?: Record<string, string>; // CharID -> "muddy, bleeding"
+  facingDirection?: 'NORTH' | 'SOUTH' | 'EAST' | 'WEST' | 'custom';
+  customFacingDirection?: string;
 
   // Stats
   generationDuration?: number; // Time taken to generate this image (ms)
