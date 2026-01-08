@@ -615,25 +615,50 @@ RESPOND WITH JSON ONLY:
             const states: CharacterState[] = [];
             const text = voText.toLowerCase();
 
-            // Position detection patterns
+            // Position detection patterns - FIXED: use word boundaries and common subjects
+            // Instead of capturing any word, look for specific subjects + action
             const positionPatterns = [
-                { regex: /(\w+)\s+(lies?|lying)\s+(face\s*down)/gi, position: 'lying face down' },
-                { regex: /(\w+)\s+(lies?|lying)/gi, position: 'lying' },
-                { regex: /(\w+)\s+(kneels?|kneeling)/gi, position: 'kneeling' },
-                { regex: /(\w+)\s+(stands?|standing)/gi, position: 'standing' },
-                { regex: /(\w+)\s+(sits?|sitting)/gi, position: 'sitting' },
-                { regex: /man\s+(lies?|lying)\s+(face\s*down)/gi, position: 'lying face down', name: 'the man' },
-                { regex: /hands?\s+cuffed/gi, position: 'hands cuffed behind back' },
+                // Specific subjects: "The man lies face down", "A person lies"
+                { regex: /\b(the\s+man|a\s+man|the\s+person|the\s+suspect|the\s+victim|the\s+body)\s+(lies?|lying)\s+(face\s*down)/gi, position: 'lying face down' },
+                { regex: /\b(the\s+man|a\s+man|the\s+person|the\s+suspect|he)\s+(lies?|lying)/gi, position: 'lying' },
+                { regex: /\b(the\s+man|a\s+man|the\s+officer|he|she)\s+(kneels?|kneeling)/gi, position: 'kneeling' },
+                { regex: /\b(the\s+man|a\s+man|the\s+officer|he|she)\s+(stands?|standing)/gi, position: 'standing' },
+                { regex: /\b(the\s+man|a\s+man|the\s+officer|he|she)\s+(sits?|sitting)/gi, position: 'sitting' },
+                // Capitalized proper names followed by action (e.g., "Rémy stands")
+                { regex: /\b([A-Z][a-zà-ÿ]+)\s+(lies?|lying|kneels?|kneeling|stands?|standing|sits?|sitting)/g, position: 'dynamic' },
+                // Props/state descriptors
+                { regex: /hands?\s+cuffed/gi, position: 'hands cuffed behind back', name: 'the man' },
+                { regex: /face\s*down\s+on\s+(concrete|floor|ground)/gi, position: 'lying face down', name: 'the man' },
             ];
 
-            for (const { regex, position, name } of positionPatterns) {
+            for (const patternDef of positionPatterns) {
+                const { regex, position, name } = patternDef;
+                regex.lastIndex = 0; // Reset regex state
                 const match = regex.exec(text);
                 if (match) {
-                    states.push({
-                        name: name || match[1] || 'unknown',
-                        position,
-                        props: []
-                    });
+                    let charName = name || 'the man';
+                    let charPosition = position;
+
+                    // For dynamic position patterns, extract both name and action
+                    if (position === 'dynamic' && match[1] && match[2]) {
+                        charName = match[1];
+                        const action = match[2].toLowerCase();
+                        if (action.includes('lie') || action.includes('lying')) charPosition = 'lying';
+                        else if (action.includes('kneel')) charPosition = 'kneeling';
+                        else if (action.includes('stand')) charPosition = 'standing';
+                        else if (action.includes('sit')) charPosition = 'sitting';
+                    } else if (match[1]) {
+                        charName = match[1].trim();
+                    }
+
+                    // Avoid duplicates
+                    if (!states.some(s => s.name === charName && s.position === charPosition)) {
+                        states.push({
+                            name: charName,
+                            position: charPosition,
+                            props: []
+                        });
+                    }
                 }
             }
 

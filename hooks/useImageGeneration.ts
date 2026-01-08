@@ -493,6 +493,12 @@ OUTPUT ONLY THE PROMPT. DO NOT OUTPUT MARKDOWN OR EXPLANATION.`;
                     : '';
 
                 charPrompt = `${mannequinMaterialConstraint} Appearing Characters: ${charDesc}${outfitConstraint}${facelessConstraint}`;
+
+                // IDENTITY LOCK: When characters have reference images, enforce strict consistency
+                const hasReferenceImages = selectedChars.some(c => c.faceUrl || c.bodyUrl);
+                if (hasReferenceImages) {
+                    charPrompt += ` [IDENTITY LOCK - CRITICAL]: Keep EXACT facial features, proportions, hairstyle, and clothing from reference images. NO variations, NO changes to face structure. Characters must be 100% recognizable from their reference sheets.`;
+                }
             } else if (isDocumentary) {
                 // DOCUMENTARY MODE: Check mannequin style first
                 const isMannequinMode = currentState.globalCharacterStyleId?.includes('mannequin');
@@ -522,6 +528,16 @@ OUTPUT ONLY THE PROMPT. DO NOT OUTPUT MARKDOWN OR EXPLANATION.`;
             // STYLE & NEGATIVE CONSTRAINTS (Authoritative)
             const isRealistic = effectiveStylePrompt === 'cinematic-realistic' || effectiveStylePrompt === 'vintage-film';
             const negativeStyle = isRealistic ? '!!! STRICT NEGATIVE: NO ANIME, NO CARTOON, NO 2D, NO DRAWING, NO ILLUSTRATION, NO PAINTING, NO CGI-LOOK !!!' : '';
+
+            // ANATOMY NEGATIVE PROMPT - Prevent character deformations (extra hands, distorted bodies)
+            const anatomyNegativePrompt = `!!! CRITICAL ANATOMY RULES - STRICTLY ENFORCED !!!
+- NEGATIVE: extra fingers, fused fingers, deformed hands, mutated hands, extra hands
+- NEGATIVE: extra arms, extra legs, extra limbs, disconnected limbs, floating limbs
+- NEGATIVE: malformed, disfigured, bad anatomy, distorted body, gross proportions
+- NEGATIVE: duplicate body parts, clone, asymmetrical face, crossed eyes
+- EACH CHARACTER MUST HAVE: exactly 2 arms, exactly 2 legs, exactly 5 fingers per hand
+- POSE MUST BE: anatomically correct, naturally proportioned, physically possible`;
+
 
             // If Reasoning happened, it already built the style into the prompt. Don't override it brutally.
             const authoritativeStyle = reasonedContext
@@ -718,6 +734,7 @@ OUTPUT ONLY THE PROMPT. DO NOT OUTPUT MARKDOWN OR EXPLANATION.`;
                 // ═══════════════════════════════════════════════════════════════
                 finalImagePrompt = `
 ${antiCollagePromptFull}
+${anatomyNegativePrompt}
 
 [VISUAL CORE - SUBJECT & ACTION]:
 ${continuityLinkInstruction}
