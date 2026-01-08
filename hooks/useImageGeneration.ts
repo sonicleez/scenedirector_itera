@@ -18,6 +18,18 @@ import { analyzeSceneContinuity, extractCharacterState } from '../utils/dopIntel
 import { incrementGlobalStats, recordGeneratedImage } from '../utils/userGlobalStats';
 import { validateRaccord, formatValidationResult, RaccordValidationResult } from '../utils/dopRaccordValidator';
 import { isGridModel, splitImageGrid } from '../utils/imageUtils';
+// Scene Continuity Agent (ReAct pattern)
+import {
+    planSceneState,
+    stateToPromptRequirements,
+    sceneStateTracker,
+    SceneStateSnapshot
+} from '../utils/sceneStateAgent';
+import {
+    verifyGeneratedImage,
+    generateCorrectionPrompt,
+    quickVerifyCriticalElements
+} from '../utils/verificationAgent';
 // Helper function to clean VEO-specific tokens from prompt for image generation
 const cleanPromptForImageGen = (prompt: string): string => {
     return prompt
