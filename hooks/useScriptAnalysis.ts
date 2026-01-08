@@ -647,6 +647,13 @@ RESPOND WITH JSON ONLY:
         };
 
         for (const sceneAnalysis of analysis.scenes) {
+            // DEBUG: Log VO and Dialogue from AI response
+            console.log(`[ScriptAnalysis] 📝 Scene ${sceneNumber} from AI:`, {
+                voiceOverText: sceneAnalysis.voiceOverText?.substring(0, 50) || 'NULL',
+                dialogueText: sceneAnalysis.dialogueText?.substring(0, 50) || 'NULL',
+                dialogueSpeaker: sceneAnalysis.dialogueSpeaker || 'NULL'
+            });
+
             // PHASE 2: Get locationAnchor for this scene's chapter
             const locationAnchor = chapterLocationMap[sceneAnalysis.chapterId] || '';
 
