@@ -682,7 +682,19 @@ RESPOND WITH JSON ONLY:
             // PHASE 2: Get locationAnchor for this scene's chapter
             const locationAnchor = chapterLocationMap[sceneAnalysis.chapterId] || '';
 
-            // PHASE 3: Build scene state summary for animation continuity
+            // PHASE 3: CRITICAL - Reset scene state memory on GROUP BOUNDARY change
+            // This prevents positions from Location A being carried to Location B
+            const currentChapterId = sceneAnalysis.chapterId;
+            const previousScene = scenes[scenes.length - 1]; // Get last added scene
+            const previousChapterId = previousScene?.groupId;
+
+            if (previousChapterId && currentChapterId !== previousChapterId) {
+                // GROUP CHANGE DETECTED - Reset all state memory
+                sceneStateMemory = [];
+                console.log(`[ScriptAnalysis] 🔄 GROUP BOUNDARY: Reset state memory (${previousChapterId} → ${currentChapterId})`);
+            }
+
+            // PHASE 3: Build scene state summary for animation continuity (only within same group)
             const sceneStateSummary = buildSceneStateSummary();
 
             // Main scene with VO

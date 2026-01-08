@@ -677,57 +677,60 @@ Think of this as: "same moment, different camera angle in a 3D space"`;
             }
 
             // --- 2.8 3D CAMERA PROGRESSION ---
-            // Auto-compute dynamic camera movement based on shot type changes
+            // Auto-compute dynamic camera movement based on shot type changes (ONLY within same group)
             let cameraProgressionPrompt = '';
             if (currentSceneIndex > 0) {
                 const prevScene = currentState.scenes[currentSceneIndex - 1];
-                const prevShot = (prevScene?.cameraAngleOverride || 'wide').toLowerCase();
-                const currentShot = anglePrompt.toLowerCase();
+                // Only apply camera progression within SAME GROUP
+                if (prevScene?.groupId === sceneToUpdate.groupId) {
+                    const prevShot = (prevScene?.cameraAngleOverride || 'wide').toLowerCase();
+                    const currentShot = anglePrompt.toLowerCase();
 
-                // Determine shot categories
-                const getPrevCategory = () => {
-                    if (prevShot.includes('wide') || prevShot.includes('establish')) return 'wide';
-                    if (prevShot.includes('close') || prevShot.includes('detail')) return 'close';
-                    if (prevShot.includes('medium') || prevShot.includes('mid')) return 'medium';
-                    if (prevShot.includes('pov') || prevShot.includes('subjective')) return 'pov';
-                    return 'neutral';
-                };
-                const getCurrentCategory = () => {
-                    if (currentShot.includes('wide') || currentShot.includes('establish')) return 'wide';
-                    if (currentShot.includes('close') || currentShot.includes('detail')) return 'close';
-                    if (currentShot.includes('medium') || currentShot.includes('mid')) return 'medium';
-                    if (currentShot.includes('pov') || currentShot.includes('subjective')) return 'pov';
-                    return 'neutral';
-                };
+                    // Determine shot categories
+                    const getPrevCategory = () => {
+                        if (prevShot.includes('wide') || prevShot.includes('establish')) return 'wide';
+                        if (prevShot.includes('close') || prevShot.includes('detail')) return 'close';
+                        if (prevShot.includes('medium') || prevShot.includes('mid')) return 'medium';
+                        if (prevShot.includes('pov') || prevShot.includes('subjective')) return 'pov';
+                        return 'neutral';
+                    };
+                    const getCurrentCategory = () => {
+                        if (currentShot.includes('wide') || currentShot.includes('establish')) return 'wide';
+                        if (currentShot.includes('close') || currentShot.includes('detail')) return 'close';
+                        if (currentShot.includes('medium') || currentShot.includes('mid')) return 'medium';
+                        if (currentShot.includes('pov') || currentShot.includes('subjective')) return 'pov';
+                        return 'neutral';
+                    };
 
-                const prevCat = getPrevCategory();
-                const currCat = getCurrentCategory();
+                    const prevCat = getPrevCategory();
+                    const currCat = getCurrentCategory();
 
-                // Camera transition map for 3D feel
-                const cameraTransitions: Record<string, string> = {
-                    'wide_wide': 'Maintain wide framing with subtle 5-10° horizontal drift for visual variety.',
-                    'wide_medium': 'Camera pushes in smoothly, rotating 20° to reveal subject detail.',
-                    'wide_close': 'Camera pushes forward significantly, orbiting 30° for dramatic 3/4 profile angle.',
-                    'wide_pov': 'Camera transitions to over-the-shoulder or first-person perspective.',
-                    'medium_wide': 'Camera pulls back 45°, revealing environmental context.',
-                    'medium_medium': 'Subtle camera orbit (15°) for dynamic feel while maintaining distance.',
-                    'medium_close': 'Camera moves closer with 25° rotation for intimate detail.',
-                    'close_wide': 'Camera pulls back dramatically, establishing new spatial relationship.',
-                    'close_close': 'Shift angle 30-45° to show subject from different perspective.',
-                    'close_medium': 'Camera pulls back slightly with horizontal pan.',
-                    'pov_wide': 'Transition from subjective to objective wide shot.',
-                    'neutral_neutral': 'Camera orbits 20° for visual dynamism while maintaining subject focus.',
-                };
+                    // Camera transition map for 3D feel
+                    const cameraTransitions: Record<string, string> = {
+                        'wide_wide': 'Maintain wide framing with subtle 5-10° horizontal drift for visual variety.',
+                        'wide_medium': 'Camera pushes in smoothly, rotating 20° to reveal subject detail.',
+                        'wide_close': 'Camera pushes forward significantly, orbiting 30° for dramatic 3/4 profile angle.',
+                        'wide_pov': 'Camera transitions to over-the-shoulder or first-person perspective.',
+                        'medium_wide': 'Camera pulls back 45°, revealing environmental context.',
+                        'medium_medium': 'Subtle camera orbit (15°) for dynamic feel while maintaining distance.',
+                        'medium_close': 'Camera moves closer with 25° rotation for intimate detail.',
+                        'close_wide': 'Camera pulls back dramatically, establishing new spatial relationship.',
+                        'close_close': 'Shift angle 30-45° to show subject from different perspective.',
+                        'close_medium': 'Camera pulls back slightly with horizontal pan.',
+                        'pov_wide': 'Transition from subjective to objective wide shot.',
+                        'neutral_neutral': 'Camera orbits 20° for visual dynamism while maintaining subject focus.',
+                    };
 
-                const transitionKey = `${prevCat}_${currCat}`;
-                const transitionDesc = cameraTransitions[transitionKey] || cameraTransitions['neutral_neutral'];
+                    const transitionKey = `${prevCat}_${currCat}`;
+                    const transitionDesc = cameraTransitions[transitionKey] || cameraTransitions['neutral_neutral'];
 
-                cameraProgressionPrompt = `[3D CAMERA PROGRESSION]:
+                    cameraProgressionPrompt = `[3D CAMERA PROGRESSION]:
 Previous shot: ${prevShot.toUpperCase()}
 Current shot: ${currentShot.toUpperCase()}
 Camera movement: ${transitionDesc}
 IMPORTANT: Subject/character position in 3D space remains FIXED. Only the CAMERA ANGLE changes around them.`;
-                console.log('[ImageGen] 🎥 Camera Progression:', `${prevCat} → ${currCat}`);
+                    console.log('[ImageGen] 🎥 Camera Progression:', `${prevCat} → ${currCat}`);
+                }
             }
 
             // --- DIRECTOR DNA INJECTION ---
