@@ -201,7 +201,7 @@ You are generating a prompt to ANIMATE the provided keyframe image. The image is
 **SOURCE IMAGE CONTEXT (from user):**
 - Scene Description: "${context}"
 - Scene Intent: "${promptName}"
-${voiceOverText ? `- Voice Over/Narration (OFF-SCREEN narrator, NOT character speech): "${voiceOverText}"` : ''}
+// NOTE: Voice Over is NOT included in VEO prompts - user has pre-recorded VO track
 ${finalDialogue ? `- Character Dialogue (ON-SCREEN character speaking, ${effectiveLanguage}): "${finalDialogue}"` : '- Character Dialogue: **NO DIALOGUE IN THIS SCENE** (characters should NOT speak)'}
 - Products visible: "${productContext}"
 - Camera Angle: "${scene.cameraAngleOverride === 'custom' ? scene.customCameraAngle : (CAMERA_ANGLES.find(a => a.value === scene.cameraAngleOverride)?.label || 'Auto')}"
@@ -232,7 +232,7 @@ ${selectedPreset.prompt}
 - ⛔ ZERO MUSICAL ELEMENTS - No piano, guitar, strings, or any instruments
 - ✅ ONLY SOUND EFFECTS (SFX): footsteps, water, wind, impacts, doors, machines, etc.
 - ✅ ONLY DIALOGUE if finalDialogue exists above (otherwise characters are SILENT)
-- ✅ ONLY VOICEOVER if voiceOverText exists above
+- ⛔ NO VOICEOVER - Voice Over is handled by pre-recorded audio track, not VEO
 - ✅ Ambient NOISE only: city hum, forest sounds, room tone, traffic, rain
 
 **PRESET-SPECIFIC RULES:**
