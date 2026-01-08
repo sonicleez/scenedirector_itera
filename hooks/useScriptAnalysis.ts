@@ -631,6 +631,62 @@ RESPOND WITH JSON ONLY:
                 globalContext: parsed.globalContext
             };
 
+            // ═══════════════════════════════════════════════════════════════
+            // POST-PROCESSING: Override chapterId based on voiceOverText position
+            // This fixes AI's incorrect chapter assignments by finding where
+            // each scene's text appears in the original script
+            // ═══════════════════════════════════════════════════════════════
+            if (chapterMarkers.length > 0) {
+                console.log('[ScriptAnalysis] 🔧 POST-PROCESSING: Overriding chapter assignments...');
+
+                result.scenes = result.scenes.map((scene: any) => {
+                    const voText = scene.voiceOverText || '';
+                    if (!voText) return scene;
+
+                    // Find the first significant words of voiceOverText in original script
+                    const searchText = voText.split(/\s+/).slice(0, 5).join(' ').toLowerCase();
+                    let foundLineNumber = -1;
+
+                    for (let i = 0; i < lines.length; i++) {
+                        if (lines[i].toLowerCase().includes(searchText.substring(0, 30))) {
+                            foundLineNumber = i + 1;
+                            break;
+                        }
+                    }
+
+                    if (foundLineNumber === -1) {
+                        // Try matching with first 3 words instead
+                        const shortSearch = voText.split(/\s+/).slice(0, 3).join(' ').toLowerCase();
+                        for (let i = 0; i < lines.length; i++) {
+                            if (lines[i].toLowerCase().includes(shortSearch)) {
+                                foundLineNumber = i + 1;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (foundLineNumber > 0) {
+                        // Find which chapter this line belongs to
+                        let correctChapterId = chapterMarkers[0]?.chapterId || scene.chapterId;
+
+                        for (let i = chapterMarkers.length - 1; i >= 0; i--) {
+                            if (foundLineNumber >= chapterMarkers[i].lineNumber) {
+                                correctChapterId = chapterMarkers[i].chapterId;
+                                break;
+                            }
+                        }
+
+                        if (correctChapterId !== scene.chapterId) {
+                            console.log(`[Chapter Override] Scene "${voText.substring(0, 30)}..." (line ${foundLineNumber}): ${scene.chapterId} → ${correctChapterId}`);
+                        }
+
+                        return { ...scene, chapterId: correctChapterId };
+                    }
+
+                    return scene;
+                });
+            }
+
             // Log detected locations
             if (result.locations.length > 0) {
                 console.log(`[ScriptAnalysis] 📍 Detected ${result.locations.length} unique locations:`,
