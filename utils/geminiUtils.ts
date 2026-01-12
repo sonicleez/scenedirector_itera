@@ -56,7 +56,18 @@ export const safeGetImageData = async (imageStr: string): Promise<{ data: string
             const response = await fetchWithTimeout(imageStr, FETCH_TIMEOUT);
             if (!response.ok) throw new Error('Failed to fetch image');
             const blob = await response.blob();
-            const mimeType = blob.type || 'image/jpeg';
+            let mimeType = blob.type;
+
+            // [FIX] Gemini API rejects 'application/octet-stream'. We must enforce a valid image MIME type.
+            if (!mimeType || mimeType === 'application/octet-stream') {
+                // Try to infer from URL file extension
+                const extension = imageStr.split('?')[0].split('.').pop()?.toLowerCase();
+                if (extension === 'jpg' || extension === 'jpeg') mimeType = 'image/jpeg';
+                else if (extension === 'webp') mimeType = 'image/webp';
+                else mimeType = 'image/png'; // Default fallback
+
+                console.warn(`[ImageCache] ⚠️ MIME type fix: '${blob.type}' -> '${mimeType}' for ${imageStr.substring(0, 50)}...`);
+            }
             result = await new Promise((resolve) => {
                 const reader = new FileReader();
                 reader.onloadend = () => resolve({
