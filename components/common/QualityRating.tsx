@@ -45,9 +45,9 @@ export function QualityRating({
     const [showRejectMenu, setShowRejectMenu] = useState(false);
     const [selectedReasons, setSelectedReasons] = useState<RejectReason[]>([]);
 
-    // NEW: Smart Retry State
-    const [autoRetry, setAutoRetry] = useState(true);
-    const [retryNote, setRetryNote] = useState('');
+    // NEW: Smart Retry State (Renamed to bust cache)
+    const [shouldAutoRetry, setShouldAutoRetry] = useState(true);
+    const [userRetryNote, setUserRetryNote] = useState('');
 
     const containerRef = useRef<HTMLDivElement>(null);
     const popupRef = useRef<HTMLDivElement>(null);
@@ -114,9 +114,9 @@ export function QualityRating({
             setShowRejectMenu(false);
 
             // Trigger parent callback
-            if (autoRetry && onRetry && selectedReasons.length > 0) {
+            if (shouldAutoRetry && onRetry && selectedReasons.length > 0) {
                 // Use first reason as primary cause for correction
-                onRetry(selectedReasons[0], retryNote, selectedReasons);
+                onRetry(selectedReasons[0], userRetryNote, selectedReasons);
             } else {
                 onRate?.('bad', selectedReasons);
             }
@@ -272,19 +272,19 @@ export function QualityRating({
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input
                                         type="checkbox"
-                                        checked={autoRetry}
-                                        onChange={(e) => setAutoRetry(e.target.checked)}
+                                        checked={shouldAutoRetry}
+                                        onChange={(e) => setShouldAutoRetry(e.target.checked)}
                                         className="w-3.5 h-3.5 rounded border-gray-600 bg-gray-700 checked:bg-green-500"
                                     />
                                     <span className="text-xs text-gray-300 font-medium">Auto-fix & Retry</span>
                                 </label>
-                                {autoRetry && <span className="text-[10px] text-green-400 font-bold animate-pulse">Smart Mode ON</span>}
+                                {shouldAutoRetry && <span className="text-[10px] text-green-400 font-bold animate-pulse">Smart Mode ON</span>}
                             </div>
 
-                            {autoRetry && (
+                            {shouldAutoRetry && (
                                 <textarea
-                                    value={retryNote}
-                                    onChange={(e) => setRetryNote(e.target.value)}
+                                    value={userRetryNote}
+                                    onChange={(e) => setUserRetryNote(e.target.value)}
                                     placeholder="Ghi chú thêm cho AI sửa lỗi (VD: 'Góc nhìn phải từ trên cao xuống')..."
                                     className="w-full bg-gray-950 border border-gray-700 rounded p-2 text-xs text-white h-16 resize-none focus:border-green-500 focus:outline-none"
                                 />
@@ -297,11 +297,11 @@ export function QualityRating({
                                 onClick={handleReject}
                                 disabled={selectedReasons.length === 0 || isRating}
                                 className={`flex-1 px-3 py-2 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${selectedReasons.length > 0
-                                    ? (autoRetry ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-red-600 hover:bg-red-500 text-white')
+                                    ? (shouldAutoRetry ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-red-600 hover:bg-red-500 text-white')
                                     : 'bg-gray-700 text-gray-500 cursor-not-allowed'
                                     }`}
                             >
-                                {isRating ? 'Working...' : (autoRetry ? '🔧 Báo Lỗi & Sửa Ngay' : 'Chỉ Báo Lỗi')}
+                                {isRating ? 'Working...' : (shouldAutoRetry ? '🔧 Báo Lỗi & Sửa Ngay' : 'Chỉ Báo Lỗi')}
                             </button>
                         </div>
                     </div>
