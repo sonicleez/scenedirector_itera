@@ -1542,6 +1542,9 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
             console.log(`[ImageGen] 📊 Stats: Provider=${promptProvider}, EstTokens=${estimatedTokens}, Prompt=${promptToSend.length} chars`);
 
             // Auto-approve in DOP Learning if generation succeeded (NON-BLOCKING)
+            // DISABLED: Only learn from explicit user rating/keeping.
+            // If we auto-approve everything, we learn garbage.
+            /* 
             if (dopRecordId && imageUrl) {
                 // Fire and forget - don't block on DOP approval
                 approvePrompt(dopRecordId, {
@@ -1553,6 +1556,7 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                     console.warn('[ImageGen] DOP approval failed (async):', e);
                 });
             }
+            */
 
             updateStateAndRecord(s => {
                 const duration = Date.now() - startTime;
