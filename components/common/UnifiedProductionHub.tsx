@@ -278,9 +278,10 @@ const UnifiedProductionHub: React.FC<UnifiedProductionHubProps> = ({
                                             className="fixed inset-0 z-[9998]"
                                             onClick={() => setShowDirectorPicker(false)}
                                         />
-                                        <div className="absolute z-[9999] w-56 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden right-0 bottom-full mb-2"
+                                        {console.log('[DirectorPicker] Rendering dropdown!')}
+                                        <div className="absolute z-[9999] w-64 max-h-[400px] overflow-y-auto bg-slate-900/95 backdrop-blur-xl border border-amber-500/30 rounded-xl shadow-2xl right-0 top-full mt-2"
                                         >
-                                            <div className="px-3 py-2 border-b border-white/10 bg-amber-500/10">
+                                            <div className="px-3 py-2 border-b border-white/10 bg-amber-500/10 sticky top-0">
                                                 <span className="text-xs font-bold text-amber-400 uppercase">🎬 Quick Director</span>
                                                 {directorMemory && directorMemory.totalGenerations > 0 && (
                                                     <span className="ml-2 text-[9px] text-gray-400">
