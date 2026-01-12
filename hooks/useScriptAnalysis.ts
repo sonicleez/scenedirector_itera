@@ -456,6 +456,14 @@ If the input script contains explicit tags like [C1], [C2], or [C3], you MUST re
 - Input: "He stood in the rain [C3]." -> You MUST treat this as METAPHORIC (e.g. focus on raindrops/mood), even if the text looks literal.
 - Input: "The system crashed [C1]." -> You MUST treat this as LITERAL (show a computer screen error), even if the text looks abstract.
 
+*** SILENT VISUAL INSTRUCTIONS (PARENTHESES PROTOCOL) ***
+If the script contains text inside parentheses '...', you MUST treat it as explicit VISUAL DIRECTION.
+- **Rule 1 (Guidance):** Use the content inside '...' to describe the scene, character action, or camera angle.
+- **Rule 2 (Silence):** Do NOT include the content inside '...' in the 'voiceOverText' or 'dialogueText'. It is for YOUR EYES ONLY (to generate the image).
+- Example Input: "A man sits alone. (Close up on his trembling hands). Not because of overtime."
+- Output Visual: "Close up shot of a man's hands trembling on the desk."
+- Output VO: "A man sits alone. Not because of overtime."
+
 [C1] LITERAL (The Witness):
 - Trigger: VO mentions specific physical actions, objects, names, locations.
 - Logic: "Draw exactly what is described."
