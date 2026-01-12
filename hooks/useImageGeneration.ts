@@ -1704,7 +1704,7 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                     currentState.globalStylePrompt || '',
                     currentState.customMetaTokens || ''
                 );
-                saveDirectorMemory(updatedMemory);
+                saveDirectorMemory(updatedMemory, userId);
                 console.log('[DirectorBrain] 🎬 Recorded generation. Total:', updatedMemory.totalGenerations);
             } catch (brainErr) {
                 console.warn('[DirectorBrain] Failed to record generation:', brainErr);

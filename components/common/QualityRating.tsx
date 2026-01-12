@@ -10,12 +10,15 @@ import { createPortal } from 'react-dom';
 import { ThumbsUp, ThumbsDown, AlertTriangle, X, CheckCircle2 } from 'lucide-react';
 import { approvePrompt, rejectPrompt, RejectReason } from '../../utils/dopLearning';
 import { loadDirectorMemory, saveDirectorMemory, recordLike, recordDislike } from '../../utils/directorBrain';
+import { supabase } from '../../utils/supabaseClient';
+
 
 interface QualityRatingProps {
     dopRecordId?: string;
     onRate?: (rating: 'good' | 'bad', reasons?: RejectReason[]) => void;
     onRetry?: (reason: RejectReason, note: string, allReasons: RejectReason[]) => void;
     sceneId?: string; // For DirectorBrain learning
+    userId?: string; // For DirectorBrain cloud sync
     size?: 'sm' | 'md';
     className?: string;
 }
@@ -40,6 +43,7 @@ export function QualityRating({
     onRate,
     onRetry,
     sceneId, // For DirectorBrain learning
+    userId, // For DirectorBrain cloud sync
     size = 'sm',
     className = ''
 }: QualityRatingProps) {
@@ -47,10 +51,20 @@ export function QualityRating({
     const [isRating, setIsRating] = useState(false);
     const [showRejectMenu, setShowRejectMenu] = useState(false);
     const [selectedReasons, setSelectedReasons] = useState<RejectReason[]>([]);
+    const [currentUserId, setCurrentUserId] = useState<string | undefined>(userId);
 
     // NEW: Smart Retry State (Renamed to bust cache)
     const [shouldAutoRetry, setShouldAutoRetry] = useState(true);
     const [userRetryNote, setUserRetryNote] = useState('');
+
+    // Get current user from session if not passed as prop
+    useEffect(() => {
+        if (!userId) {
+            supabase.auth.getUser().then(({ data }) => {
+                setCurrentUserId(data.user?.id);
+            });
+        }
+    }, [userId]);
 
     const containerRef = useRef<HTMLDivElement>(null);
     const popupRef = useRef<HTMLDivElement>(null);
@@ -101,7 +115,7 @@ export function QualityRating({
                 try {
                     const memory = loadDirectorMemory();
                     const updated = recordLike(memory, sceneId);
-                    saveDirectorMemory(updated);
+                    saveDirectorMemory(updated, currentUserId);
                 } catch (e) {
                     console.warn('[DirectorBrain] Failed to record like:', e);
                 }
@@ -140,7 +154,7 @@ export function QualityRating({
                 try {
                     const memory = loadDirectorMemory();
                     const updated = recordDislike(memory, sceneId, selectedReasons[0]);
-                    saveDirectorMemory(updated);
+                    saveDirectorMemory(updated, currentUserId);
                 } catch (e) {
                     console.warn('[DirectorBrain] Failed to record dislike:', e);
                 }
