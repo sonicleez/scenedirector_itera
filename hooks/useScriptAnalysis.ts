@@ -801,7 +801,36 @@ RESPOND WITH JSON ONLY:
                 });
             }
 
-            // Log detected locations
+            // ═══════════════════════════════════════════════════════════════
+            // POST-PROCESSING: Clean Silent Visual Notes (...) from VoiceOver
+            // ═══════════════════════════════════════════════════════════════
+            console.log('[ScriptAnalysis] 🧹 cleaning visual notes (...) from voice-over text...');
+            result.scenes = result.scenes.map((scene: any) => {
+                // Regex to remove content inside parentheses, handling nested or multiple per line
+                const cleanText = (text: string) => {
+                    if (!text) return '';
+                    // Replace (...) with empty string, trimming extra spaces
+                    return text.replace(/\([^)]+\)/g, '').replace(/\s+/g, ' ').trim();
+                };
+
+                const oldVO = scene.voiceOverText || '';
+                const newVO = cleanText(oldVO);
+
+                if (oldVO !== newVO) {
+                    console.log(`[Clean Output] Removed notes from VO: "${oldVO}" -> "${newVO}"`);
+                }
+
+                // Also clean dialogue text if present
+                const oldDiag = scene.dialogueText || '';
+                const newDiag = cleanText(oldDiag);
+
+                return {
+                    ...scene,
+                    voiceOverText: newVO,
+                    dialogueText: newDiag
+                };
+            });
+
             if (result.locations.length > 0) {
                 console.log(`[ScriptAnalysis] 📍 Detected ${result.locations.length} unique locations:`,
                     result.locations.map(l => l.name).join(', '));
