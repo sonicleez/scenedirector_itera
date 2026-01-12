@@ -57,3 +57,30 @@ This project is a React (Vite) application with a Node.js backend proxy.
 - **Custom Cinematography**: Added free-text input for Shot Type, Lens, and Transitions per scene.
 - **Logic Refinement**: "Strict Mode" for Character/Product appearance and Environmental Consistency.
 - **UI UX**: Added "Clean All" button and improved "Detailed Script" visibility.
+
+## 📖 Script Formatting Guide (New in v9)
+
+### 1. Chapter Detection `[...]`
+Organize your script into logical groups using bracketed headers.
+```text
+[Marseille, November 2019]
+...scenes in Marseille...
+
+[The Flashback]
+...scenes in the past...
+```
+
+### 2. Dynamic Inference Tags `[C1/C2/C3]`
+Control the **Creative Intensity** (how abstract the visual should be).
+- **[C1] Literal**: Draw exactly what is said. (e.g. *"He opens the door [C1]"*)
+- **[C2] Suggestive**: Suggest the meaning via environment. (e.g. *"He felt trapped [C2]"* → Show a maze-like room)
+- **[C3] Metaphoric**: Use abstract cinematic language/lighting. (e.g. *"His world collapsed [C3]"* → Dutch angle, shattering glass metaphor)
+*Note: If no tag is provided, AI automatically detects the best mode.*
+
+### 3. Silent Visual Notes `(...)`
+Add visual direction inside parentheses. These notes guide the image generation but are **NOT** read by the Voice Over.
+```text
+Evan walks into the room. (Close up on his trembling hands clutching a letter). He sits down.
+```
+- **VO reads**: "Evan walks into the room. He sits down."
+- **AI draws**: A close-up of trembling hands with a letter.
