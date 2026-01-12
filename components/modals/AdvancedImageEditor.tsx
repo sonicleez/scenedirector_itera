@@ -78,10 +78,11 @@ export const AdvancedImageEditor: React.FC<AdvancedImageEditorProps> = ({
 
     // Advanced Features State
     const [analysisTags, setAnalysisTags] = useState<string[] | null>(null);
-    const [layerImage, setLayerImage] = useState<string | null>(null);
+    const [referenceImages, setReferenceImages] = useState<string[]>([]); // Multi-image references (up to 10)
+    const MAX_REFERENCE_IMAGES = 10; // Gemini's limit for inline images
     const [styleRefImage, setStyleRefImage] = useState<string | null>(null);
     const [upscaleLevel, setUpscaleLevel] = useState<'1k' | '2k' | '4k'>('2k');
-    const layerInputRef = useRef<HTMLInputElement>(null);
+    const referenceInputRef = useRef<HTMLInputElement>(null);
     const styleInputRef = useRef<HTMLInputElement>(null);
     const dropzoneInputRef = useRef<HTMLInputElement>(null);
     const [activeTab, setActiveTab] = useState<'tools' | 'layers' | 'analysis' | 'try-on'>('tools');
@@ -163,7 +164,7 @@ export const AdvancedImageEditor: React.FC<AdvancedImageEditorProps> = ({
             setIsCreateMode(false);
             setCurrentResolution('1k');
             setAnalysisTags(null);
-            setLayerImage(null);
+            setReferenceImages([]);
             setStyleRefImage(null);
             setPrompt('');
             setPromptHistory(['']);
@@ -438,20 +439,52 @@ export const AdvancedImageEditor: React.FC<AdvancedImageEditorProps> = ({
                 return;
             }
 
-            // Check if we are doing Composition or Style Transfer first
-            if (activeTab === 'layers' && layerImage) {
-                setLoadingMessage('Compositing Images...');
+            // Check if we are doing Composition with multiple reference images
+            if (activeTab === 'layers' && referenceImages.length > 0) {
+                setLoadingMessage(`Compositing ${referenceImages.length} reference image(s)...`);
                 const baseBlob = await (await fetch(currentImage)).blob();
-                const layerBlob = await (await fetch(layerImage)).blob();
-
                 const baseGen = await toGenImg(baseBlob);
-                const layerGen = await toGenImg(layerBlob);
 
-                const result = await compositeImages(apiKey, baseGen, layerGen, prompt, imageAspectRatio, currentResolution);
-                if (result.base64) {
-                    const newImage = `data:${result.mimeType};base64,${result.base64}`;
-                    setCurrentImage(newImage);
-                    addToHistory(newImage, `Composite: ${prompt}`);
+                // Convert all reference images to GeneratedImage format
+                const refGenImages: GeneratedImage[] = [];
+                for (const refImg of referenceImages) {
+                    const refBlob = await (await fetch(refImg)).blob();
+                    refGenImages.push(await toGenImg(refBlob));
+                }
+
+                // For multi-image, we use the first image for compositing and include others in prompt context
+                // Gemini can handle multiple images in a single call
+                if (refGenImages.length === 1) {
+                    const result = await compositeImages(apiKey, baseGen, refGenImages[0], prompt, imageAspectRatio, currentResolution);
+                    if (result.base64) {
+                        const newImage = `data:${result.mimeType};base64,${result.base64}`;
+                        setCurrentImage(newImage);
+                        addToHistory(newImage, `Composite: ${prompt}`);
+                    }
+                } else {
+                    // Multi-image: Use generateContent with all images inline
+                    const ai = new GoogleGenAI({ apiKey });
+                    const parts: any[] = [
+                        { inlineData: { data: baseGen.base64, mimeType: baseGen.mimeType } },
+                        ...refGenImages.map(img => ({ inlineData: { data: img.base64, mimeType: img.mimeType } })),
+                        { text: `Composite these ${refGenImages.length + 1} images together based on this instruction: ${prompt}. The first image is the base/background. The subsequent images are elements to be added. Seamlessly blend lighting, shadows, and style.` }
+                    ];
+
+                    const response = await ai.models.generateContent({
+                        model: 'gemini-3-pro-image-preview',
+                        contents: { parts },
+                        config: {
+                            responseModalities: ['IMAGE'],
+                            imageConfig: { aspectRatio: imageAspectRatio }
+                        }
+                    });
+
+                    const imagePart = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+                    if (imagePart?.inlineData) {
+                        const newImage = `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
+                        setCurrentImage(newImage);
+                        addToHistory(newImage, `Multi-Composite (${referenceImages.length} refs): ${prompt}`);
+                    }
                 }
                 return;
             }
@@ -818,9 +851,9 @@ export const AdvancedImageEditor: React.FC<AdvancedImageEditorProps> = ({
                                     {historyLayout === 'list' && <div className="hidden md:block text-[10px] text-gray-400 truncate mt-1">{i === 0 ? 'Original' : scan.prompt}</div>}
                                     {/* Drag to layer button */}
                                     <button
-                                        onClick={(e) => { e.stopPropagation(); setLayerImage(scan.image); setActiveTab('layers'); }}
+                                        onClick={(e) => { e.stopPropagation(); setReferenceImages(prev => [...prev, scan.image].slice(0, MAX_REFERENCE_IMAGES)); setActiveTab('layers'); }}
                                         className="absolute top-1 right-1 bg-black/60 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                        title="Use as Layer"
+                                        title="Add to References"
                                     >
                                         <Layers size={10} />
                                     </button>
@@ -908,8 +941,9 @@ export const AdvancedImageEditor: React.FC<AdvancedImageEditorProps> = ({
                                         disabled={!isDrawMode || (activeTab !== 'tools' && activeTab !== 'try-on')}
                                     />
 
-                                    {layerImage && activeTab === 'layers' && (
+                                    {referenceImages.length > 0 && activeTab === 'layers' && (
                                         <div className="absolute top-2 right-2 bg-black/60 text-xs text-white px-2 py-1 rounded pointer-events-none border border-white/20">
+                                            {referenceImages.length} ref(s)
                                         </div>
                                     )}
                                 </div>
@@ -981,23 +1015,120 @@ export const AdvancedImageEditor: React.FC<AdvancedImageEditorProps> = ({
                         {/* Layers & Compositing Content */}
                         {activeTab === 'layers' && (
                             <div className="p-4 space-y-6">
-                                {/* Layer Upload */}
+                                {/* Multi-Image Reference Upload */}
                                 <div>
-                                    <h3 className="text-white font-bold flex items-center gap-2 mb-2"><Layers size={16} /> Composite Layer</h3>
-                                    <p className="text-xs text-gray-500 mb-3">Add a subject to your scene.</p>
+                                    <h3 className="text-white font-bold flex items-center gap-2 mb-2">
+                                        <Layers size={16} /> Reference Images
+                                        <span className="ml-auto text-xs text-gray-500 font-normal">
+                                            {referenceImages.length}/{MAX_REFERENCE_IMAGES}
+                                        </span>
+                                    </h3>
+                                    <p className="text-xs text-gray-500 mb-3">
+                                        Add up to {MAX_REFERENCE_IMAGES} reference images for compositing. Drag & drop or click to upload.
+                                    </p>
 
-                                    {!layerImage ? (
-                                        <button onClick={() => layerInputRef.current?.click()} className="border border-dashed border-gray-600 hover:border-gray-400 rounded-lg h-32 w-full flex flex-col items-center justify-center text-gray-500 hover:text-gray-300 transition-colors bg-gray-900/50">
-                                            <Upload size={24} className="mb-2" />
-                                            <span className="text-xs">Upload Layer Image</span>
-                                        </button>
-                                    ) : (
-                                        <div className="relative group">
-                                            <img src={layerImage} className="w-full h-32 object-cover rounded-lg border border-gray-700" />
-                                            <button onClick={() => setLayerImage(null)} className="absolute top-2 right-2 bg-black/60 p-1 rounded-full text-white hover:bg-red-500"><X size={14} /></button>
+                                    {/* Drop Zone */}
+                                    <div
+                                        className={`border-2 border-dashed rounded-lg p-4 transition-all cursor-pointer ${referenceImages.length >= MAX_REFERENCE_IMAGES
+                                            ? 'border-gray-700 bg-gray-900/30 cursor-not-allowed'
+                                            : 'border-gray-600 hover:border-purple-500 bg-gray-900/50 hover:bg-purple-900/20'
+                                            }`}
+                                        onClick={() => referenceImages.length < MAX_REFERENCE_IMAGES && referenceInputRef.current?.click()}
+                                        onDragOver={(e) => {
+                                            e.preventDefault();
+                                            e.currentTarget.classList.add('border-purple-500', 'bg-purple-900/30');
+                                        }}
+                                        onDragLeave={(e) => {
+                                            e.currentTarget.classList.remove('border-purple-500', 'bg-purple-900/30');
+                                        }}
+                                        onDrop={(e) => {
+                                            e.preventDefault();
+                                            e.currentTarget.classList.remove('border-purple-500', 'bg-purple-900/30');
+                                            const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+                                            const maxToAdd = MAX_REFERENCE_IMAGES - referenceImages.length;
+                                            const filesToProcess = files.slice(0, maxToAdd);
+
+                                            filesToProcess.forEach(file => {
+                                                const reader = new FileReader();
+                                                reader.onload = (ev) => {
+                                                    setReferenceImages(prev => [...prev, ev.target?.result as string]);
+                                                };
+                                                reader.readAsDataURL(file);
+                                            });
+                                        }}
+                                    >
+                                        {referenceImages.length < MAX_REFERENCE_IMAGES ? (
+                                            <div className="flex flex-col items-center justify-center py-4 text-gray-400">
+                                                <Upload size={28} className="mb-2" />
+                                                <span className="text-sm font-medium">Drop images here</span>
+                                                <span className="text-xs text-gray-600 mt-1">or click to browse</span>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-4 text-gray-500">
+                                                <span className="text-xs">Maximum {MAX_REFERENCE_IMAGES} images reached</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Multi-select hidden input */}
+                                    <input
+                                        type="file"
+                                        ref={referenceInputRef}
+                                        multiple
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            const files = Array.from(e.target.files || []);
+                                            const maxToAdd = MAX_REFERENCE_IMAGES - referenceImages.length;
+                                            const filesToProcess = files.slice(0, maxToAdd);
+
+                                            filesToProcess.forEach(file => {
+                                                const reader = new FileReader();
+                                                reader.onload = (ev) => {
+                                                    setReferenceImages(prev => [...prev, ev.target?.result as string]);
+                                                };
+                                                reader.readAsDataURL(file);
+                                            });
+                                            e.target.value = ''; // Reset input
+                                        }}
+                                    />
+
+                                    {/* Thumbnail Gallery */}
+                                    {referenceImages.length > 0 && (
+                                        <div className="mt-3 grid grid-cols-3 gap-2">
+                                            {referenceImages.map((img, idx) => (
+                                                <div key={idx} className="relative group aspect-square">
+                                                    <img
+                                                        src={img}
+                                                        alt={`Ref ${idx + 1}`}
+                                                        className="w-full h-full object-cover rounded-lg border border-gray-700"
+                                                    />
+                                                    <div className="absolute top-1 left-1 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded font-bold">
+                                                        {idx + 1}
+                                                    </div>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setReferenceImages(prev => prev.filter((_, i) => i !== idx));
+                                                        }}
+                                                        className="absolute top-1 right-1 bg-red-600 hover:bg-red-500 p-1 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <X size={10} />
+                                                    </button>
+                                                </div>
+                                            ))}
                                         </div>
                                     )}
-                                    <input type="file" ref={layerInputRef} onChange={(e) => handleFileUpload(e, setLayerImage)} className="hidden" accept="image/*" />
+
+                                    {/* Clear All Button */}
+                                    {referenceImages.length > 1 && (
+                                        <button
+                                            onClick={() => setReferenceImages([])}
+                                            className="w-full mt-2 text-xs text-red-400 hover:text-red-300 transition-colors"
+                                        >
+                                            Clear all ({referenceImages.length})
+                                        </button>
+                                    )}
                                 </div>
 
                                 <div className="h-px bg-gray-800"></div>
@@ -1346,7 +1477,7 @@ export const AdvancedImageEditor: React.FC<AdvancedImageEditorProps> = ({
                                         }
                                     }}
                                     placeholder={
-                                        activeTab === 'layers' && layerImage ? "Describe how to composite the layer..." :
+                                        activeTab === 'layers' && referenceImages.length > 0 ? `Describe how to composite ${referenceImages.length} reference(s)...` :
                                             activeTab === 'layers' && styleRefImage ? "Describe style adjustments..." :
                                                 "Describe what to change (e.g., 'Change hair to blue', 'Add a cat')..."
                                     }
