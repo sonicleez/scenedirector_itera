@@ -855,14 +855,14 @@ ${poseOverrides.map((p, i) => `${i + 1}. ${p}`).join('\n')}
             let dopResearchPrompt = '';
             if (currentState.researchNotes?.dop) {
                 dopResearchPrompt = `[USER DOP NOTES - MANDATORY CINEMATOGRAPHY GUIDE]: ${currentState.researchNotes.dop}. Apply these lighting, camera angle, and transition guidelines to this scene.`;
-                console.log('[ImageGen] 📹 DOP Research Notes injected:', currentState.researchNotes.dop.substring(0, 50) + '...');
+                console.log('[ImageGen] 📹 DOP Research Notes injected:', currentState.researchNotes?.dop?.substring(0, 50) + '...');
             }
 
             // --- GLOBAL STORY CONTEXT INJECTION (World Building) ---
             let globalStoryPrompt = '';
             if (currentState.researchNotes?.story) {
                 globalStoryPrompt = `[GLOBAL STORY CONTEXT - MANDATORY WORLD SETTING]: ${currentState.researchNotes.story}. The scene must strictly exist within this specific world/universe. Align all architecture, technology, and atmosphere with this context.`;
-                console.log('[ImageGen] 🌍 Global Story Context injected:', currentState.researchNotes.story.substring(0, 50) + '...');
+                console.log('[ImageGen] 🌍 Global Story Context injected:', currentState.researchNotes?.story?.substring(0, 50) + '...');
             }
 
             // --- ANTI-COLLAGE INSTRUCTION ---
@@ -930,7 +930,7 @@ TECHNICAL CAMERA: ${effectiveCameraPrompt}`.trim().replace(/\n+/g, ' '); // Flat
                 console.log('[ImageGen] 🔵 GEMINI prompt (Context-First Re-ordered)');
             }
 
-            console.log('[ImageGen] 📝 Prompt Preview (first 300 chars):', finalImagePrompt.substring(0, 300));
+            console.log('[ImageGen] 📝 Prompt Preview (first 300 chars):', finalImagePrompt?.substring(0, 300) || '(empty prompt)');
 
             // PROP ANCHOR TEXT INJECTION (High Priority)
             if (sceneToUpdate.referenceImage && sceneToUpdate.referenceImageDescription) {
@@ -1465,7 +1465,7 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                         console.log('[ImageGen] 🌐 Vietnamese detected, translating for', modelToUse);
                         const normalized = await normalizePromptAsync(finalImagePrompt, modelToUse, userApiKey, currentState.aspectRatio);
                         promptToSend = normalized.normalized;
-                        console.log('[ImageGen] ✅ Translated:', normalized.normalized.substring(0, 100) + '...');
+                        console.log('[ImageGen] ✅ Translated:', normalized?.normalized?.substring(0, 100) + '...');
                     } else {
                         // No API key, use sync fallback (basic, may not translate well)
                         const normalized = normalizePrompt(finalImagePrompt, modelToUse, currentState.aspectRatio);
@@ -2155,7 +2155,7 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                                 // Construct enhanced retry prompt with corrections
                                 const retryPrompt = `${retryBoost}${enhancedCorrection || ''}`.trim() || undefined;
 
-                                console.log('[DOP] Retry with identity boost:', retryBoost.substring(0, 100));
+                                console.log('[DOP] Retry with identity boost:', retryBoost?.substring(0, 100) || '');
 
                                 // Pass previous scene image as reference for continuity
                                 await performImageGeneration(scene.id, retryPrompt, false, prevScene.generatedImage, undefined, negativePrompt);
