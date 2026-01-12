@@ -811,9 +811,17 @@ ${poseOverrides.map((p, i) => `${i + 1}. ${p}`).join('\n')}
 
             // --- 7. DOP SMART RETRY INJECTION (Highest Priority) ---
             let dopCorrectionPrompt = '';
+            let cameraAngleOverrideFromDOP = ''; // CRITICAL: Override UI camera when DOP requests angle fix
             if (retryContext) {
                 dopCorrectionPrompt = getCorrectionPrompt(retryContext);
                 console.log(`[ImageGen] 🔧 DOP Correction Injected: ${dopCorrectionPrompt}`);
+
+                // CRITICAL FIX: If correction is for camera angle, OVERRIDE the UI cinematography settings
+                if (retryContext.reason === 'wrong_angle' && retryContext.userNote) {
+                    cameraAngleOverrideFromDOP = retryContext.userNote.toUpperCase();
+                    console.log(`[ImageGen] 📷 CAMERA OVERRIDE FROM DOP: ${cameraAngleOverrideFromDOP} (replacing UI settings)`);
+                }
+
                 if (addProductionLog) {
                     addProductionLog('dop', `🔧 Applying Correction: ${retryContext.reason}`, 'info', 'retry_correction');
                 }
@@ -876,14 +884,21 @@ ${poseOverrides.map((p, i) => `${i + 1}. ${p}`).join('\n')}
                 // ═══════════════════════════════════════════════════════════════
                 finalImagePrompt = `${dopCorrectionPrompt ? `!!! DOP CORRECTION: ${dopCorrectionPrompt} !!! ` : ''}${antiCollagePromptShort} SUBJECT & ACTION: ${coreActionPrompt} ${cleanedContext}. CHARACTERS: ${charPrompt}. ENVIRONMENT: ${groupEnvAnchor} ${timeWeatherLock}. STYLE: ${authoritativeStyle} ${directorDNAPrompt} ${metaTokens}. CAMERA: ${cinematographyPrompt || 'Auto'}.`.trim();
                 console.log('[ImageGen] 🟡 GOMMO prompt (subject-first optimized)');
-            } else {
                 // ═══════════════════════════════════════════════════════════════
                 // GEMINI PROMPT: Context-First Architecture
                 // Structure: [Rules] -> [Visual Core (Who/What/Action)] -> [Where] -> [How (Style/Cam)]
                 // Fixes "Logic not correct" by prioritizing Action/Context over Style headers.
                 // ═══════════════════════════════════════════════════════════════
+
+                // CRITICAL: If DOP correction specified a camera angle, use THAT instead of UI settings
+                const effectiveCameraPrompt = cameraAngleOverrideFromDOP || cinematographyPrompt || 'High Quality';
+                const cameraOverrideNote = cameraAngleOverrideFromDOP
+                    ? `!!! CAMERA ANGLE OVERRIDE FROM DOP CORRECTION: ${cameraAngleOverrideFromDOP} - IGNORE ALL OTHER CAMERA SETTINGS !!!`
+                    : '';
+
                 finalImagePrompt = `
 ${dopCorrectionPrompt ? `!!! DOP CORRECTION: ${dopCorrectionPrompt} !!!` : ''}
+${cameraOverrideNote}
 ${mandatoryPosePrompt}
 ${antiCollagePromptFull}
 ${anatomyNegativePrompt}
@@ -908,9 +923,9 @@ ${globalStoryPrompt}
 ${directorDNAPrompt}
 ${dopResearchPrompt}
 ${authoritativeStyle}
-${scaleCmd} ${scaleLockInstruction} ${noDriftGuard}
+${cameraAngleOverrideFromDOP ? `FORCED CAMERA: ${cameraAngleOverrideFromDOP} (DOP OVERRIDE - MUST USE THIS EXACT ANGLE)` : scaleCmd} ${scaleLockInstruction} ${noDriftGuard}
 STYLE DETAILS: ${metaTokens}
-TECHNICAL CAMERA: ${cinematographyPrompt ? cinematographyPrompt : 'High Quality'}`.trim().replace(/\n+/g, ' '); // Flatten to single line for API stability
+TECHNICAL CAMERA: ${effectiveCameraPrompt}`.trim().replace(/\n+/g, ' '); // Flatten to single line for API stability
                 console.log('[ImageGen] 🔵 GEMINI prompt (Context-First Re-ordered)');
             }
 
