@@ -14,6 +14,7 @@ export type RejectReason =
 export interface RetryContext {
     reason: RejectReason;
     userNote?: string;
+    currentImage?: string; // The rejected image to use as reference for fixing
 }
 
 export const DOP_CORRECTIONS: Record<RejectReason, string> = {

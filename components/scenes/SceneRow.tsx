@@ -503,7 +503,8 @@ export const SceneRow: React.FC<SceneRowProps> = ({
                                             dopRecordId={scene.dopRecordId}
                                             className="mt-2 bg-black/60 px-2 py-1 rounded-full"
                                             onRetry={(reason, note, allReasons) => {
-                                                generateImage({ reason, userNote: note });
+                                                // Pass the rejected image as reference for fixing
+                                                generateImage({ reason, userNote: note, currentImage: scene.generatedImage });
                                             }}
                                         />
                                     </div>

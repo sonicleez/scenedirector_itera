@@ -683,7 +683,7 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
                                             assignSceneToGroup={assignSceneToGroup}
                                             updateScene={updateScene}
                                             removeScene={removeScene}
-                                            generateImage={(retryContext) => performImageGeneration(scene.id, undefined, false, undefined, undefined, undefined, retryContext)}
+                                            generateImage={(retryContext) => performImageGeneration(scene.id, undefined, false, retryContext?.currentImage, retryContext?.currentImage, undefined, retryContext)}
                                             generateEndFrame={() => performImageGeneration(scene.id, undefined, true)}
                                             generateVeoPrompt={generateVeoPrompt}
                                             openImageViewer={() => handleOpenImageViewer(index)}
@@ -746,7 +746,7 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
                                         assignSceneToGroup={assignSceneToGroup}
                                         updateScene={updateScene}
                                         removeScene={removeScene}
-                                        generateImage={(retryContext) => performImageGeneration(scene.id, undefined, false, undefined, undefined, undefined, retryContext)}
+                                        generateImage={(retryContext) => performImageGeneration(scene.id, undefined, false, retryContext?.currentImage, retryContext?.currentImage, undefined, retryContext)}
                                         generateEndFrame={() => performImageGeneration(scene.id, undefined, true)}
                                         openImageViewer={() => handleOpenImageViewer(index)}
                                         onDragStart={(idx) => setDraggedSceneIndex(idx)}
