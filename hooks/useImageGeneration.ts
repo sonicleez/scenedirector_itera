@@ -307,6 +307,9 @@ export function useImageGeneration(
         }));
 
         const startTime = Date.now();
+        console.log(`[ImageGen] Starting Generation for Scene ${sceneId}`, {
+            refinementPrompt, fromManual, hasRetryContext: !!retryContext, retryReason: retryContext?.reason
+        });
 
         try {
             // --- 1. GET STYLE PROMPT ---
@@ -1664,6 +1667,7 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
 
         } catch (error: any) {
             console.error("Image generation failed:", error);
+            console.error("Full Error Details:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
 
             // [Fix] STOP batch if we hit a rate limit, fatal credential error, or auth failure
             const errorMessage = error.message || "";

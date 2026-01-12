@@ -64,6 +64,8 @@ export const DOP_CORRECTIONS: Record<RejectReason, string> = {
 
 export function getCorrectionPrompt(context: RetryContext): string {
     const template = DOP_CORRECTIONS[context.reason] || DOP_CORRECTIONS.other;
-    // Simple template replacement
-    return template.replace('{userNote || \'', '').replace('\'}', '').replace('{userNote}', context.userNote || '');
+    // Regex to match {userNote || 'Default Text'} and capture the default text
+    return template.replace(/\{userNote \|\| '([^']+)'\}/g, (match, defaultText) => {
+        return context.userNote ? context.userNote : defaultText;
+    });
 }

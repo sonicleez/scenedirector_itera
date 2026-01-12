@@ -17,7 +17,7 @@ interface ScenesMapSectionProps {
     removeScene: (id: string) => void;
     insertScene: (index: number) => void;
     moveScene: (fromIndex: number, toIndex: number) => void;
-    performImageGeneration: (id: string, refinement?: string, isEndFrame?: boolean) => void;
+    performImageGeneration: (id: string, refinement?: string, isEndFrame?: boolean, referenceImage?: string, baseImage?: string, negativePrompt?: string, retryContext?: any) => void;
     handleOpenImageViewer: (index: number) => void;
     handleGenerateAllImages: () => void;
     isBatchGenerating: boolean;
@@ -683,7 +683,7 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
                                             assignSceneToGroup={assignSceneToGroup}
                                             updateScene={updateScene}
                                             removeScene={removeScene}
-                                            generateImage={() => performImageGeneration(scene.id)}
+                                            generateImage={(retryContext) => performImageGeneration(scene.id, undefined, false, undefined, undefined, undefined, retryContext)}
                                             generateEndFrame={() => performImageGeneration(scene.id, undefined, true)}
                                             generateVeoPrompt={generateVeoPrompt}
                                             openImageViewer={() => handleOpenImageViewer(index)}
@@ -746,7 +746,7 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
                                         assignSceneToGroup={assignSceneToGroup}
                                         updateScene={updateScene}
                                         removeScene={removeScene}
-                                        generateImage={() => performImageGeneration(scene.id)}
+                                        generateImage={(retryContext) => performImageGeneration(scene.id, undefined, false, undefined, undefined, undefined, retryContext)}
                                         generateEndFrame={() => performImageGeneration(scene.id, undefined, true)}
                                         openImageViewer={() => handleOpenImageViewer(index)}
                                         onDragStart={(idx) => setDraggedSceneIndex(idx)}
