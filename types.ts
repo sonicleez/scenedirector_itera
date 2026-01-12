@@ -191,6 +191,12 @@ export interface Scene {
 
   // DOP Learning System
   dopRecordId?: string; // ID for quality rating and learning
+
+  // Cinematic Creativity Level (Visual Metaphor System)
+  // C1 = Literal (show exactly what VO says)
+  // C2 = Suggestive (show related/consequential imagery)
+  // C3 = Metaphoric (use visual metaphors for emotions/concepts)
+  creativityLevel?: 'auto' | 'C1' | 'C2' | 'C3';
 }
 
 // Script Preset System
