@@ -1,5 +1,6 @@
 
 import type { ProjectState, Character, Scene } from '../types';
+import { loadProjectPackage } from './zipUtils';
 
 // Helper to detect and remove circular references
 const getCircularReplacer = () => {
@@ -97,11 +98,27 @@ const migrateScene = (scene: any): Scene => {
 export const openProject = (onLoad: (state: ProjectState) => void): void => {
   const input = document.createElement('input');
   input.type = 'file';
-  input.accept = '.json,application/json';
-  input.onchange = (event: Event) => {
+  input.accept = '.json,application/json,.zip,application/zip,application/x-zip-compressed'; // Support ZIP
+  input.onchange = async (event: Event) => {
     const target = event.target as HTMLInputElement;
     if (target.files && target.files[0]) {
       const file = target.files[0];
+
+      // Handle ZIP Package
+      if (file.name.toLowerCase().endsWith('.zip')) {
+        try {
+          console.log('[Open] Detected Project Package (ZIP). Unpacking...');
+          const loadedState = await loadProjectPackage(file);
+          console.log('[Open] ZIP Package loaded successfully.');
+          onLoad(loadedState);
+        } catch (error) {
+          console.error("Failed to load project package:", error);
+          alert("Lỗi khi đọc file ZIP dự án. Vui lòng đảm bảo file không bị hỏng.");
+        }
+        return;
+      }
+
+      // Handle Legacy JSON
       const reader = new FileReader();
       reader.onload = (e: ProgressEvent<FileReader>) => {
         try {

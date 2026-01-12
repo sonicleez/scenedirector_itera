@@ -156,3 +156,235 @@ export const handleDownloadAll = async (state: ProjectState) => {
         URL.revokeObjectURL(link.href);
     });
 };
+
+/* 
+ * =========================================================================================
+ *  PROJECT PACKAGE SYSTEM (SAVE/LOAD ZIP)
+ * =========================================================================================
+ *  Allows saving the entire project as a ZIP file including:
+ *  - project.json: The state with image PATHS instead of base64
+ *  - script.txt: Readable script
+ *  - assets/: Folder containing all images
+ */
+
+const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+};
+
+export const saveProjectPackage = async (state: ProjectState) => {
+    try {
+        if (!JSZip) {
+            alert("JSZip library not detected. Please ensure it is loaded.");
+            return;
+        }
+
+        const zip = new JSZip();
+        const assetsFolder = zip.folder("assets"); // Folder for images
+
+        // Manual Clone to avoid JSON.stringify limit (V8 string limit) and ensure safety
+        // We only deep-clone the arrays containing images we modify
+        const safeCharacters = state.characters.map(c => ({
+            ...c,
+            props: c.props ? c.props.map(p => ({ ...p })) : []
+        }));
+
+        const safeProducts = state.products.map(p => ({
+            ...p,
+            masterImage: p.masterImage,
+            views: p.views ? { ...p.views } : undefined
+        }));
+
+        const safeScenes = state.scenes.map(s => ({ ...s }));
+
+        const safeGallery = state.assetGallery ? state.assetGallery.map(a => ({ ...a })) : undefined;
+
+        const safeState: ProjectState = {
+            ...state,
+            characters: safeCharacters,
+            products: safeProducts,
+            scenes: safeScenes,
+            assetGallery: safeGallery
+        };
+
+        let assetCount = 0;
+
+        // Helper: Save image to zip and update path in state
+        const processImageField = async (imageSource: string | null | undefined, filenameNoExt: string): Promise<string | null> => {
+            if (!imageSource) return null;
+
+            // Use our robust fetcher
+            const img = await prepareImageForZip(imageSource);
+            if (img) {
+                const filename = `${filenameNoExt}.${img.ext}`;
+                const path = `assets/${filename}`;
+
+                // Add to zip (handle base64 string or blob)
+                const options = typeof img.data === 'string' ? { base64: true } : {};
+                assetsFolder?.file(filename, img.data, options);
+                assetCount++;
+
+                return path; // Return relative path for JSON
+            }
+            return null; // Keep original if fetch fails? Or null. Let's return null to avoid broken links.
+        };
+
+        // 1. Process Characters
+        for (const c of safeState.characters) {
+            if (c.masterImage) c.masterImage = await processImageField(c.masterImage, `char_${c.id}_master`);
+            if (c.faceImage) c.faceImage = await processImageField(c.faceImage, `char_${c.id}_face`);
+            if (c.bodyImage) c.bodyImage = await processImageField(c.bodyImage, `char_${c.id}_body`);
+            if (c.sideImage) c.sideImage = await processImageField(c.sideImage, `char_${c.id}_side`);
+            if (c.backImage) c.backImage = await processImageField(c.backImage, `char_${c.id}_back`);
+
+            // Handle Props
+            if (c.props) {
+                for (let i = 0; i < c.props.length; i++) {
+                    if (c.props[i].image) {
+                        c.props[i].image = await processImageField(c.props[i].image, `char_${c.id}_prop_${i}`);
+                    }
+                }
+            }
+        }
+
+        // 2. Process Products
+        for (const p of safeState.products) {
+            if (p.masterImage) p.masterImage = await processImageField(p.masterImage, `prod_${p.id}_master`);
+            if (p.views) {
+                if (p.views.front) p.views.front = await processImageField(p.views.front, `prod_${p.id}_front`);
+                if (p.views.back) p.views.back = await processImageField(p.views.back, `prod_${p.id}_back`);
+                if (p.views.left) p.views.left = await processImageField(p.views.left, `prod_${p.id}_left`);
+                if (p.views.right) p.views.right = await processImageField(p.views.right, `prod_${p.id}_right`);
+                if (p.views.top) p.views.top = await processImageField(p.views.top, `prod_${p.id}_top`);
+            }
+        }
+
+        // 3. Process Scenes
+        for (const s of safeState.scenes) {
+            if (s.generatedImage) s.generatedImage = await processImageField(s.generatedImage, `scene_${s.sceneNumber}_gen`);
+            if (s.referenceImage) s.referenceImage = await processImageField(s.referenceImage, `scene_${s.sceneNumber}_ref`);
+            if (s.endFrameImage) s.endFrameImage = await processImageField(s.endFrameImage, `scene_${s.sceneNumber}_end`);
+        }
+
+        // 4. Process Gallery
+        if (safeState.assetGallery) {
+            for (const a of safeState.assetGallery) {
+                if (a.image) a.image = await processImageField(a.image, `gallery_${a.id}`);
+            }
+        }
+
+        // 5. Custom Style Image
+        if (safeState.customStyleImage) {
+            safeState.customStyleImage = await processImageField(safeState.customStyleImage, `style_custom_ref`);
+        }
+
+        console.log(`[Save Package] Processed ${assetCount} images.`);
+
+        // 6. Save JSON
+        zip.file("project.json", JSON.stringify(safeState, null, 2));
+
+        // 7. Save Read-only Script
+        const scriptContent = state.scenes.map(s => `[SCENE ${s.sceneNumber}] ${s.voiceOverText || ''}`).join('\n\n');
+        zip.file("script_voiceover.txt", scriptContent);
+
+        // Download
+        zip.generateAsync({ type: "blob" }).then(function (content: Blob) {
+            const filename = state.projectName ? `${slugify(state.projectName)}_PROJECT.zip` : 'project_package.zip';
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(content);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+        }).catch((e: any) => {
+            console.error("ZIP Generation Logic Failed:", e);
+            alert("Lỗi khi tạo file ZIP: " + e);
+        });
+
+    } catch (error) {
+        console.error("Failed to save project package:", error);
+        alert("Lỗi khi lưu dự án ZIP (Code): " + (error instanceof Error ? error.message : String(error)));
+    }
+};
+
+export const loadProjectPackage = async (file: File): Promise<ProjectState> => {
+    if (!JSZip) throw new Error("JSZip not loaded");
+
+    const zip = await new JSZip().loadAsync(file);
+
+    // 1. Read project.json
+    const jsonFile = zip.file("project.json");
+    if (!jsonFile) throw new Error("Invalid Project Package: Missing project.json");
+
+    const jsonStr = await jsonFile.async("string");
+    const state = JSON.parse(jsonStr) as ProjectState;
+
+    // Helper: Restore image from zip path
+    const restoreImage = async (path: string | null | undefined): Promise<string | null> => {
+        if (!path || !path.startsWith('assets/')) return path || null;
+
+        const imgFile = zip.file(path);
+        if (imgFile) {
+            const blob = await imgFile.async("blob");
+            return await blobToBase64(blob);
+        }
+        return null;
+    };
+
+    // 2. Restore Characters
+    if (state.characters) {
+        for (const c of state.characters) {
+            c.masterImage = await restoreImage(c.masterImage);
+            c.faceImage = await restoreImage(c.faceImage);
+            c.bodyImage = await restoreImage(c.bodyImage);
+            c.sideImage = await restoreImage(c.sideImage);
+            c.backImage = await restoreImage(c.backImage);
+
+            if (c.props) {
+                for (const p of c.props) {
+                    p.image = await restoreImage(p.image);
+                }
+            }
+        }
+    }
+
+    // 3. Restore Products
+    if (state.products) {
+        for (const p of state.products) {
+            p.masterImage = await restoreImage(p.masterImage);
+            if (p.views) {
+                p.views.front = await restoreImage(p.views.front);
+                p.views.back = await restoreImage(p.views.back);
+                p.views.left = await restoreImage(p.views.left);
+                p.views.right = await restoreImage(p.views.right);
+                p.views.top = await restoreImage(p.views.top);
+            }
+        }
+    }
+
+    // 4. Restore Scenes
+    if (state.scenes) {
+        for (const s of state.scenes) {
+            s.generatedImage = await restoreImage(s.generatedImage);
+            s.referenceImage = await restoreImage(s.referenceImage);
+            s.endFrameImage = await restoreImage(s.endFrameImage);
+        }
+    }
+
+    // 5. Restore Gallery
+    if (state.assetGallery) {
+        for (const a of state.assetGallery) {
+            a.image = await restoreImage(a.image);
+        }
+    }
+
+    // 6. Custom Style Image
+    state.customStyleImage = await restoreImage(state.customStyleImage);
+
+    return state;
+};

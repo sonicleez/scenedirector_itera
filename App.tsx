@@ -29,7 +29,7 @@ import { KeyboardShortcuts } from './components/common/KeyboardShortcuts';
 import { LocationLibraryPanel } from './components/locations'; // NEW: Location Library
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { APP_NAME, PRIMARY_GRADIENT, PRIMARY_GRADIENT_HOVER } from './constants/presets';
-import { handleDownloadAll } from './utils/zipUtils';
+import { handleDownloadAll, saveProjectPackage } from './utils/zipUtils';
 import {
     ProjectState,
     ScriptPreset,
@@ -835,6 +835,7 @@ const App: React.FC = () => {
                         onAdminClick={isAdmin ? () => setAdminOpen(true) : undefined}
                         profile={profile}
                         subscriptionExpired={subscriptionExpired}
+                        onSavePackage={() => saveProjectPackage(state)}
                     />
 
                     <main ref={mainContentRef} className="h-full w-full overflow-auto pt-20">

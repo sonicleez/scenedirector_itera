@@ -342,27 +342,6 @@ export const SceneRow: React.FC<SceneRowProps> = ({
                             )}
                         </div>
                     </div>
-
-                    {/* Creative Intensity - Visual Metaphor Level */}
-                    <div className="mt-1.5 pt-1.5 border-t border-gray-700/50">
-                        <div className="flex items-center gap-2">
-                            <span className="text-[8px] text-gray-500 font-semibold whitespace-nowrap">🎨 Creative:</span>
-                            <select
-                                value={scene.creativityLevel || 'auto'}
-                                onChange={(e) => updateScene(scene.id, { creativityLevel: e.target.value as 'auto' | 'C1' | 'C2' | 'C3' })}
-                                className="flex-1 bg-gray-800 text-[10px] text-gray-300 border border-gray-600 rounded px-1.5 py-1 focus:border-purple-500"
-                                title="Creative Intensity - How AI interprets the scene"
-                            >
-                                <option value="auto">🤖 Auto (AI decides)</option>
-                                <option value="C1">📷 C1: Literal (Tả thực)</option>
-                                <option value="C2">💡 C2: Suggestive (Gợi ý)</option>
-                                <option value="C3">🎭 C3: Metaphoric (Ẩn dụ)</option>
-                            </select>
-                        </div>
-                        {scene.creativityLevel === 'C3' && (
-                            <p className="text-[8px] text-purple-400/70 mt-0.5 italic">AI sẽ dùng ẩn dụ thay vì tả thực</p>
-                        )}
-                    </div>
                 </div>
             </div>
 

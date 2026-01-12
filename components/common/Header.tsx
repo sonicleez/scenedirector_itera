@@ -6,6 +6,7 @@ export interface HeaderProps {
     isSticky: boolean;
     onProfileClick: () => void;
     onSave: () => void;
+    onSavePackage?: () => void;
     onOpen: () => void;
     onNewProject: () => void;
     onDownloadAll: () => void;
@@ -25,7 +26,7 @@ export interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
-    isSticky, onProfileClick, onSave, onOpen, onNewProject,
+    isSticky, onProfileClick, onSave, onSavePackage, onOpen, onNewProject,
     onDownloadAll, canDownload, isContinuityMode,
     toggleContinuityMode,
     onUndo, onRedo, canUndo, canRedo,
@@ -71,6 +72,11 @@ export const Header: React.FC<HeaderProps> = ({
 
                     <button onClick={onNewProject} className="px-3 py-2 text-xs md:text-sm font-semibold text-white bg-blue-600/50 rounded-lg hover:bg-blue-600/70 transition-colors">📄 New</button>
                     <button onClick={onSave} className="px-3 py-2 text-xs md:text-sm font-semibold text-white bg-white/10 rounded-lg hover:bg-white/20 transition-colors">Lưu</button>
+                    {onSavePackage && (
+                        <button onClick={onSavePackage} className="px-3 py-2 text-xs md:text-sm font-semibold text-emerald-400 bg-emerald-500/10 rounded-lg hover:bg-emerald-500/20 transition-colors border border-emerald-500/20 ml-2">
+                            Lưu ZIP
+                        </button>
+                    )}
                     <button onClick={onOpen} className="px-3 py-2 text-xs md:text-sm font-semibold text-white bg-white/10 rounded-lg hover:bg-white/20 transition-colors">Mở</button>
 
                     {isLoggedIn && (
