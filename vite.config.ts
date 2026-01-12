@@ -25,46 +25,27 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks(id) {
-            // Vendor chunks - rarely change, cached well
+            // Only split large, standalone vendor libraries
             if (id.includes('node_modules')) {
-              if (id.includes('react-dom') || id.includes('react/')) {
-                return 'vendor-react';
-              }
-              if (id.includes('lucide-react')) {
-                return 'vendor-icons';
-              }
-              if (id.includes('@supabase')) {
-                return 'vendor-supabase';
-              }
+              // Google AI SDK is large and self-contained
               if (id.includes('@google/genai')) {
                 return 'vendor-ai';
               }
-              // Other vendor libs
-              return 'vendor-misc';
+              // Supabase is large and self-contained
+              if (id.includes('@supabase')) {
+                return 'vendor-supabase';
+              }
+              // Keep all other node_modules together to avoid React dependency issues
+              // This includes react, react-dom, lucide-react, and other small libs
             }
-            // App code splitting by feature
+            // App code splitting - only for non-critical paths
             if (id.includes('/modals/')) {
               return 'app-modals';
-            }
-            if (id.includes('/hooks/')) {
-              return 'app-hooks';
-            }
-            if (id.includes('/utils/')) {
-              return 'app-utils';
-            }
-            if (id.includes('/sections/')) {
-              return 'app-sections';
-            }
-            if (id.includes('/scenes/')) {
-              return 'app-scenes';
-            }
-            if (id.includes('/constants/')) {
-              return 'app-constants';
             }
           }
         }
       },
-      chunkSizeWarningLimit: 600, // 600KB limit
+      chunkSizeWarningLimit: 800, // Increase limit since we're bundling more together
     }
   };
 });
