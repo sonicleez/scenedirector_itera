@@ -391,40 +391,6 @@ export function useScriptAnalysis(userApiKey: string | null) {
             }
 
             // ═══════════════════════════════════════════════════════════════
-            // NEW LAYER: CINEMATIC MAPPING (Psychological & Metaphorical Logic)
-            // ═══════════════════════════════════════════════════════════════
-            const cinematicMappingInstructions = `
-*** CINEMATIC MAPPING LAYER (PSYCHOLOGICAL DOCUMENTARY) ***
-You are an expert DoP specializing in Psychological Crime Documentaries. 
-Apply the following 3-STEP LOGIC to every scene you generate:
-
-STEP 1: CONTENT CLASSIFICATION (Assign a Mode)
-- [C1] LITERAL: For Action, Evidence, Numbers, Locations. (e.g. "He hid the knife under the bed") -> SHOW IT DIRECTLY.
-- [C2] SUGGESTIVE: For Consequences, Mystery. (e.g. "He knew there was no escape") -> SHOW SYMBOLIC OBJECTS (e.g., A trapped insect, a closing door).
-- [C3] METAPHORIC: For Pure Emotion, Inner Thought, Trauma. (e.g. "His soul shattered") -> SHOW PURE METAPHOR (Lighting, Textures, Abstract Compositions).
-
-STEP 2: LOCATION-BASED METAPHOR (Crucial)
-- DO NOT hallucinate random objects. USE THE MATERIALS FROM THE CURRENT LOCATION.
-- If Location is "Warehouse": Metaphor = Rust, Chains, Dust, Broken Glass, Shadows.
-- If Location is "Luxury Hotel": Metaphor = Reflections, Cold Marble, Distorted Mirrors, Wine Stains.
-- RULE: "Metaphor must be plausibly found in the location."
-
-STEP 3: TECHNICAL TRANSLATION (Prompt Engineering)
-- Translate emotions into CINEMATIC SPECS, not adjectives.
-- SADNESS -> "Desaturated Blue/Grey tones, Wide Shot (Isolation), Static Camera."
-- FEAR -> "High Contrast (Chiaroscuro), Extreme Close-Up on eyes/sweat, Dutch Angle, Unsettling framing."
-- CONFUSION -> "Shallow Depth of Field, Rack Focus, Lens Distortion, Fog/Haze."
-
-*** ANTI-BLINDSPOT RULES ***
-1. FORENSIC GUARD: If script mentions EVIDENCE (knife, gun, letter), you MUST use [C1] LITERAL mode. Do not obscure evidence with metaphor.
-2. CONSISTENCY: Keep the Face ID and Location ID consistent even in [C3] mode.
-3. NO CLICHÉS: No cheesy "demons behind back" or "crying blood". Use LIGHTING and COMPOSITION to show horror.
-
-INSTRUCTION: In your scene breakdowns, explicitly mark the mode ([C1], [C2], [C3]) in the 'visualPrompt' field.
-`;
-            contextInstructions += cinematicMappingInstructions;
-
-            // ═══════════════════════════════════════════════════════════════
             // STEP 1: VISUAL CLUSTERING (The "Director's Thinking" Phase)
             // ═══════════════════════════════════════════════════════════════
             setAnalysisStage('clustering'); // New Stage
@@ -480,8 +446,46 @@ Each of these patterns MUST become its OWN separate shot:
    - "A mask. He picks it up." → TWO shots (describing, then action!)
 4. **VO TRACKING**: You MUST keep track of which part of the text corresponds to which visual.
 
-*** ANTI-SKIP RULE ***
 If a sentence contains DRAMATIC content (violence, numbers, key actions), it MUST have its own visual.
+
+*** DYNAMIC VISUAL INFERENCE ENGINE (METAPHOR SYSTEM) ***
+For every scene, you MUST analyze the Voice Over/Context and assign a [CREATIVE INTENSITY] tag [C1], [C2], or [C3].
+
+[C1] LITERAL (The Witness):
+- Trigger: VO mentions specific physical actions, objects, names, locations.
+- Logic: "Draw exactly what is described."
+- Example: "He picks up the gun." → Show man picking up gun.
+
+[C2] SUGGESTIVE (The Storyteller):
+- Trigger: VO mentions immediate consequences, rising tension, or preparations.
+- Logic: Show the *implication* or *environment* related to the thought.
+- Example: "He knew there was no way out." → High angle shot of him surrounded by warehouse shelving (a maze).
+
+[C3] METAPHORIC (The Artist):
+- Trigger: VO mentions internal states, emotions (fear, regret, chaos), system concepts (data loss), time, or abstract ideas.
+- Logic: Use **CINEMATIC LANGUAGE (Light, Shadow, Angle)** or **PHYSICS** to represent the feeling.
+- **CONSTRAINT**: You must ONLY use objects that exist in the defined 'locationAnchor'. DO NOT hallucinate random objects (no hourglasses in space, no random animals).
+
+*** METAPHOR RULES (LOCATION ANCHOR CONSTRAINT) ***
+- If Location is "Warehouse": Use peeling paint, rust, dust motes, shadows from beams. (NOT a clock floating in air).
+- If Location is "Office": Use screen reflections, blinking server lights, cold glass surfaces. (NOT a labyrinth of stone).
+- If Location is "Nature": Use wind, rain, wilting flowers, storms.
+
+*** CINEMATIC BRIDGE (For [C3] Metaphors) ***
+- **Isolation/Loneliness**: Extreme Wide Shot + Negative Space.
+- **Danger/Threat**: Low-key lighting + Hard Shadows (Chiaroscuro).
+- **Instability**: Dutch Angle (Tilted camera) + Handheld shake.
+- **Overwhelmed**: Extreme Close-up (ECU) on sweating skin or dilated pupils.
+
+*** FEW-SHOT EXAMPLES (LEARN FROM THESE) ***
+Input VO: "He was lost in his own thoughts." (Location: Smoking Room)
+[C3] Output: "EXTREME CLOSE-UP of a cigarette burning in the ashtray. Smoke rises in a twisted, complex pattern. Low-key lighting."
+
+Input VO: "The system is collapsing." (Location: City at Night)
+[C3] Output: "HIGH ANGLE drone shot. City zones go dark one by one like falling dominoes. Cold blue color grading."
+
+Input VO: "He felt the eyes of everyone on him." (Location: Dark Alley)
+[C3] Output: "High angle looking down. Multiple CCTV cameras visible on the walls, their red recording lights glowing in the shadows, all pointing at the subject."
 Do NOT hide important actions inside B-rolls. They need to be MAIN scenes.
             `;
 
