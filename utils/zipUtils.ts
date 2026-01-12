@@ -4,38 +4,48 @@ import { slugify } from './helpers';
 // @ts-ignore
 const JSZip = window.JSZip;
 
-// Helper to extract base64 data and detect file extension from data URL
-const extractImageData = (dataUrl: string): { base64: string; ext: string } | null => {
-    if (!dataUrl) return null;
+/**
+ * Ensures we have a valid Blob/Base64 for zip insertion.
+ * - If dataURI: returns it directly (JSZip handles it).
+ * - If URL (blob/http): fetches it and returns the Blob.
+ * - Extracts extension from MIME type.
+ */
+const prepareImageForZip = async (source: string): Promise<{ data: string | Blob; ext: string } | null> => {
+    if (!source) return null;
 
-    // Handle data URL format: data:image/png;base64,XXXXX
-    if (dataUrl.startsWith('data:')) {
-        const match = dataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
-        if (match) {
-            const mimeExt = match[1]; // png, jpeg, webp, etc.
-            const base64 = match[2];
-            // Map MIME types to file extensions
-            let ext = 'png';
-            if (mimeExt === 'jpeg' || mimeExt === 'jpg') ext = 'jpg';
-            else if (mimeExt === 'webp') ext = 'webp';
-            else if (mimeExt === 'gif') ext = 'gif';
-            else if (mimeExt === 'png') ext = 'png';
-            else ext = mimeExt; // fallback to mime type as extension
-            return { base64, ext };
+    try {
+        // CASE 1: Data URI (base64)
+        if (source.startsWith('data:')) {
+            const match = source.match(/^data:image\/(\w+);base64,(.+)$/);
+            if (match) {
+                let mimeExt = match[1];
+                let ext = 'png';
+                if (['jpeg', 'jpg'].includes(mimeExt)) ext = 'jpg';
+                else if (mimeExt === 'webp') ext = 'webp';
+                else if (mimeExt === 'gif') ext = 'gif';
+                else if (mimeExt !== 'png') ext = mimeExt;
+
+                return { data: match[2], ext };
+            }
         }
-        // Fallback: try simple split
-        const parts = dataUrl.split(',');
-        if (parts.length === 2) {
-            return { base64: parts[1], ext: 'png' };
-        }
+
+        // CASE 2: URL (blob: or http:)
+        const response = await fetch(source);
+        const blob = await response.blob();
+        const mimeType = blob.type;
+        let ext = 'png';
+        if (mimeType.includes('jpeg') || mimeType.includes('jpg')) ext = 'jpg';
+        else if (mimeType.includes('webp')) ext = 'webp';
+
+        return { data: blob, ext };
+
+    } catch (error) {
+        console.warn('Failed to fetch image for ZIP:', source, error);
+        return null;
     }
-
-    // Not a data URL - skip
-    console.warn('[ZIP Export] Skipping non-data URL image');
-    return null;
 };
 
-export const handleDownloadAll = (state: ProjectState) => {
+export const handleDownloadAll = async (state: ProjectState) => {
     if (!JSZip) {
         alert("JSZip not found. Please ensure it is loaded.");
         return;
@@ -46,78 +56,97 @@ export const handleDownloadAll = (state: ProjectState) => {
     const assetsFolder = zip.folder("Assets");
     const charsFolder = assetsFolder?.folder("Characters");
     const productsFolder = assetsFolder?.folder("Products");
+    const docsFolder = zip.folder("Docs");
 
-    let hasImages = false;
+    let fileCount = 0;
+
+    // 0. Include Script Text
+    const scriptContent = state.scenes.map(s => `[SCENE ${s.sceneNumber}] ${s.voiceOverText}`).join('\n\n');
+    docsFolder?.file("script_voiceover.txt", scriptContent);
 
     // 1. SCENE MAP IMAGES
-    state.scenes.forEach((scene) => {
+    const scenePromises = state.scenes.map(async (scene) => {
         if (scene.generatedImage) {
-            const imgData = extractImageData(scene.generatedImage);
-            if (imgData) {
-                scenesFolder?.file(`${scene.sceneNumber}.${imgData.ext}`, imgData.base64, { base64: true });
-                hasImages = true;
+            const img = await prepareImageForZip(scene.generatedImage);
+            if (img) {
+                // If it's a string (base64), pass options. If blob, pass directly.
+                const options = typeof img.data === 'string' ? { base64: true } : {};
+                scenesFolder?.file(`${scene.sceneNumber}.${img.ext}`, img.data, options);
+                fileCount++;
             }
         }
     });
 
     // 2. ASSETS - Characters
-    state.characters.forEach(c => {
+    const charPromises = state.characters.map(async (c) => {
         const cName = slugify(c.name) || c.id;
-        const charImages: { key: string; img: string | null | undefined }[] = [
+        const charImages = [
             { key: 'master', img: c.masterImage },
             { key: 'face', img: c.faceImage },
             { key: 'body', img: c.bodyImage },
             { key: 'side', img: c.sideImage },
             { key: 'back', img: c.backImage },
         ];
-        charImages.forEach(({ key, img }) => {
-            if (img) {
-                const imgData = extractImageData(img);
-                if (imgData) {
-                    charsFolder?.file(`${cName}_${key}.${imgData.ext}`, imgData.base64, { base64: true });
-                    hasImages = true;
+
+        for (const item of charImages) {
+            if (item.img) {
+                const img = await prepareImageForZip(item.img);
+                if (img) {
+                    const options = typeof img.data === 'string' ? { base64: true } : {};
+                    charsFolder?.file(`${cName}_${item.key}.${img.ext}`, img.data, options);
+                    fileCount++;
                 }
             }
-        });
+        }
     });
 
     // 3. ASSETS - Products
-    state.products.forEach(p => {
+    const prodPromises = state.products.map(async (p) => {
         const pName = slugify(p.name) || p.id;
+
+        // Master image
         if (p.masterImage) {
-            const imgData = extractImageData(p.masterImage);
-            if (imgData) {
-                productsFolder?.file(`${pName}_master.${imgData.ext}`, imgData.base64, { base64: true });
-                hasImages = true;
+            const img = await prepareImageForZip(p.masterImage);
+            if (img) {
+                const options = typeof img.data === 'string' ? { base64: true } : {};
+                productsFolder?.file(`${pName}_master.${img.ext}`, img.data, options);
+                fileCount++;
             }
         }
+
+        // Views
         if (p.views) {
-            const viewImages: { key: string; img: string | null | undefined }[] = [
+            const viewImages = [
                 { key: 'front', img: p.views.front },
                 { key: 'back', img: p.views.back },
                 { key: 'left', img: p.views.left },
                 { key: 'right', img: p.views.right },
                 { key: 'top', img: p.views.top },
             ];
-            viewImages.forEach(({ key, img }) => {
-                if (img) {
-                    const imgData = extractImageData(img);
-                    if (imgData) {
-                        productsFolder?.file(`${pName}_${key}.${imgData.ext}`, imgData.base64, { base64: true });
-                        hasImages = true;
+            for (const item of viewImages) {
+                if (item.img) {
+                    const img = await prepareImageForZip(item.img);
+                    if (img) {
+                        const options = typeof img.data === 'string' ? { base64: true } : {};
+                        productsFolder?.file(`${pName}_${item.key}.${img.ext}`, img.data, options);
+                        fileCount++;
                     }
                 }
-            });
+            }
         }
     });
 
-    if (!hasImages) {
-        alert("Không có ảnh nào để tải xuống.");
+    // Wait for all fetches
+    await Promise.all([...scenePromises, ...charPromises, ...prodPromises]);
+
+    if (fileCount === 0) {
+        alert("Không tìm thấy ảnh nào (Scenes/Characters/Products) để tải xuống.");
         return;
     }
 
+    // Generate and download
     zip.generateAsync({ type: "blob" }).then(function (content: Blob) {
-        const filename = state.projectName ? `${slugify(state.projectName)}_full.zip` : 'project-images.zip';
+        const filename = state.projectName ? `${slugify(state.projectName)}_full.zip` : 'project-assets.zip';
         const link = document.createElement('a');
         link.href = URL.createObjectURL(content);
         link.download = filename;
