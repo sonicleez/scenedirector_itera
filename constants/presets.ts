@@ -108,6 +108,67 @@ export const VEO_MODES = [
     { value: 'start-end-frame', label: '🎞️ Start/End Frame', hint: 'Hai ảnh làm điểm đầu & cuối' },
 ];
 
+// Camera Motion options for Veo 3 - matches Veo official documentation
+export const VEO_CAMERA_MOTIONS = [
+    // Auto
+    { value: '', label: 'Auto (AI chọn)', prompt: '', category: 'auto' },
+
+    // Static/Steady
+    { value: 'static', label: '📍 Static (Tripod)', prompt: 'static locked-off camera, no movement, stable tripod shot', category: 'static' },
+    { value: 'steady', label: '🎯 Steady (Minimal)', prompt: 'steady camera, minimal subtle movement, stable shot', category: 'static' },
+
+    // Orbit/Arc (Circular movement)
+    { value: 'orbit-left', label: '↪️ Orbit Left', prompt: 'smooth orbit left around subject, circular arc movement', category: 'orbit' },
+    { value: 'orbit-right', label: '↩️ Orbit Right', prompt: 'smooth orbit right around subject, circular arc movement', category: 'orbit' },
+    { value: 'orbit-full', label: '🔄 Orbit 360°', prompt: 'full 360-degree orbit around subject, complete circular arc', category: 'orbit' },
+
+    // Pan (Horizontal rotation on fixed point)
+    { value: 'pan-left', label: '⬅️ Pan Left', prompt: 'horizontal pan left, camera rotates left on tripod axis', category: 'pan' },
+    { value: 'pan-right', label: '➡️ Pan Right', prompt: 'horizontal pan right, camera rotates right on tripod axis', category: 'pan' },
+    { value: 'pan-follow', label: '👁️ Pan Follow', prompt: 'pan following subject movement, smooth horizontal tracking', category: 'pan' },
+
+    // Tilt (Vertical rotation on fixed point)  
+    { value: 'tilt-up', label: '⬆️ Tilt Up', prompt: 'tilt up, camera rotates upward revealing higher elements', category: 'tilt' },
+    { value: 'tilt-down', label: '⬇️ Tilt Down', prompt: 'tilt down, camera rotates downward revealing lower elements', category: 'tilt' },
+
+    // Dolly (Move camera forward/backward)
+    { value: 'dolly-in', label: '🔍 Dolly In (Push)', prompt: 'dolly in toward subject, camera physically moves forward, push in', category: 'dolly' },
+    { value: 'dolly-out', label: '🔎 Dolly Out (Pull)', prompt: 'dolly out from subject, camera physically moves backward, pull out', category: 'dolly' },
+    { value: 'dolly-zoom', label: '🎬 Dolly Zoom (Vertigo)', prompt: 'dolly zoom vertigo effect, dolly in while zooming out, disorienting perspective shift', category: 'dolly' },
+
+    // Tracking (Move alongside subject)
+    { value: 'track-left', label: '⏪ Track Left', prompt: 'tracking shot moving left parallel to action, lateral dolly left', category: 'track' },
+    { value: 'track-right', label: '⏩ Track Right', prompt: 'tracking shot moving right parallel to action, lateral dolly right', category: 'track' },
+    { value: 'track-follow', label: '🏃 Track Follow', prompt: 'tracking shot following subject from behind, steadicam follow', category: 'track' },
+    { value: 'track-lead', label: '👤 Track Lead', prompt: 'tracking shot leading subject from front, walking backward tracking', category: 'track' },
+
+    // Crane/Jib (Vertical movement)
+    { value: 'crane-up', label: '🏗️ Crane Up', prompt: 'crane shot rising up, vertical ascent revealing wide view, jib up', category: 'crane' },
+    { value: 'crane-down', label: '⬇️ Crane Down', prompt: 'crane shot descending down, vertical descent into scene, jib down', category: 'crane' },
+    { value: 'crane-boom', label: '🎢 Boom (Up & Over)', prompt: 'boom shot rising up and over subject, arc crane movement', category: 'crane' },
+
+    // Handheld (Authentic/Documentary feel)
+    { value: 'handheld-subtle', label: '✋ Handheld (Subtle)', prompt: 'subtle handheld camera, natural slight shake, documentary feel', category: 'handheld' },
+    { value: 'handheld-dynamic', label: '🎥 Handheld (Dynamic)', prompt: 'dynamic handheld camera, energetic movement, action documentary style', category: 'handheld' },
+    { value: 'handheld-pov', label: '👁️ Handheld POV', prompt: 'handheld POV first-person perspective, immersive documentary style', category: 'handheld' },
+
+    // Zoom (Lens movement, not camera)
+    { value: 'zoom-in', label: '🔍 Zoom In (Lens)', prompt: 'zoom in using lens, focal length increase, no camera movement', category: 'zoom' },
+    { value: 'zoom-out', label: '🔎 Zoom Out (Lens)', prompt: 'zoom out using lens, focal length decrease, wide reveal', category: 'zoom' },
+    { value: 'zoom-crash', label: '💥 Crash Zoom', prompt: 'rapid crash zoom in for impact, dramatic fast zoom', category: 'zoom' },
+
+    // Aerial/Drone
+    { value: 'aerial-rise', label: '🚁 Aerial Rise', prompt: 'aerial drone shot rising upward, bird eye view reveal', category: 'aerial' },
+    { value: 'aerial-descend', label: '🚁 Aerial Descend', prompt: 'aerial drone shot descending into scene, top-down approach', category: 'aerial' },
+    { value: 'aerial-flyby', label: '✈️ Aerial Flyby', prompt: 'aerial flyby shot, drone passing by subject horizontally', category: 'aerial' },
+    { value: 'aerial-circle', label: '🌀 Aerial Circle', prompt: 'aerial circling shot, drone orbiting subject from above', category: 'aerial' },
+
+    // Special/Stylized
+    { value: 'whip-pan', label: '💨 Whip Pan', prompt: 'fast whip pan with motion blur, quick head turn feel', category: 'special' },
+    { value: 'roll', label: '🔃 Roll (Dutch)', prompt: 'camera roll rotating on axis, dutch angle transition', category: 'special' },
+    { value: 'rack-focus', label: '🎯 Rack Focus', prompt: 'rack focus shift between foreground and background, depth pull', category: 'special' },
+];
+
 export const VEO_PRESETS = [
     {
         value: 'cinematic-master',

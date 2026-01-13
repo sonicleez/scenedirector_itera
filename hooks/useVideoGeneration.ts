@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { ProjectState, AgentStatus } from '../types';
 
-import { CAMERA_ANGLES, LENS_OPTIONS, VEO_PRESETS } from '../constants/presets';
+import { CAMERA_ANGLES, LENS_OPTIONS, VEO_PRESETS, VEO_CAMERA_MOTIONS } from '../constants/presets';
 import { Scene } from '../types';
 
 export function useVideoGeneration(
@@ -186,6 +186,11 @@ export function useVideoGeneration(
 
             const selectedPreset = VEO_PRESETS.find(p => p.value === scene.veoPreset) || VEO_PRESETS[0];
 
+            // Get selected camera motion
+            const selectedCameraMotion = VEO_CAMERA_MOTIONS.find(m => m.value === scene.veoCameraMotion);
+            const cameraMotionPrompt = selectedCameraMotion?.prompt || '';
+            const cameraMotionLabel = selectedCameraMotion?.label || 'Auto';
+
             // Check if Documentary mode
             const isDocumentaryMode = scene.veoPreset === 'documentary-natural';
 
@@ -200,9 +205,10 @@ Role: Documentary Video Prompt Generator (MINIMAL mode)
 **SCENE CONTEXT (for action reference):**
 - Story: "${context}"
 - Intent: "${promptName}"
+${cameraMotionPrompt ? `- REQUIRED CAMERA MOTION: ${cameraMotionPrompt}` : '- Camera Motion: Auto (choose appropriate for action)'}
 
 **STRICT OUTPUT FORMAT:**
-"[Camera: handheld/observational], [subject action verb], [natural body movement]. SFX: [real ambient sound]."
+"[Camera: ${cameraMotionPrompt || 'handheld/observational'}], [subject action verb], [natural body movement]. SFX: [real ambient sound]."
 
 **EXAMPLE OUTPUTS:**
 - "Handheld medium shot, subject exhales slowly, shoulders relax. SFX: distant traffic hum."
@@ -245,6 +251,7 @@ ${finalDialogue ? `- Character Dialogue (ON-SCREEN character speaking, ${effecti
 - Products visible: "${productContext}"
 - Camera Angle: "${scene.cameraAngleOverride === 'custom' ? scene.customCameraAngle : (CAMERA_ANGLES.find(a => a.value === scene.cameraAngleOverride)?.label || 'Auto')}"
 - Lens Style: "${scene.lensOverride === 'custom' ? scene.customLensOverride : (LENS_OPTIONS.find(l => l.value === scene.lensOverride)?.label || 'Auto')}"
+${cameraMotionPrompt ? `- **REQUIRED CAMERA MOTION:** ${cameraMotionPrompt}` : '- Camera Motion: Auto (AI selects based on emotion and scene type)'}
 
 **SCENE INTELLIGENCE (Auto-Analyzed):**
 - Detected Emotional Tone: ${primaryEmotion.toUpperCase()}${detectedEmotions.length > 1 ? ` (also: ${detectedEmotions.slice(1).join(', ')})` : ''}

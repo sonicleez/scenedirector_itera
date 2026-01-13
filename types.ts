@@ -158,6 +158,7 @@ export interface Scene {
 
   veoPreset?: string; // Preset style for Veo prompt
   veoMode?: 'image-to-video' | 'start-end-frame'; // Manual mode selection
+  veoCameraMotion?: string; // Camera motion for Veo (e.g., 'orbit-left', 'dolly-in', 'pan-right')
   imageRole?: 'single' | 'start-frame' | 'end-frame'; // Role of generatedImage
   endFrameImage?: string | null; // End frame for Start/End Frame mode
 
