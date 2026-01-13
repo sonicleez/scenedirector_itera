@@ -31,3 +31,14 @@ declare module 'react-canvas-draw' {
         getDataURL(fileType?: string, useBgImage?: boolean, backgroundColour?: string): string;
     }
 }
+
+// CSS Module declarations
+declare module '*.module.css' {
+    const classes: { [key: string]: string };
+    export default classes;
+}
+
+declare module '*.module.scss' {
+    const classes: { [key: string]: string };
+    export default classes;
+}

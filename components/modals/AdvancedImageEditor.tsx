@@ -1068,13 +1068,13 @@ export const AdvancedImageEditor: React.FC<AdvancedImageEditorProps> = ({
                                         onDrop={(e) => {
                                             e.preventDefault();
                                             e.currentTarget.classList.remove('border-purple-500', 'bg-purple-900/30');
-                                            const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+                                            const files = (Array.from(e.dataTransfer.files) as File[]).filter(f => f.type.startsWith('image/'));
                                             const maxToAdd = MAX_REFERENCE_IMAGES - referenceImages.length;
                                             const filesToProcess = files.slice(0, maxToAdd);
 
-                                            filesToProcess.forEach(file => {
+                                            filesToProcess.forEach((file: File) => {
                                                 const reader = new FileReader();
-                                                reader.onload = (ev) => {
+                                                reader.onload = (ev: ProgressEvent<FileReader>) => {
                                                     setReferenceImages(prev => [...prev, ev.target?.result as string]);
                                                 };
                                                 reader.readAsDataURL(file);
@@ -1102,7 +1102,7 @@ export const AdvancedImageEditor: React.FC<AdvancedImageEditorProps> = ({
                                         accept="image/*"
                                         className="hidden"
                                         onChange={(e) => {
-                                            const files = Array.from(e.target.files || []);
+                                            const files = Array.from(e.target.files || []) as File[];
                                             const maxToAdd = MAX_REFERENCE_IMAGES - referenceImages.length;
                                             const filesToProcess = files.slice(0, maxToAdd);
 
