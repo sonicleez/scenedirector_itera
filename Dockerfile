@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci
+# Install dependencies (--legacy-peer-deps for react-canvas-draw compatibility with React 19)
+RUN npm install --legacy-peer-deps
 
 # Copy source code
 COPY . .
