@@ -72,6 +72,17 @@ export function useVideoGeneration(
                     const imgRes = await fetch(proxyUrl);
                     const blob = await imgRes.blob();
                     mimeType = blob.type;
+
+                    // [FIX] Veo API rejects 'application/octet-stream'. Infer MIME from URL or default.
+                    if (!mimeType || mimeType === 'application/octet-stream') {
+                        const url = scene.generatedImage.toLowerCase();
+                        if (url.includes('.png')) mimeType = 'image/png';
+                        else if (url.includes('.webp')) mimeType = 'image/webp';
+                        else if (url.includes('.gif')) mimeType = 'image/gif';
+                        else mimeType = 'image/jpeg'; // Default fallback
+                        console.log('[Veo] Fixed MIME type to:', mimeType);
+                    }
+
                     data = await new Promise<string>((resolve) => {
                         const reader = new FileReader();
                         reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
