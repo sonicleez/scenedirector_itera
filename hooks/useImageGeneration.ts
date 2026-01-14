@@ -386,9 +386,11 @@ export function useImageGeneration(
             // --- PROMPT LENGTH OPTIMIZATION ---
             // Strip verbose sections that AI may ignore anyway
             // SCENE STATE MEMORY is already handled by extractPoseFromVO, so remove redundant text prompts
+            // NOTE: LOCATION ANCHOR is KEPT as it's critical for scene diversity!
             cleanedContext = cleanedContext
                 .replace(/\[SCENE STATE MEMORY[^\]]*\]:?[^[]*(?=\[|$)/gi, '')
-                .replace(/\[LOCATION ANCHOR[^\]]*\]:?[^[]*(?=\[|$)/gi, '')  // Keep only essential location
+                // REMOVED: .replace(/\[LOCATION ANCHOR[^\]]*\]:?[^[]*(?=\[|$)/gi, '')  
+                // ^^ DO NOT STRIP LOCATION ANCHOR - it's essential for distinguishing scenes!
                 .trim();
 
             // Warn if context is excessively long
