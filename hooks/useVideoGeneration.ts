@@ -364,6 +364,7 @@ Return ONLY the video prompt string. NO explanations, NO markdown.
             // Use documentary or standard prompt based on preset
             const promptText = isDocumentaryMode ? documentaryPromptText : standardPromptText;
 
+            console.log('[Veo] Calling Gemini API to generate prompt...');
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: {
@@ -374,13 +375,32 @@ Return ONLY the video prompt string. NO explanations, NO markdown.
                 }
             });
 
-            const veoPrompt = (response as any).text?.trim?.() || (response as any).text || '';
+            // Extract text from response correctly
+            const veoPrompt = response.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
+                (response as any).text?.trim?.() ||
+                '';
+
+            if (!veoPrompt) {
+                console.error('[Veo] Empty response from Gemini:', response);
+                updateStateAndRecord(s => ({
+                    ...s,
+                    scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, veoPrompt: '❌ Không nhận được prompt' } : sc)
+                }));
+                return;
+            }
+
+            console.log('[Veo] Generated prompt:', veoPrompt.substring(0, 100) + '...');
             updateStateAndRecord(s => ({
                 ...s,
                 scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, veoPrompt } : sc)
             }));
-        } catch (e) {
-            console.error("Veo prompt gen failed", e);
+        } catch (e: any) {
+            console.error("[Veo] Prompt generation failed:", e);
+            const errorMsg = e?.message || 'Unknown error';
+            updateStateAndRecord(s => ({
+                ...s,
+                scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, veoPrompt: `❌ Lỗi: ${errorMsg.substring(0, 50)}` } : sc)
+            }));
         }
     }, [state.scenes, state.scriptLanguage, state.products, updateStateAndRecord, userApiKey]);
 
