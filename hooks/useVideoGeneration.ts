@@ -317,12 +317,25 @@ ${directorDNA ? `- Visual DNA: ${directorDNA}` : '- Visual DNA: Default cinemati
 ${directorSignatureCameraStyle ? `- **SIGNATURE CAMERA TECHNIQUES:** ${directorSignatureCameraStyle}` : '- Signature Camera: Standard cinematic coverage'}
 - PRIORITY: When choosing camera movement, PRIORITIZE the Director's signature techniques above. This gives consistency to the overall film.
 
-**SCENE INTELLIGENCE (Auto-Analyzed):**
-- Detected Emotional Tone: ${primaryEmotion.toUpperCase()}${detectedEmotions.length > 1 ? ` (also: ${detectedEmotions.slice(1).join(', ')})` : ''}
+**SCENE INTELLIGENCE (Auto-Analyzed - USE AS HINTS ONLY):**
+- Keyword-Detected Tone: ${primaryEmotion.toUpperCase()}${detectedEmotions.length > 1 ? ` (also: ${detectedEmotions.slice(1).join(', ')})` : ''} ⚠️ This is auto-detected from text keywords - MAY NOT APPLY to this specific moment!
 - Scene Type: ${hasDialogue ? 'DIALOGUE SCENE' : hasVoiceOver ? 'VOICE-OVER/NARRATION SCENE' : 'VISUAL SCENE'}
 - Character Count: ${characterCount > 0 ? characterCount : 'Auto-detect from image'}
-- SUGGESTED ACTING: ${guide.acting}
-- SUGGESTED CAMERA: ${guide.camera}
+
+⚠️ CRITICAL EMOTION CONTEXT RULE:
+The detected emotion above is based on KEYWORDS in the script, NOT the actual moment.
+YOU MUST analyze the IMAGE and the SPECIFIC SCENE DESCRIPTION to determine:
+1. What are the characters ACTUALLY doing in this image?
+2. What emotion makes sense for THIS SPECIFIC MOMENT?
+3. A scene with "angry crowd" doesn't mean the protagonist is angry
+4. Match character acting to THEIR situation, not the general scene mood
+
+- IF characters appear calm/neutral in image → Use calm, natural movement
+- IF dialogue suggests different emotion than keywords → Follow dialogue emotion
+- IF this is an establishing shot with no close-up → Use minimal acting, focus on environment
+
+SUGGESTED ACTING (if emotion applies): ${guide.acting}
+SUGGESTED CAMERA (if emotion applies): ${guide.camera}
 
 **PRESET MODE: ${selectedPreset.label}**
 ${selectedPreset.prompt}
