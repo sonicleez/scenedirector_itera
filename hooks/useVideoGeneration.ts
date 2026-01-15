@@ -5,6 +5,7 @@ import { ProjectState, AgentStatus } from '../types';
 import { CAMERA_ANGLES, LENS_OPTIONS, VEO_PRESETS, VEO_CAMERA_MOTIONS } from '../constants/presets';
 import { DIRECTOR_PRESETS, DirectorPreset } from '../constants/directors';
 import { Scene } from '../types';
+import { fixMimeType } from '../utils/geminiUtils';
 
 export function useVideoGeneration(
     state: ProjectState,
@@ -65,7 +66,10 @@ export function useVideoGeneration(
             if (scene.generatedImage.startsWith('data:')) {
                 const [header, base64Data] = scene.generatedImage.split(',');
                 data = base64Data;
-                mimeType = header.match(/:(.*?);/)?.[1] || 'image/jpeg';
+                // Extract and validate MIME type from base64 header
+                const extractedMime = header.match(/:(.*?);/)?.[1] || 'image/jpeg';
+                mimeType = fixMimeType(extractedMime, scene.generatedImage);
+                console.log('[Veo] Base64 image, MIME:', mimeType);
             } else {
                 // Try to fetch image - first direct, then via proxy if CORS fails
                 let blob: Blob | null = null;
@@ -105,17 +109,9 @@ export function useVideoGeneration(
                     return;
                 }
 
-                mimeType = blob.type;
-
-                // [FIX] Veo API rejects 'application/octet-stream'. Infer MIME from URL or default.
-                if (!mimeType || mimeType === 'application/octet-stream') {
-                    const url = imageUrl.toLowerCase();
-                    if (url.includes('.png')) mimeType = 'image/png';
-                    else if (url.includes('.webp')) mimeType = 'image/webp';
-                    else if (url.includes('.gif')) mimeType = 'image/gif';
-                    else mimeType = 'image/jpeg'; // Default fallback
-                    console.log('[Veo] Fixed MIME type to:', mimeType);
-                }
+                // [FIX] Use fixMimeType helper to ensure valid MIME type
+                mimeType = fixMimeType(blob.type, imageUrl);
+                console.log('[Veo] Fetched image, MIME:', mimeType);
 
                 data = await new Promise<string>((resolve) => {
                     const reader = new FileReader();
