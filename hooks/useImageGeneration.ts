@@ -37,6 +37,48 @@ const getProviderFromModel = (modelId: string): 'gemini' | 'gommo' => {
     return (model?.provider as 'gemini' | 'gommo') || 'gemini';
 };
 
+// Helper: Delay function for retries
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Helper: Retry wrapper for transient API errors (500, 503, 429)
+const withRetry = async <T>(
+    fn: () => Promise<T>,
+    operationName: string,
+    maxRetries: number = 3
+): Promise<T> => {
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            return await fn();
+        } catch (error: any) {
+            lastError = error;
+            const errorMessage = String(error?.message || error);
+
+            // Check if it's a retryable error
+            const isRetryable =
+                errorMessage.includes('500') ||
+                errorMessage.includes('503') ||
+                errorMessage.includes('429') ||
+                errorMessage.includes('overloaded') ||
+                errorMessage.includes('UNAVAILABLE') ||
+                errorMessage.includes('INTERNAL') ||
+                errorMessage.includes('RESOURCE_EXHAUSTED');
+
+            if (!isRetryable || attempt === maxRetries) {
+                throw error;
+            }
+
+            // Exponential backoff: 2s, 4s, 8s
+            const waitTime = Math.pow(2, attempt) * 1000;
+            console.log(`[${operationName}] ⚠️ Attempt ${attempt}/${maxRetries} failed. Retrying in ${waitTime / 1000}s...`);
+            await delay(waitTime);
+        }
+    }
+
+    throw lastError;
+};
+
 // Helper: Create inline data object with sanitized MIME type
 // This prevents "Unsupported MIME type: application/octet-stream" errors
 const createInlineData = (data: string, mimeType: string, sourceUrl?: string) => {
@@ -275,17 +317,20 @@ export function useImageGeneration(
 
             console.log(`[ImageGen] Generating with resolution: ${imageSize}, aspectRatio: ${aspectRatio}, parts: ${fullParts.length}`);
 
-            const response = await ai.models.generateContent({
-                model: model,
-                contents: [{ parts: fullParts }],
-                config: {
-                    responseModalities: ["IMAGE"], // Enforce Image output
-                    imageConfig: {
-                        aspectRatio: aspectRatio || "16:9",
-                        imageSize: imageSize || '1K' // Pass resolution to API
-                    }
-                },
-            });
+            // Wrap API call with retry for transient errors (500, 503)
+            const response = await withRetry(async () => {
+                return await ai.models.generateContent({
+                    model: model,
+                    contents: [{ parts: fullParts }],
+                    config: {
+                        responseModalities: ["IMAGE"], // Enforce Image output
+                        imageConfig: {
+                            aspectRatio: aspectRatio || "16:9",
+                            imageSize: imageSize || '1K' // Pass resolution to API
+                        }
+                    },
+                });
+            }, 'ImageGeneration', 3);
 
             const imagePart = response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
             if (imagePart?.inlineData) {
