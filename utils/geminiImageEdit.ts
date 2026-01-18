@@ -16,6 +16,46 @@ export interface GeneratedImage {
     mimeType: string;
 }
 
+// Helper: Delay function
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Helper: Retry wrapper for transient errors (503, 429, etc.)
+const withRetry = async <T>(
+    fn: () => Promise<T>,
+    operationName: string,
+    maxRetries: number = 3
+): Promise<T> => {
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            return await fn();
+        } catch (error: any) {
+            lastError = error;
+            const errorMessage = String(error?.message || error);
+
+            // Check if it's a retryable error (503, 429, overloaded)
+            const isRetryable =
+                errorMessage.includes('503') ||
+                errorMessage.includes('429') ||
+                errorMessage.includes('overloaded') ||
+                errorMessage.includes('UNAVAILABLE') ||
+                errorMessage.includes('RESOURCE_EXHAUSTED');
+
+            if (!isRetryable || attempt === maxRetries) {
+                throw error;
+            }
+
+            // Exponential backoff: 2s, 4s, 8s...
+            const waitTime = Math.pow(2, attempt) * 1000;
+            console.log(`[${operationName}] ⚠️ Attempt ${attempt} failed (${errorMessage}). Retrying in ${waitTime / 1000}s...`);
+            await delay(waitTime);
+        }
+    }
+
+    throw lastError;
+};
+
 // Helper function to convert URL to base64
 const urlToBase64 = async (url: string): Promise<{ data: string; mimeType: string }> => {
     const response = await fetch(url);
@@ -274,7 +314,7 @@ export const compositeImages = async (
     aspectRatio: string = "1:1",
     resolution: '1k' | '2k' | '4k' = '1k'
 ): Promise<GeneratedImage> => {
-    try {
+    return withRetry(async () => {
         const ai = getAi(apiKey);
         const fullPrompt = `Use the first image as the base/background. Take the main subject from the second image and composite it into the first image based on the following instructions: "${prompt}". Seamlessly blend the lighting, shadows, and art style to make the composition look natural.`;
         const response = await ai.models.generateContent({
@@ -315,10 +355,7 @@ export const compositeImages = async (
         }
 
         throw new Error("No composited image was returned from the API.");
-    } catch (error) {
-        console.error("Error compositing images:", error);
-        throw new Error(`Failed to composite images. ${error instanceof Error ? error.message : String(error)}`);
-    }
+    }, 'CompositeImages', 3);
 }
 
 export const analyzeImage = async (apiKey: string, image: GeneratedImage): Promise<string[]> => {
