@@ -1178,14 +1178,17 @@ The text prompt below describes the ACTUAL scene you must create.` });
                     }
                 }
 
-                // SECONDARY ANCHOR: Master Image (full body reference)
-                if (char.masterImage && char.masterImage !== char.faceImage) {
-                    const imgData = await safeGetImageData(char.masterImage);
+                // SECONDARY ANCHOR: Body Image (full body/costume reference)
+                // Priority: bodyImage (AI-generated) > masterImage (fallback)
+                const bodyRef = char.bodyImage || char.masterImage;
+                if (bodyRef && bodyRef !== char.faceImage) {
+                    const imgData = await safeGetImageData(bodyRef);
                     if (imgData) {
                         const refLabel = `FULLBODY_${char.name.toUpperCase()}`;
                         // STRONGER COSTUME LOCK
                         parts.push({ text: `[${refLabel}]: MANDATORY COSTUME REFERENCE for ${char.name}. Match clothing, colors, uniform, and textures 100%. If character has clothes in this image, they MUST HAVE CLOTHES in the output.` });
                         parts.push(createInlineData(imgData.data, imgData.mimeType));
+                        console.log(`[ImageGen] 👕 Injected BODY reference for ${char.name} (source: ${char.bodyImage ? 'bodyImage' : 'masterImage fallback'})`);
                     }
                 }
             }
@@ -1327,26 +1330,28 @@ DO NOT generate a different face. DO NOT create a "similar" face. This EXACT fac
             }
 
             // STEP 2: Then add body/outfit references
+            // PRIORITY: Use AI-generated bodyImage and faceImage sheets ONLY
+            // Do NOT use masterImage (user upload) as character reference
             for (const char of selectedChars) {
                 const bodyRefs: { type: string, img: string }[] = [];
 
-                // Only add bodyImage if it's different from masterImage (avoid duplicate)
-                if (char.bodyImage && char.bodyImage !== char.masterImage) {
+                // PRIORITY 1: AI-generated bodyImage (from character sheet generation)
+                if (char.bodyImage) {
                     bodyRefs.push({ type: 'FULL BODY', img: char.bodyImage });
+                    console.log(`[ImageGen] ✅ Using AI-generated bodyImage for ${char.name}`);
                 }
 
-                // Add more views if using Pro
+                // PRIORITY 2: Additional angle views (only if Pro model)
                 if (isPro) {
                     if (char.sideImage) bodyRefs.push({ type: 'SIDE VIEW', img: char.sideImage });
                     if (char.backImage) bodyRefs.push({ type: 'BACK VIEW', img: char.backImage });
                 }
 
-                // Fallback to master if no body views (and no faceImage was added)
-                if (bodyRefs.length === 0 && char.masterImage && !char.faceImage) {
-                    bodyRefs.push({ type: 'PRIMARY', img: char.masterImage });
-                } else if (bodyRefs.length === 0 && char.masterImage) {
-                    // Add masterImage as body/outfit reference
-                    bodyRefs.push({ type: 'OUTFIT', img: char.masterImage });
+                // FALLBACK: Only if NO bodyImage AND NO faceImage, skip this character entirely
+                // masterImage is NOT used for character identity - only for initial sheet generation
+                if (bodyRefs.length === 0 && !char.faceImage) {
+                    console.warn(`[ImageGen] ⚠️ Character ${char.name} has no faceImage or bodyImage - skipping character reference`);
+                    continue; // Skip this character - no valid AI-generated references
                 }
 
                 // PARALLEL loading of body reference images
